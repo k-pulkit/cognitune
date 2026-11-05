@@ -71,9 +71,9 @@ export function LensPage() {
   const shownDives = mode === "all" ? dives.map((d, i) => [d, i] as const) : dives[step] ? [[dives[step], step] as const] : [];
   /** A section heading, like a blog post's h2. */
   const H2 = ({ icon, children, aside }: { icon?: React.ReactNode; children: React.ReactNode; aside?: React.ReactNode }) => (
-    <div className="mb-5 mt-14 flex items-center gap-3">
-      <h2 className="flex items-center gap-2 text-[23px] font-semibold tracking-tight">
-        {icon && <span className="text-accent">{icon}</span>}
+    <div className="mb-5 mt-16 flex items-center gap-3">
+      <h2 className="flex items-center gap-2 text-[24px] font-semibold tracking-[-0.015em]">
+        {icon && <span className="text-muted [&>svg]:h-[18px] [&>svg]:w-[18px]">{icon}</span>}
         {children}
       </h2>
       {aside && <div className="ml-auto">{aside}</div>}
@@ -97,11 +97,11 @@ export function LensPage() {
             <Download className="h-3.5 w-3.5" /> .md
           </a>
         </div>
-        <h1 className="mt-3 text-[34px] font-bold leading-[1.15] tracking-tight">{l.title}</h1>
+        <h1 className="mt-4 text-[36px] font-bold leading-[1.1] tracking-[-0.02em]">{l.title}</h1>
         <p className="mt-3 text-[18px] leading-relaxed text-muted">{l.question}</p>
-        <div className="mt-4 flex flex-wrap gap-1.5">
+        <div className="mt-4 flex flex-wrap gap-2">
           {l.files.slice(0, 6).map((f) => (
-            <button key={f} onClick={() => show(f)} title={rel(f)} className="inline-flex max-w-full items-center gap-1 rounded-md bg-raised px-2 py-1 font-mono text-[12px] text-muted hover:text-accent">
+            <button key={f} onClick={() => show(f)} title={rel(f)} className="inline-flex max-w-full items-center gap-1 rounded-md bg-ink/5 px-2 py-1 font-mono text-[12px] text-muted hover:text-accent">
               <FileCode2 className="h-3 w-3 shrink-0" /> <span className="truncate">{shortPath(rel(f), 64)}</span>
             </button>
           ))}
@@ -122,8 +122,8 @@ export function LensPage() {
         {refresh.error && <div className="mt-3"><ErrorNote error={refresh.error} onClose={refresh.clearError} /></div>}
 
         {/* The one idea, as a pull quote */}
-        <div className="mt-10 border-l-4 border-accent pl-5">
-          <div className="text-[12px] font-semibold uppercase tracking-wider text-accent">The idea in one sentence</div>
+        <div className="mt-10 border-l-[3px] border-accent py-1 pl-5">
+          <div className="text-[11.5px] font-semibold uppercase tracking-[0.08em] text-accent">The idea in one sentence</div>
           <p className="read-lead mt-2"><Inline>{l.tldr || l.summary}</Inline></p>
         </div>
         {l.whyItMatters && (
@@ -148,11 +148,11 @@ export function LensPage() {
             <H2 icon={<BookOpen className="h-5 w-5" />}>Words you need first</H2>
             <div className="wide lens-concepts grid gap-5">
               {l.concepts.map((c) => (
-                <div key={c.term} className="card group flex flex-col p-6">
+                <div key={c.term} className="card group flex flex-col p-5">
                   <div className="flex items-baseline gap-2">
-                    <div className="flex-1 text-[18px] font-semibold tracking-tight">{c.term}</div>
+                    <div className="flex-1 text-[17px] font-semibold tracking-tight">{c.term}</div>
                     {c.file && (
-                      <button className="font-mono text-[12px] text-muted hover:text-accent" onClick={() => show(c.file, c.line)} title="Show in the code">
+                      <button className="rounded bg-raised px-1.5 py-0.5 font-mono text-[11.5px] text-muted hover:text-accent" onClick={() => show(c.file, c.line)} title="Show in the code">
                         {c.line ? `line ${c.line}` : "code"}
                       </button>
                     )}
@@ -164,10 +164,10 @@ export function LensPage() {
                       <Layers className="h-4 w-4" />
                     </button>
                   </div>
-                  <p className="read mt-2"><Inline>{c.explain}</Inline></p>
+                  <p className="read-sm mt-2"><Inline>{c.explain}</Inline></p>
                   {c.example && (
-                    <p className="read mt-4 rounded-xl bg-raised/70 px-4 py-3 text-muted">
-                      <span className="mr-1.5 text-[12px] font-semibold uppercase tracking-wider text-ink/70">Example</span>
+                    <p className="read-sm mt-3 rounded-lg bg-raised/70 px-3.5 py-2.5 text-muted">
+                      <span className="mr-1.5 text-[11.5px] font-semibold uppercase tracking-[0.08em] text-ink/70">Example</span>
                       <Inline>{c.example}</Inline>
                     </p>
                   )}
@@ -196,7 +196,7 @@ export function LensPage() {
             <H2
               aside={<Segmented value={mode} onChange={(m) => { setMode(m); setStep(0); }} options={[{ value: "all", label: "All steps" }, { value: "step", label: "One at a time" }]} />}
             >
-              Walkthrough <span className="text-[17px] font-normal text-muted">· {dives.length} steps</span>
+              Walkthrough <span className="text-[15px] font-normal text-muted">· {dives.length} steps</span>
             </H2>
             {mode === "step" && (
               <div className="mb-6 flex items-center gap-1.5">
@@ -206,7 +206,7 @@ export function LensPage() {
                 ))}
               </div>
             )}
-            <ol className="wide space-y-8">
+            <ol className="space-y-12 [&>li+li]:border-t [&>li+li]:border-line [&>li+li]:pt-10">
               {shownDives.map(([d, i]) => (
                 <Step key={i} d={d} n={i + 1} text={d.file ? fileText.get(d.file) : undefined} rel={rel} onShow={show} />
               ))}
@@ -249,7 +249,7 @@ export function LensPage() {
           </>
         )}
 
-        <section className="mt-16 rounded-2xl border border-line bg-raised/50 p-6">
+        <section className="mt-16 rounded-2xl border border-line bg-raised/40 p-6">
           <div className="text-[17px] font-semibold">Did it land?</div>
           <p className="read mt-1 text-muted">Reading feels like understanding. A quiz on the same files tells you if it is.</p>
           <div className="mt-4 flex flex-wrap gap-2">
@@ -286,7 +286,28 @@ export function LensPage() {
   );
 }
 
-/** One walkthrough step: the claim, its own lines of code, why, a pitfall, and a question to check yourself. */
+/** Last two path parts ("lineage/events.py"): says more than initials. */
+function tail(path: string): string {
+  return path.split("/").slice(-2).join("/");
+}
+
+/**
+ * Where a snippet should start: walk up from the range start to the head of the enclosing block
+ * (a def / class / decorator line, or a top-level line), so a card never opens mid-expression.
+ */
+function blockStart(lines: string[], start: number, key: number): number {
+  const indent = (l: string) => /^\s*/.exec(l)?.[0].length ?? 0;
+  const keyIndent = indent(lines[key - 1] ?? "");
+  for (let n = start; n >= Math.max(1, start - 25); n--) {
+    const l = lines[n - 1] ?? "";
+    if (!l.trim()) continue;
+    const head = /^\s*(def |async def |class |@|function |export |const |func |fn |pub |public |private )/.test(l);
+    if ((head && indent(l) <= keyIndent) || indent(l) === 0) return n;
+  }
+  return start;
+}
+
+/** One walkthrough step: the claim, why, its own lines of code, a pitfall, and a question to check yourself. */
 function Step({ d, n, text, rel, onShow }: {
   d: DeepDive;
   n: number;
@@ -299,45 +320,51 @@ function Step({ d, n, text, rel, onShow }: {
   const snippet = useMemo(() => {
     if (!text || !r) return null;
     const lines = text.text.split("\n");
-    const [a, b] = [Math.min(r[0], lines.length), Math.min(r[1], lines.length)];
-    return { first: a, body: lines.slice(a - 1, b).join("\n") };
-  }, [text, r?.[0], r?.[1]]); // eslint-disable-line react-hooks/exhaustive-deps
+    const end = Math.min(r[1], lines.length);
+    const first = blockStart(lines, Math.min(r[0], lines.length), d.line ?? r[0]);
+    // Drop the indent all lines share, so nested code fits the column without odd wraps.
+    const part = lines.slice(first - 1, end);
+    const pad = Math.min(...part.filter((l) => l.trim()).map((l) => /^\s*/.exec(l)?.[0].length ?? 0));
+    const body = part.map((l) => l.slice(Number.isFinite(pad) ? pad : 0)).join("\n");
+    return { first, last: end, body };
+  }, [text, r?.[0], r?.[1], d.line]); // eslint-disable-line react-hooks/exhaustive-deps
   const keyMark = useMemo(() => (d.line ? [{ from: d.line, to: d.line, cls: "hl" }] : []), [d.line]);
   return (
-    <li className={clsx("lens-step", snippet && "has-code")}>
-      <div className="lens-step-text min-w-0">
+    <li className="lens-step">
+      <div className="min-w-0">
         <div className="flex items-baseline gap-3">
-          <span className="font-mono text-[15px] font-semibold text-accent">{String(n).padStart(2, "0")}</span>
-          <h3 className="text-[20px] font-semibold leading-snug tracking-tight">{d.title}</h3>
+          <span className="font-mono text-[13px] font-semibold tabular-nums text-accent/80">{String(n).padStart(2, "0")}</span>
+          <h3 className="text-[19px] font-semibold leading-[1.3] tracking-tight">{d.title}</h3>
         </div>
-        {d.file && (
-          <button className="mt-1 block max-w-full truncate text-left font-mono text-[12px] text-muted hover:text-accent" onClick={() => onShow(d.file, d.line)} title={`${rel(d.file)} (open the whole file on the right)`}>
-            {shortPath(rel(d.file), 48)}{r ? `:${r[0]}-${r[1]}` : ""}
-          </button>
-        )}
         <div className="mt-3"><Markdown>{d.body}</Markdown></div>
-        {d.pitfall && (
-          <p className="read mt-4 flex gap-2.5 rounded-xl bg-warn/8 px-4 py-3">
-            <AlertTriangle className="mt-[0.3em] h-4 w-4 shrink-0 text-warn" />
-            <span><strong>Pitfall.</strong> <Inline>{d.pitfall}</Inline></span>
-          </p>
-        )}
-        {d.check && (
-          <div className="mt-4 rounded-xl border border-accent/25 px-4 py-3">
-            <p className="read"><strong className="text-accent">Check yourself.</strong> <Inline>{d.check.q}</Inline></p>
-            {answer ? (
-              <p className="read mt-2 text-muted"><Inline>{d.check.a}</Inline></p>
-            ) : (
-              <button className="mt-2 inline-flex items-center gap-1.5 text-[13px] text-muted hover:text-ink" onClick={() => setAnswer(true)}>
-                <Eye className="h-3.5 w-3.5" /> Think first, then show the answer
-              </button>
-            )}
-          </div>
-        )}
       </div>
-      {snippet && (
-        <div className="lens-step-code min-w-0 max-h-[460px] overflow-auto rounded-xl border border-line bg-panel shadow-soft">
-          <CodeView text={snippet.body} lang={text!.lang} firstLine={snippet.first} marks={keyMark} onLineClick={(line) => onShow(d.file, line)} />
+      {snippet && d.file && (
+        <div className="min-w-0 overflow-hidden rounded-xl border border-line bg-panel">
+          <div className="flex items-center justify-between gap-3 border-b border-line bg-raised/60 px-3 py-1.5 font-mono text-[12px] text-muted">
+            <span className="truncate" title={rel(d.file)}>{tail(rel(d.file))}:{snippet.first}–{snippet.last}</span>
+            <button className="shrink-0 font-sans hover:text-accent" onClick={() => onShow(d.file, d.line)}>open file</button>
+          </div>
+          <div className="lens-step-code">
+            <CodeView text={snippet.body} lang={text!.lang} firstLine={snippet.first} marks={keyMark} onLineClick={(line) => onShow(d.file, line)} />
+          </div>
+        </div>
+      )}
+      {d.pitfall && (
+        <p className="read-sm flex gap-2.5 rounded-r-lg border-l-[3px] border-warn bg-warn/5 px-4 py-3">
+          <AlertTriangle className="mt-[0.25em] h-4 w-4 shrink-0 text-warn" />
+          <span><strong>Pitfall.</strong> <Inline>{d.pitfall}</Inline></span>
+        </p>
+      )}
+      {d.check && (
+        <div className="read-sm rounded-r-lg border-l-[3px] border-accent bg-accent/5 px-4 py-3">
+          <p><strong className="text-accent">Check yourself.</strong> <Inline>{d.check.q}</Inline></p>
+          {answer ? (
+            <p className="mt-3 border-t border-line/70 pt-3 text-ink/85"><Inline>{d.check.a}</Inline></p>
+          ) : (
+            <button className="mt-2 inline-flex items-center gap-1.5 font-sans text-[13px] text-muted hover:text-ink" onClick={() => setAnswer(true)}>
+              <Eye className="h-3.5 w-3.5" /> Think first, then show the answer
+            </button>
+          )}
         </div>
       )}
     </li>
