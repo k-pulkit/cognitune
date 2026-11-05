@@ -69,10 +69,10 @@ export function FileTree({
       <div key={n.path}>
         <div
           className={clsx(
-            "group flex h-7 cursor-pointer items-center gap-1.5 rounded-md pr-2 text-[14px] transition",
+            "group flex h-[30px] cursor-pointer items-center gap-1.5 rounded-md pr-2 text-[13.5px] transition",
             openFile === n.path ? "bg-accent/12 text-ink" : "text-ink/85 hover:bg-raised",
           )}
-          style={{ paddingLeft: depth * 14 + 4 }}
+          style={{ paddingLeft: depth * 14 + 6 }}
           onClick={() => {
             if (n.kind === "dir") setToggled((s) => {
               const next = new Set(s);
@@ -106,13 +106,13 @@ export function FileTree({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="p-2">
+      <div className="px-3 py-2.5">
         <div className="relative">
           <Search className="pointer-events-none absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted" />
           <input className="input h-8 pl-8 text-[14px]" placeholder="Filter files" value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
       </div>
-      <div className="min-h-0 flex-1 overflow-auto px-1 pb-4">{shown.map((r) => row(r, 0))}</div>
+      <div className="min-h-0 flex-1 overflow-auto px-2.5 pb-4">{shown.map((r) => row(r, 0))}</div>
     </div>
   );
 }

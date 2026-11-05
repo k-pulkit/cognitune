@@ -33,7 +33,7 @@ function NavItem({ to, icon, label, end, badge }: { to: string; icon: React.Reac
       end={end}
       className={({ isActive }) =>
         clsx(
-          "group relative flex flex-col items-center gap-1 rounded-xl px-1 py-2 text-[12px] font-medium transition",
+          "group relative flex flex-col items-center gap-1 rounded-xl px-1.5 py-2 text-[11px] font-medium leading-tight transition",
           isActive ? "bg-accent/12 text-accent" : "text-muted hover:bg-raised hover:text-ink",
         )
       }
@@ -79,7 +79,7 @@ export function Shell() {
 
   return (
     <div className="flex h-full">
-      <aside className="flex w-[72px] shrink-0 flex-col items-stretch gap-1 overflow-y-auto border-r border-line bg-panel px-2 py-3">
+      <aside className="flex w-[80px] shrink-0 flex-col items-stretch gap-1 overflow-y-auto border-r border-line bg-panel px-3 py-3">
         <NavLink to="/" className="mb-3 flex justify-center" title="groklab: projects">
           <Logo className="h-9 w-9" />
         </NavLink>
@@ -101,7 +101,7 @@ export function Shell() {
         <button
           onClick={() => setPalette(true)}
           title="Go to or do (Ctrl/Cmd+K). Press ? for all shortcuts."
-          className="flex flex-col items-center gap-1 rounded-xl py-2 text-[12px] font-medium text-muted transition hover:bg-raised hover:text-ink"
+          className="flex flex-col items-center gap-1 rounded-xl px-1.5 py-2 text-[11px] font-medium leading-tight text-muted transition hover:bg-raised hover:text-ink"
         >
           <Command className="h-5 w-5" />
           <span>Ctrl K</span>
@@ -111,7 +111,7 @@ export function Shell() {
         <button
           onClick={() => setPref(NEXT[pref])}
           title={`Theme: ${pref} (click to change)`}
-          className="flex flex-col items-center gap-1 rounded-xl py-2 text-[12px] font-medium text-muted transition hover:bg-raised hover:text-ink"
+          className="flex flex-col items-center gap-1 rounded-xl px-1.5 py-2 text-[11px] font-medium leading-tight text-muted transition hover:bg-raised hover:text-ink"
         >
           <ThemeIcon className="h-5 w-5" />
           <span className="capitalize">{pref}</span>
@@ -119,7 +119,7 @@ export function Shell() {
         <NavLink
           to="/settings"
           title={health.data?.agent.detail ?? "checking the model"}
-          className="mt-1 flex items-center justify-center gap-1.5 text-[11.5px] text-muted"
+          className="mt-1 flex items-center justify-center gap-1.5 text-[11px] text-muted"
         >
           <span className={clsx("h-2 w-2 rounded-full", ready === undefined ? "bg-line" : ready ? "bg-good" : "bg-bad")} />
           model
