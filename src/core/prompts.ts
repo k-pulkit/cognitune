@@ -110,7 +110,7 @@ JSON shape:
   "whyItMatters": "1-2 sentences: what goes wrong for someone who does not know this",
   "summary": "markdown, at most 3 short sentences: the answer in plain words, expanding the tldr. If there is more to say, it belongs in the steps",
   "concepts": [{"term": "name", "explain": "1-2 plain sentences", "example": "a tiny concrete example or analogy", "file": "relative/path", "line": 12}],  // 2-6 items, only terms the reader needs first
-  "intuition": "markdown: the core idea with toy data walked through as numbered steps, and/or a small mermaid diagram (\`\`\`mermaid fenced, max 12 nodes, flowchart or sequenceDiagram, short labels)",
+  "intuition": "markdown: the core idea with toy data walked through as numbered steps, and/or a small mermaid diagram (\`\`\`mermaid fenced, max 12 nodes, flowchart or sequenceDiagram, short sentence-case labels, never ALL CAPS; prefer flowchart TD when it has more than 5 nodes)",
   "deepDives": [{
     "title": "the idea of this step as a claim",
     "file": "relative/path", "startLine": 10, "endLine": 24, "line": 12,   // line = the single key line
