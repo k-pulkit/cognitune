@@ -1,12 +1,32 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import clsx from "clsx";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+
+function stored<T>(key: string, fallback: T, parse: (v: string) => T): T {
+  try {
+    const v = localStorage.getItem(key);
+    return v === null ? fallback : parse(v);
+  } catch {
+    return fallback;
+  }
+}
+
+function keep(key: string, v: string) {
+  try {
+    localStorage.setItem(key, v);
+  } catch {
+    /* private mode */
+  }
+}
 
 /**
- * Two panes with a drag handle. The size of the fixed pane is kept per `id` in localStorage
- * (a per-browser convenience). `side` says which pane has the fixed width.
+ * Two panes with a drag handle. `side` says which pane has the fixed width. With `collapsible`,
+ * the fixed pane can fold into a thin rail; hovering the rail slides the pane in over the
+ * page, and it slides away when the mouse leaves. Size and folded state are kept per `id` in
+ * localStorage (a per-browser convenience).
  */
 export function Split({
-  id, left, right, initial = 280, min = 180, max = 640, side = "left", className,
+  id, left, right, initial = 280, min = 180, max = 640, side = "left", className, collapsible = false,
 }: {
   id: string;
   left: ReactNode;
@@ -16,24 +36,17 @@ export function Split({
   max?: number;
   side?: "left" | "right";
   className?: string;
+  collapsible?: boolean;
 }) {
   const key = `groklab.split.${id}`;
-  const [size, setSize] = useState(() => {
-    try {
-      return Number(localStorage.getItem(key)) || initial;
-    } catch {
-      return initial;
-    }
-  });
+  const [size, setSize] = useState(() => stored(key, initial, Number) || initial);
+  const [collapsed, setCollapsed] = useState(() => collapsible && stored(`${key}.collapsed`, false, (v) => v === "1"));
+  const [peek, setPeek] = useState(false);
   const drag = useRef<{ x: number; size: number } | null>(null);
+  const leaveTimer = useRef<ReturnType<typeof setTimeout>>();
 
-  useEffect(() => {
-    try {
-      localStorage.setItem(key, String(size));
-    } catch {
-      /* ignore */
-    }
-  }, [key, size]);
+  useEffect(() => keep(key, String(size)), [key, size]);
+  useEffect(() => keep(`${key}.collapsed`, collapsed ? "1" : "0"), [key, collapsed]);
 
   useEffect(() => {
     const move = (e: PointerEvent) => {
@@ -54,10 +67,26 @@ export function Split({
     };
   }, [min, max, side]);
 
+  // A short delay before hiding, so moving across the pane edge does not flicker it shut.
+  const openPeek = () => {
+    clearTimeout(leaveTimer.current);
+    setPeek(true);
+  };
+  const closePeek = () => {
+    clearTimeout(leaveTimer.current);
+    leaveTimer.current = setTimeout(() => setPeek(false), 250);
+  };
+  useEffect(() => () => clearTimeout(leaveTimer.current), []);
+
+  const fixedLeft = side === "left";
+  const Fold = fixedLeft ? ChevronLeft : ChevronRight;
+  const Unfold = fixedLeft ? ChevronRight : ChevronLeft;
+
   const handle = (
     <div
       className="group relative w-px shrink-0 cursor-col-resize bg-line"
       onPointerDown={(e) => {
+        if ((e.target as HTMLElement).closest("button")) return;
         drag.current = { x: e.clientX, size };
         document.body.style.cursor = "col-resize";
         document.body.style.userSelect = "none";
@@ -66,22 +95,71 @@ export function Split({
       title="Drag to resize, double-click to reset"
     >
       <div className="absolute inset-y-0 -left-1.5 -right-1.5 transition group-hover:bg-accent/30" />
+      {collapsible && (
+        <button
+          onClick={() => {
+            setCollapsed(true);
+            setPeek(false);
+          }}
+          title="Fold this pane away (hover the edge to see it again)"
+          className="absolute top-1/2 z-20 -mt-4 grid h-8 w-4 -translate-x-1/2 place-items-center rounded-full border border-line bg-panel text-muted opacity-0 shadow-sm transition hover:text-accent group-hover:opacity-100"
+        >
+          <Fold className="h-3 w-3" />
+        </button>
+      )}
     </div>
   );
 
+  const rail = (
+    <div
+      onMouseEnter={openPeek}
+      onMouseLeave={closePeek}
+      className={clsx(
+        "group flex w-3 shrink-0 cursor-pointer flex-col items-center justify-center bg-panel transition hover:bg-accent/10",
+        fixedLeft ? "border-r border-line" : "border-l border-line",
+      )}
+      onClick={() => {
+        setCollapsed(false);
+        setPeek(false);
+      }}
+      title="Hover to peek, click to pin open"
+    >
+      <Unfold className="h-3 w-3 text-muted group-hover:text-accent" />
+    </div>
+  );
+
+  // One element for the fixed pane in every state, so its React state survives folding.
+  const fixedPane = (
+    <div
+      style={{ width: size }}
+      onMouseEnter={collapsed ? openPeek : undefined}
+      onMouseLeave={collapsed ? closePeek : undefined}
+      className={clsx(
+        "min-h-0 shrink-0 overflow-hidden",
+        collapsed && !peek && "hidden",
+        collapsed && peek && clsx("absolute inset-y-0 z-30 shadow-2xl ring-1 ring-line", fixedLeft ? "left-3" : "right-3"),
+      )}
+    >
+      {fixedLeft ? left : right}
+    </div>
+  );
+  const flexPane = <div className="min-h-0 min-w-0 flex-1 overflow-hidden">{fixedLeft ? right : left}</div>;
+
   return (
-    <div className={clsx("flex h-full min-h-0 min-w-0", className)}>
-      {side === "left" ? (
+    <div className={clsx("relative flex h-full min-h-0 min-w-0", className)}>
+      {fixedLeft ? (
         <>
-          <div style={{ width: size }} className="min-h-0 shrink-0 overflow-hidden">{left}</div>
-          {handle}
-          <div className="min-h-0 min-w-0 flex-1 overflow-hidden">{right}</div>
+          {collapsed && rail}
+          {fixedPane}
+          {!collapsed && handle}
+          {flexPane}
         </>
       ) : (
         <>
-          <div className="min-h-0 min-w-0 flex-1 overflow-hidden">{left}</div>
-          {handle}
-          <div style={{ width: size }} className="min-h-0 shrink-0 overflow-hidden">{right}</div>
+          {flexPane}
+          {!collapsed && handle}
+          {fixedPane}
+          {collapsed && rail}
         </>
       )}
     </div>

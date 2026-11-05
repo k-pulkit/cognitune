@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import clsx from "clsx";
 
 interface Row {
@@ -85,29 +85,78 @@ export function DiffView({ patch, mode }: { patch: string; mode: "split" | "unif
     );
   }
 
-  return (
-    <div className="grid min-w-max grid-cols-2 py-1 font-mono text-[12.5px] leading-6">
-      {splitRows(rows).map((s, i) =>
-        s.hunk ? (
-          <div key={i} className="diff-hunk col-span-2 px-4">{s.hunk}</div>
-        ) : (
-          [s.left, s.right].map((r, side) => (
-            <div
-              key={`${i}-${side}`}
-              className={clsx(
-                "flex min-h-6",
-                side === 0 && "border-r border-line",
-                r && r.kind === "del" && "diff-del",
-                r && r.kind === "add" && "diff-add",
-                !r && "bg-raised/60",
-              )}
-            >
+  return <SplitDiff rows={splitRows(rows)} />;
+}
+
+type Pair = { left?: Row; right?: Row; hunk?: string };
+
+/**
+ * Before | after. Each side scrolls sideways on its own; rows have a fixed height, so the two
+ * sides stay lined up while the page scrolls up and down. The divider drags (double-click resets).
+ */
+function SplitDiff({ rows }: { rows: Pair[] }) {
+  const box = useRef<HTMLDivElement>(null);
+  const [pct, setPct] = useState(() => {
+    try {
+      return Number(localStorage.getItem("groklab.diff.split")) || 50;
+    } catch {
+      return 50;
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem("groklab.diff.split", String(pct));
+    } catch {
+      /* ignore */
+    }
+  }, [pct]);
+
+  const startDrag = (e: React.PointerEvent) => {
+    const rect = box.current?.getBoundingClientRect();
+    if (!rect) return;
+    e.preventDefault();
+    const move = (ev: PointerEvent) => setPct(Math.min(85, Math.max(15, ((ev.clientX - rect.left) / rect.width) * 100)));
+    const up = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  };
+
+  const column = (side: 0 | 1) => (
+    <div className="min-w-0 overflow-x-auto overflow-y-hidden" style={{ width: side === 0 ? `${pct}%` : `${100 - pct}%` }}>
+      <div className="inline-block min-w-full py-1">
+        {rows.map((s, i) => {
+          if (s.hunk) return <div key={i} className="diff-hunk h-6 whitespace-pre px-4">{side === 0 ? s.hunk : ""}</div>;
+          const r = side === 0 ? s.left : s.right;
+          return (
+            <div key={i} className={clsx("flex h-6", r?.kind === "del" && "diff-del", r?.kind === "add" && "diff-add", !r && "bg-raised/60")}>
               <span className={num}>{r ? (side === 0 ? r.left : r.right) : ""}</span>
               <span className="whitespace-pre pr-6">{r?.text ?? ""}</span>
             </div>
-          ))
-        ),
-      )}
+          );
+        })}
+      </div>
+    </div>
+  );
+
+  return (
+    <div ref={box} className="relative flex font-mono text-[12.5px] leading-6">
+      {column(0)}
+      <div
+        className="group relative w-px shrink-0 cursor-col-resize bg-line"
+        onPointerDown={startDrag}
+        onDoubleClick={() => setPct(50)}
+        title="Drag to move, double-click to centre"
+      >
+        <div className="absolute inset-y-0 -left-1.5 -right-1.5 transition group-hover:bg-accent/30" />
+      </div>
+      {column(1)}
     </div>
   );
 }

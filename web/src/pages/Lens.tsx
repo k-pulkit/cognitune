@@ -158,5 +158,5 @@ export function LensPage() {
     </div>
   );
 
-  return <Split id="lens-code" side="right" initial={520} min={320} max={900} className="h-full" left={doc} right={code} />;
+  return <Split id="lens-code" collapsible side="right" initial={520} min={320} max={900} className="h-full" left={doc} right={code} />;
 }
