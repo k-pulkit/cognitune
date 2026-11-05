@@ -7,8 +7,21 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
-    "types": ["node"],
-    "noEmit": true
+    "types": [
+      "node"
+    ],
+    "noEmit": true,
+    "paths": {
+      "@core/*": [
+        "./src/core/*"
+      ],
+      "@/*": [
+        "./web/src/*"
+      ]
+    }
   },
-  "include": ["src", "test"]
+  "include": [
+    "src",
+    "test"
+  ]
 }

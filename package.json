@@ -9,8 +9,10 @@
   },
   "files": [
     "dist",
+    "demo",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "CHANGELOG.md"
   ],
   "engines": {
     "node": ">=20"
@@ -33,7 +35,9 @@
   "dependencies": {
     "@anthropic-ai/sdk": "0.69.0",
     "@hono/node-server": "1.19.18",
-    "hono": "4.12.0"
+    "hono": "4.12.0",
+    "ts-fsrs": "5.4.2",
+    "zod": "3.25.76"
   },
   "devDependencies": {
     "@codemirror/language-data": "6.5.1",
@@ -41,6 +45,7 @@
     "@fontsource-variable/inter": "5.1.0",
     "@fontsource-variable/jetbrains-mono": "5.1.0",
     "@tanstack/react-query": "5.62.7",
+    "@types/d3-force": "3.0.10",
     "@types/node": "22.10.2",
     "@types/react": "18.3.12",
     "@types/react-dom": "18.3.1",
@@ -49,6 +54,7 @@
     "autoprefixer": "10.4.20",
     "clsx": "2.1.1",
     "concurrently": "9.1.0",
+    "d3-force": "3.0.0",
     "lucide-react": "0.468.0",
     "mermaid": "11.4.1",
     "playwright-core": "1.49.1",

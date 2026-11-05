@@ -1,8 +1,10 @@
 import { createHash, randomBytes } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, utimesSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, basename, resolve } from "node:path";
-import type { Lens, Practice, Project, Quiz, Settings } from "./types.js";
+import type {
+  Card, Hunt, LearningPath, Lens, Misconception, Note, Practice, Project, Quiz, Settings, Teachback, Thread, Walk,
+} from "./types.js";
 
 /**
  * Everything groklab writes lives under one home folder (default ~/.groklab).
@@ -13,6 +15,13 @@ import type { Lens, Practice, Project, Quiz, Settings } from "./types.js";
  *   projects/<id>/lenses/<lid>.json
  *   projects/<id>/quizzes/<qid>.json
  *   projects/<id>/practice/<pid>.json
+ *   projects/<id>/<cards|misconceptions|teachbacks|threads|walks|hunts|paths|notes>/<id>.json
+ *   projects/<id>/archive/<collection>/<id>.json   (removed after storage.archiveDays)
+ *   cache/<hash>.json                               (model replies, capped at storage.cacheMB)
+ *   archive/projects/<id>/                          (forgotten projects, removed after storage.archiveDays)
+ *
+ * Why files and not SQLite: the data is small (a few KB per item), people can read and back it up,
+ * and there is no native module to build. storage.ts keeps it bounded.
  */
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -27,10 +36,32 @@ export const DEFAULT_SETTINGS: Settings = {
   "quiz.questions": 4,
   "quiz.passMark": 0.67,
   "context.maxBytes": 160_000,
+  "cards.fromMisses": true,
+  "progress.fadeDays": 21,
+  "notes.inPrompts": false,
+  "storage.archiveDays": 30,
+  "storage.cacheMB": 50,
+  "storage.maxAttempts": 20,
 };
 
-type Collection = "lenses" | "quizzes" | "practice";
-type ItemOf<C extends Collection> = C extends "lenses" ? Lens : C extends "quizzes" ? Quiz : Practice;
+interface Collections {
+  lenses: Lens;
+  quizzes: Quiz;
+  practice: Practice;
+  cards: Card;
+  misconceptions: Misconception;
+  teachbacks: Teachback;
+  threads: Thread;
+  walks: Walk;
+  hunts: Hunt;
+  paths: LearningPath;
+  notes: Note;
+}
+export type Collection = keyof Collections;
+export type ItemOf<C extends Collection> = Collections[C];
+export const COLLECTIONS: Collection[] = [
+  "lenses", "quizzes", "practice", "cards", "misconceptions", "teachbacks", "threads", "walks", "hunts", "paths", "notes",
+];
 
 export function newId(): string {
   return Date.now().toString(36) + randomBytes(3).toString("hex");
@@ -52,7 +83,7 @@ export class Store {
 
   // ---- low level -------------------------------------------------------
 
-  private read<T>(path: string, fallback: T): T {
+  read<T>(path: string, fallback: T): T {
     if (!existsSync(path)) return fallback;
     try {
       return JSON.parse(readFileSync(path, "utf8")) as T;
@@ -62,7 +93,7 @@ export class Store {
   }
 
   /** Write to a temp file then rename, so a crash never leaves half a file. */
-  private write(path: string, data: unknown): void {
+  write(path: string, data: unknown): void {
     const tmp = `${path}.${process.pid}.tmp`;
     writeFileSync(tmp, JSON.stringify(data, null, 2));
     renameSync(tmp, path);
@@ -111,6 +142,10 @@ export class Store {
     } else {
       p = { id: projectIdFor(abs), name: name || basename(abs), root: abs, contexts: [], addedAt: now, openedAt: now };
       list.push(p);
+      // A folder forgotten not long ago gets its history back.
+      const old = join(this.home, "archive", "projects", p.id);
+      const live = join(this.home, "projects", p.id);
+      if (existsSync(old) && !existsSync(live)) renameSync(old, live);
     }
     this.saveProjects(list);
     return p;
@@ -126,9 +161,23 @@ export class Store {
     return p;
   }
 
-  /** Forget the folder in the list. Its lenses and quizzes stay on disk. */
+  /**
+   * Forget the folder. Its data moves to archive/projects/ and is removed after
+   * storage.archiveDays, so forgotten projects do not pile up. Opening the folder again
+   * within that time brings the history back.
+   */
   forgetProject(id: string): void {
     this.saveProjects(this.projects().filter((p) => p.id !== id));
+    if (!/^[a-z0-9-]+$/.test(id)) return;
+    const src = join(this.home, "projects", id);
+    if (!existsSync(src)) return;
+    const dst = join(this.home, "archive", "projects");
+    mkdirSync(dst, { recursive: true });
+    const target = join(dst, id);
+    if (existsSync(target)) renameSync(target, `${target}-${Date.now()}`);
+    renameSync(src, target);
+    const now = new Date();
+    utimesSync(target, now, now);
   }
 
   // ---- collections -----------------------------------------------------
@@ -166,7 +215,10 @@ export class Store {
     if (!existsSync(src)) return false;
     const dst = join(this.home, "projects", projectId, "archive", c);
     mkdirSync(dst, { recursive: true });
-    renameSync(src, join(dst, `${id}.json`));
+    const to = join(dst, `${id}.json`);
+    renameSync(src, to);
+    const now = new Date();
+    utimesSync(to, now, now); // the keep time counts from the archive date
     return true;
   }
 }
