@@ -184,6 +184,7 @@ export function PracticePage() {
   return (
     <Split
       id="practice-side"
+      collapsible
       initial={340}
       min={260}
       max={520}

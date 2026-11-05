@@ -40,6 +40,8 @@ export function ChangesPage() {
   });
   const [active, setActive] = useState<string | null>(null);
   const [picked, setPicked] = useState<Set<string>>(new Set());
+  /** Files outside the diff added as context (docs, a session folder...). */
+  const [extra, setExtra] = useState<string[]>([]);
   const [mode, setMode] = useState<"split" | "unified">("split");
 
   // Use the remembered repo if it is still in the list, else the first one.
@@ -173,10 +175,22 @@ export function ChangesPage() {
   return (
     <Split
       id="changes-list"
+      collapsible
       initial={300}
       className="h-full"
       left={left}
-      right={<Split id="changes-panel" side="right" initial={360} min={300} max={560} left={center} right={<ActionPanel files={[...picked]} diff={spec} onRemove={(f) => setPicked(new Set([...picked].filter((x) => x !== f)))} practiceFile={activeFile?.status !== "deleted" ? activeFile?.path : null} />} />}
+      right={<Split id="changes-panel" collapsible side="right" initial={360} min={300} max={560} left={center} right={<ActionPanel
+            files={[...picked, ...extra]}
+            diff={spec}
+            onRemove={(f) => {
+              setPicked(new Set([...picked].filter((x) => x !== f)));
+              setExtra(extra.filter((x) => x !== f));
+            }}
+            onSetFiles={(paths) => {
+              const inDiff = new Set(files.map((d) => d.path));
+              setPicked(new Set(paths.filter((p) => inDiff.has(p))));
+              setExtra(paths.filter((p) => !inDiff.has(p)));
+            }} practiceFile={activeFile?.status !== "deleted" ? activeFile?.path : null} />} />}
     />
   );
 }

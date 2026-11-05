@@ -124,6 +124,33 @@ await page.goto(`${url}/p/${pid}/changes`);
 await page.getByText(/files$/).first().waitFor();
 ok(true, "changes page loads");
 await shot("9-changes");
+// Fold the file tree, peek it by hovering the rail, pin it back
+await page.goto(`${url}/p/${pid}/explore`);
+await page.getByPlaceholder("Filter files").waitFor();
+await page.locator("[title^='Fold this pane']").first().click({ force: true });
+ok(!(await page.getByPlaceholder("Filter files").isVisible()), "tree folds away");
+await page.locator("[title='Hover to peek, click to pin open']").first().hover();
+await page.getByPlaceholder("Filter files").waitFor({ state: "visible" });
+ok(true, "hovering the rail peeks the tree");
+await page.locator("[title='Hover to peek, click to pin open']").first().click();
+await page.mouse.move(800, 400);
+await page.waitForTimeout(400);
+ok(await page.getByPlaceholder("Filter files").isVisible(), "click pins it open again");
+
+// Add context from the picker; chips fold after 5
+await page.getByRole("button", { name: "Lens" }).first().click();
+await page.getByTitle(/Add files from the project/).click();
+await page.getByRole("heading", { name: "Add context" }).waitFor();
+const dialog = page.locator(".card", { has: page.getByRole("heading", { name: "Add context" }) });
+await dialog.getByPlaceholder("Filter files").fill("src/core");
+await dialog.locator("input[type=checkbox]").first().check();
+await dialog.getByRole("button", { name: /^Use \d+ files$/ }).click();
+await page.getByRole("button", { name: /^\+\d+ more$/ }).waitFor();
+ok(true, "picker adds files; chips fold after 5");
+await page.getByRole("button", { name: /^\+\d+ more$/ }).click();
+ok(await page.getByRole("button", { name: "show less" }).isVisible(), "chips expand");
+await shot("11-context");
+
 await page.goto(`${url}/settings`);
 await page.getByText("Model ready: fake").waitFor();
 ok(true, "settings shows the model");

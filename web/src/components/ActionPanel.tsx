@@ -1,13 +1,17 @@
 import { useState } from "react";
 import clsx from "clsx";
 import { useQuery } from "@tanstack/react-query";
-import { Compass, Hammer, ListChecks, Sparkles, X } from "lucide-react";
+import { Compass, Hammer, ListChecks, Plus, Sparkles, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import type { DiffSpec, LensKind } from "@core/types";
 import { get, useJob } from "@/lib/api";
 import { useProject } from "@/lib/project";
 import { shortPath } from "@/lib/path";
+import { ContextPicker } from "./ContextPicker";
 import { Button, ErrorNote, JobProgress, Segmented, Tabs } from "./ui";
+
+/** Chips shown before "+N more". */
+const FEW = 5;
 
 type Tab = "lens" | "quiz" | "practice";
 
@@ -23,10 +27,20 @@ const LEVELS = [
  * `files` is the context; `diff` makes the lens and quiz about a change.
  */
 export function ActionPanel({
-  files, diff, practiceFile, onRemove,
-}: { files: string[]; diff?: DiffSpec; practiceFile?: string | null; onRemove?: (path: string) => void }) {
-  const { project, rel, toggle } = useProject();
+  files, diff, practiceFile, onRemove, onSetFiles,
+}: {
+  files: string[];
+  diff?: DiffSpec;
+  practiceFile?: string | null;
+  onRemove?: (path: string) => void;
+  /** Replace the whole context (from the "Add" picker). Default: the Explore selection. */
+  onSetFiles?: (paths: string[]) => void;
+}) {
+  const { project, rel, toggle, setSelected } = useProject();
   const remove = onRemove ?? ((f: string) => toggle(f, false));
+  const setFiles = onSetFiles ?? setSelected;
+  const [picking, setPicking] = useState(false);
+  const [showAll, setShowAll] = useState(false);
   const nav = useNavigate();
   const [tab, setTab] = useState<Tab>("lens");
   const [kind, setKind] = useState(diff ? "change" : "explain");
@@ -62,14 +76,24 @@ export function ActionPanel({
       <div className="min-h-0 flex-1 space-y-4 overflow-auto p-4">
         {tab !== "practice" && (
           <section>
-            <div className="label">Context {diff && <span className="normal-case tracking-normal">· change {diff.base}..{diff.head || "working tree"}</span>}</div>
+            <div className="label flex items-center gap-1">
+              <span>Context · {files.length}</span>
+              {diff && <span className="truncate normal-case tracking-normal">· change {diff.base}..{diff.head || "working tree"}</span>}
+              <button
+                className="ml-auto inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 normal-case tracking-normal text-accent hover:bg-accent/10"
+                onClick={() => setPicking(true)}
+                title="Add files from the project or a context folder (docs, notes, a session)"
+              >
+                <Plus className="h-3 w-3" /> Add
+              </button>
+            </div>
             {noFiles ? (
               <p className="rounded-lg border border-dashed border-line p-3 text-[13px] text-muted">
-                Tick files in the tree, or open one. The model reads only what you pick.
+                Tick files in the tree, open one, or use Add. The model reads only what you pick.
               </p>
             ) : (
               <div className="flex flex-wrap gap-1.5">
-                {files.slice(0, 12).map((f) => (
+                {(showAll ? files : files.slice(0, FEW)).map((f) => (
                   <span key={f} className="group inline-flex max-w-full items-center gap-1 rounded-md bg-raised px-2 py-1 font-mono text-[11px]" title={f}>
                     <span className="truncate">{shortPath(rel(f))}</span>
                     <button className="text-muted hover:text-bad" onClick={() => remove(f)} aria-label="Remove">
@@ -77,7 +101,11 @@ export function ActionPanel({
                     </button>
                   </span>
                 ))}
-                {files.length > 12 && <span className="px-1 py-1 text-[11px] text-muted">+{files.length - 12} more</span>}
+                {files.length > FEW && (
+                  <button className="rounded-md px-2 py-1 text-[11px] font-medium text-accent hover:bg-accent/10" onClick={() => setShowAll((v) => !v)}>
+                    {showAll ? "show less" : `+${files.length - FEW} more`}
+                  </button>
+                )}
               </div>
             )}
           </section>
@@ -162,6 +190,7 @@ export function ActionPanel({
         {job.busy && job.job && <JobProgress kind={job.job.kind} elapsed={job.elapsed} />}
         {job.error && <ErrorNote error={job.error} onClose={job.clearError} />}
       </div>
+      {picking && <ContextPicker current={files} onApply={setFiles} onClose={() => setPicking(false)} />}
     </div>
   );
 }

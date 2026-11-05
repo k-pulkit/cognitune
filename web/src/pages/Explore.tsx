@@ -111,10 +111,11 @@ export function ExplorePage() {
     <>
       <Split
         id="explore-tree"
+      collapsible
         className="h-full"
         initial={290}
         left={left}
-        right={<Split id="explore-panel" side="right" initial={360} min={300} max={560} left={center} right={<ActionPanel files={context} practiceFile={openFile} />} />}
+        right={<Split id="explore-panel" collapsible side="right" initial={360} min={300} max={560} left={center} right={<ActionPanel files={context} practiceFile={openFile} onSetFiles={setSelected} />} />}
       />
       {addingCtx && (
         <FolderPicker
