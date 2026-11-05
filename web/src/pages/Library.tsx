@@ -5,6 +5,7 @@ import { Link } from "react-router-dom";
 import type { Lens, Practice, Quiz } from "@core/types";
 import { get, relTime } from "@/lib/api";
 import { useProject } from "@/lib/project";
+import { shortPath } from "@/lib/path";
 import { Badge, Empty, Score, Tabs } from "@/components/ui";
 
 type Tab = "lenses" | "quizzes" | "practice";
@@ -20,7 +21,7 @@ export function LibraryPage() {
 
   const files = (list: string[]) => (
     <div className="mt-2 truncate font-mono text-[11px] text-muted">
-      {list.slice(0, 3).map(rel).join(" · ")}
+      {list.slice(0, 3).map((f) => shortPath(rel(f), 28)).join(" · ")}
       {list.length > 3 && ` +${list.length - 3}`}
     </div>
   );

@@ -187,9 +187,14 @@ export interface FileProgress {
 }
 
 export interface Settings {
-  "agent.mode": "auto" | "claude" | "sdk" | "fake";
+  "agent.mode": "auto" | "claude" | "codex" | "copilot" | "sdk" | "fake";
   "agent.model": string;
   "agent.claudeCommand": string;
+  "agent.codexCommand": string;
+  /** Empty = the CLI's own default model. */
+  "agent.codexModel": string;
+  "agent.copilotCommand": string;
+  "agent.copilotModel": string;
   "agent.timeoutSec": number;
   "quiz.questions": number;
   "quiz.passMark": number;
@@ -201,4 +206,6 @@ export interface AgentInfo {
   name: string;
   ready: boolean;
   detail: string;
+  /** Which providers were found on this machine. */
+  available: Record<string, boolean>;
 }

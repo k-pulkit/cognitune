@@ -13,6 +13,15 @@ interface Resp {
   home: string;
 }
 
+const PROVIDERS: { id: Settings["agent.mode"]; label: string; text: string }[] = [
+  { id: "auto", label: "Auto", text: "Claude Code, then Codex, then Copilot, then API key." },
+  { id: "claude", label: "Claude Code CLI", text: "claude -p with read-only tools. Default." },
+  { id: "codex", label: "Codex CLI", text: "codex exec in the read-only sandbox." },
+  { id: "copilot", label: "GitHub Copilot CLI", text: "copilot -p with only the read tool." },
+  { id: "sdk", label: "Anthropic API key", text: "ANTHROPIC_API_KEY from the environment." },
+  { id: "fake", label: "Demo", text: "Canned answers, no model." },
+];
+
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
     <div className="grid gap-1.5 py-4 sm:grid-cols-[220px_1fr] sm:gap-6">
@@ -68,23 +77,51 @@ export function SettingsPage() {
           <Field label="Theme">
             <Segmented value={pref} onChange={setPref} options={[{ value: "system", label: "System" }, { value: "light", label: "Light" }, { value: "dark", label: "Dark" }]} />
           </Field>
-          <Field label="Model access" hint="auto: the claude CLI if installed, else ANTHROPIC_API_KEY.">
-            <Segmented
-              value={draft["agent.mode"]}
-              onChange={(v) => set("agent.mode", v)}
-              options={[
-                { value: "auto", label: "Auto" },
-                { value: "claude", label: "Claude CLI" },
-                { value: "sdk", label: "API key" },
-                { value: "fake", label: "Demo" },
-              ]}
-            />
+          <Field label="Model access" hint="CLIs use their own saved login, so groklab never needs or stores a key. Auto picks the first one found.">
+            <div className="grid gap-2 sm:grid-cols-2">
+              {PROVIDERS.map((p) => {
+                const found = agent.available?.[p.id];
+                const on = draft["agent.mode"] === p.id;
+                return (
+                  <button
+                    key={p.id}
+                    onClick={() => set("agent.mode", p.id)}
+                    className={clsx(
+                      "rounded-lg border px-3 py-2 text-left transition",
+                      on ? "border-accent/60 bg-accent/8 ring-1 ring-accent/30" : "border-line hover:bg-raised",
+                    )}
+                  >
+                    <div className="flex items-center gap-2 text-sm font-medium">
+                      {p.label}
+                      {p.id !== "auto" && p.id !== "fake" && (
+                        <span className={clsx("ml-auto shrink-0 whitespace-nowrap rounded-full px-1.5 text-[10px]", found ? "bg-good/12 text-good" : "bg-raised text-muted")}>
+                          {found ? "found" : "not found"}
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-xs text-muted">{p.text}</div>
+                  </button>
+                );
+              })}
+            </div>
           </Field>
-          <Field label="Model" hint="Model id passed to the CLI or the API.">
-            <input className="input font-mono" value={draft["agent.model"]} onChange={(e) => set("agent.model", e.target.value)} />
+          <Field label="Claude" hint="Command and model for the Claude Code CLI (model also used by the API key mode).">
+            <div className="flex gap-2">
+              <input className="input w-36 font-mono" value={draft["agent.claudeCommand"]} onChange={(e) => set("agent.claudeCommand", e.target.value)} />
+              <input className="input font-mono" placeholder="CLI default" value={draft["agent.model"]} onChange={(e) => set("agent.model", e.target.value)} />
+            </div>
           </Field>
-          <Field label="Claude command" hint="Path or name of the claude CLI.">
-            <input className="input font-mono" value={draft["agent.claudeCommand"]} onChange={(e) => set("agent.claudeCommand", e.target.value)} />
+          <Field label="Codex" hint="Command and model for the OpenAI Codex CLI. Empty model = its default.">
+            <div className="flex gap-2">
+              <input className="input w-36 font-mono" value={draft["agent.codexCommand"]} onChange={(e) => set("agent.codexCommand", e.target.value)} />
+              <input className="input font-mono" placeholder="CLI default" value={draft["agent.codexModel"]} onChange={(e) => set("agent.codexModel", e.target.value)} />
+            </div>
+          </Field>
+          <Field label="Copilot" hint="Command and model for the GitHub Copilot CLI. Empty model = its default.">
+            <div className="flex gap-2">
+              <input className="input w-36 font-mono" value={draft["agent.copilotCommand"]} onChange={(e) => set("agent.copilotCommand", e.target.value)} />
+              <input className="input font-mono" placeholder="CLI default" value={draft["agent.copilotModel"]} onChange={(e) => set("agent.copilotModel", e.target.value)} />
+            </div>
           </Field>
           <Field label="Timeout" hint="Seconds per model call.">
             <input type="number" min={30} className="input w-32" value={draft["agent.timeoutSec"]} onChange={(e) => set("agent.timeoutSec", Number(e.target.value))} />

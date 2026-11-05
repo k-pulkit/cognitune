@@ -5,6 +5,7 @@ import { GitCompare } from "lucide-react";
 import type { DiffFile, DiffSpec, GitRepo } from "@core/types";
 import { get } from "@/lib/api";
 import { useProject } from "@/lib/project";
+import { shortPath } from "@/lib/path";
 import { ActionPanel } from "@/components/ActionPanel";
 import { DiffView } from "@/components/DiffView";
 import { Split } from "@/components/Split";
@@ -147,7 +148,7 @@ export function ChangesPage() {
               }}
             />
             <span className={clsx("w-3 font-mono text-[11px] font-bold uppercase", STATUS_TONE[f.status])}>{f.status[0]}</span>
-            <span className="min-w-0 flex-1 truncate" title={rel(f.path)}>{rel(f.path)}</span>
+            <span className="min-w-0 flex-1 truncate" title={rel(f.path)}>{shortPath(rel(f.path))}</span>
             <span className="font-mono text-[10px] text-good">+{f.additions}</span>
             <span className="font-mono text-[10px] text-bad">-{f.deletions}</span>
           </div>

@@ -25,13 +25,18 @@ project as context. The model reads only what you give it.
 ## Model access
 
 groklab makes one model call per lens, quiz, grade, practice or review (about 15 s to 2 min).
+It drives a coding CLI you already use, with that CLI's own login, so **groklab never asks for or
+stores a key**. Pick one in Settings; *Auto* takes the first one it finds, in this order:
 
-- **Claude Code installed** (`claude` on your PATH): used by default, with your existing login. It runs
-  headless with read-only tools (`Read`, `Grep`, `Glob`) in the project folder.
-- **Else `ANTHROPIC_API_KEY`**: calls the API directly; the picked files go in the prompt.
-- **Demo:** `GROKLAB_AGENT=fake npx groklab .` gives canned answers, to try the UI without a model.
+| Provider | How groklab runs it | Login |
+|---|---|---|
+| **Claude Code** (default) | `claude -p`, read-only tools (`Read`, `Grep`, `Glob`) | your Claude Code login |
+| **OpenAI Codex** | `codex exec -`, `--sandbox read-only` | `codex login` |
+| **GitHub Copilot** | `copilot -p -s`, only the `read` tool (shell and write denied) | your Copilot login, or `COPILOT_GITHUB_TOKEN` / `GH_TOKEN` |
+| **Anthropic API** | Messages API; the picked files go in the prompt | `ANTHROPIC_API_KEY` in the environment |
 
-Pick the mode and the model in Settings.
+Each CLI runs with the project folder as its working directory. Model per provider is optional
+(empty = the CLI's default). `GROKLAB_AGENT=fake` gives canned answers, to try the UI without a model.
 
 ## Your files are safe
 
