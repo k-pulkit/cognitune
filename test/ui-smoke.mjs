@@ -80,7 +80,7 @@ ok(true, "one-step-at-a-time mode");
 await page.getByRole("button", { name: "All steps" }).click();
 await page.locator(".prose-g svg").first().waitFor({ timeout: 15000 }).catch(() => {});
 ok((await page.locator(".prose-g svg").count()) > 0, "mermaid diagram rendered");
-await page.getByRole("button", { name: /src\/core\/prompts\.ts:3-8/ }).click();
+await page.getByRole("button", { name: "open file" }).nth(1).click();
 await page.locator(".code-view .line.hl").first().waitFor();
 ok(true, "a step opens the whole file at its line");
 await shot("3-lens");
