@@ -1,5 +1,8 @@
 import "@fontsource-variable/inter";
 import "@fontsource-variable/jetbrains-mono";
+import "@fontsource-variable/source-serif-4/opsz.css";
+import "@fontsource-variable/source-serif-4/opsz-italic.css";
+import { applyReadingFont } from "./lib/theme";
 import "./index.css";
 import { lazy, StrictMode, Suspense } from "react";
 import { createRoot } from "react-dom/client";
@@ -29,6 +32,8 @@ const MapPage = lazy(() => import("./pages/Map").then((m) => ({ default: m.MapPa
 
 // The editor (CodeMirror + languages) is big; load it only on the practice page.
 const PracticePage = lazy(() => import("./pages/Practice").then((m) => ({ default: m.PracticePage })));
+
+applyReadingFont();
 
 const qc = new QueryClient({ defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } } });
 

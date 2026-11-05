@@ -41,7 +41,7 @@ function Heatmap({ files, levels, onOpen, rel }: { files: string[]; levels: Map<
   }, [files, rel]);
   return (
     <div className="card mt-6 p-4">
-      <div className="mb-3 flex flex-wrap gap-3 text-[11px] text-muted">
+      <div className="mb-3 flex flex-wrap gap-3 text-[12px] text-muted">
         {(["understood", "fading", "stale", "seen", "new"] as FileLevel[]).map((l) => (
           <span key={l} className="flex items-center gap-1"><span className={clsx("h-2.5 w-2.5 rounded-sm", CELL[l])} />{l}</span>
         ))}
@@ -49,7 +49,7 @@ function Heatmap({ files, levels, onOpen, rel }: { files: string[]; levels: Map<
       <div className="space-y-2">
         {groups.map(([dir, list]) => (
           <div key={dir} className="flex items-start gap-3">
-            <div className="w-56 shrink-0 truncate pt-0.5 text-right font-mono text-[11px] text-muted" title={dir}>{dir}</div>
+            <div className="w-56 shrink-0 truncate pt-0.5 text-right font-mono text-[12px] text-muted" title={dir}>{dir}</div>
             <div className="flex flex-wrap gap-1">
               {list.map((f) => (
                 <button key={f} title={`${rel(f)} · ${levels.get(f) ?? "new"}`} onClick={() => onOpen(f)}
@@ -142,7 +142,7 @@ export function ProgressPage() {
                     className="cursor-pointer border-b border-line/60 last:border-0 hover:bg-raised"
                     onClick={() => open(r.path)}
                   >
-                    <td className="max-w-[360px] truncate px-4 py-2 font-mono text-[12.5px]">{rel(r.path)}</td>
+                    <td className="max-w-[360px] truncate px-4 py-2 font-mono text-[13.5px]">{rel(r.path)}</td>
                     <td className="px-4 py-2">
                       <Badge tone={r.level === "understood" ? "good" : r.level === "stale" || r.level === "fading" ? "warn" : "muted"}>{r.level}</Badge>
                     </td>

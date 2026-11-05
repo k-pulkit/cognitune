@@ -32,7 +32,7 @@ export function TeachPage() {
       <section className="mt-6">
         <h2 className={`mb-2 flex items-center gap-1.5 text-sm font-semibold ${tone}`}>{icon} {title}</h2>
         <ul className="space-y-1.5">
-          {items.map((x, i) => <li key={i} className="card px-3 py-2 text-[13.5px] leading-snug">{x}</li>)}
+          {items.map((x, i) => <li key={i} className="card reading px-4 py-2.5">{x}</li>)}
         </ul>
       </section>
     );
@@ -48,7 +48,7 @@ export function TeachPage() {
         />
         <div className="mt-3 flex flex-wrap gap-1.5">
           {t.files.map((f) => (
-            <button key={f} onClick={() => setPeek(f)} className="inline-flex items-center gap-1 rounded-md bg-raised px-2 py-1 font-mono text-[11px] hover:text-accent">
+            <button key={f} onClick={() => setPeek(f)} className="inline-flex items-center gap-1 rounded-md bg-raised px-2 py-1 font-mono text-[12px] hover:text-accent">
               <FileCode2 className="h-3 w-3" /> {rel(f)}
             </button>
           ))}
@@ -67,7 +67,7 @@ export function TeachPage() {
         )}
         <section className="mt-6">
           <div className="label">What you wrote</div>
-          <div className="whitespace-pre-wrap rounded-lg bg-raised px-4 py-3 text-[14px] leading-relaxed">{t.text}</div>
+          <div className="reading whitespace-pre-wrap rounded-lg bg-raised px-4 py-3">{t.text}</div>
         </section>
         {g && list("Wrong", g.wrong, <CircleAlert className="h-4 w-4" />, "text-bad")}
         {g && list("Missing", g.missing, <CircleDashed className="h-4 w-4" />, "text-warn")}

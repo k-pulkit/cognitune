@@ -50,7 +50,7 @@ export function ExplorePage() {
       <div className="flex items-center gap-2 border-b border-line px-3 py-2.5">
         <div className="min-w-0 flex-1">
           <div className="truncate text-sm font-semibold">{project.name}</div>
-          <div className="truncate font-mono text-[11px] text-muted" title={project.root}>{shortPath(project.root, 30)}</div>
+          <div className="truncate font-mono text-[12px] text-muted" title={project.root}>{shortPath(project.root, 30)}</div>
         </div>
         <Button size="sm" variant="ghost" icon={<FolderPlus className="h-4 w-4" />} title="Add a context folder (docs, notes, a session folder)" onClick={() => setAddingCtx(true)} />
       </div>
@@ -94,7 +94,7 @@ export function ExplorePage() {
       {openFile ? (
         <>
           <div className="flex items-center gap-2 border-b border-line bg-panel px-4 py-2">
-            <div className="min-w-0 flex-1 truncate font-mono text-[13px]">{rel(openFile)}</div>
+            <div className="min-w-0 flex-1 truncate font-mono text-[14px]">{rel(openFile)}</div>
             {file.data && <Badge>{file.data.lang}</Badge>}
             {levels.get(openFile) && levels.get(openFile) !== "new" && (
               <Badge tone={levels.get(openFile) === "understood" ? "good" : levels.get(openFile) === "stale" ? "warn" : "muted"}>{levels.get(openFile)}</Badge>

@@ -46,13 +46,13 @@ export function LibraryPage() {
   }, [q]);
 
   const files = (list: string[]) => (
-    <div className="mt-2 truncate font-mono text-[11px] text-muted">
+    <div className="mt-2 truncate font-mono text-[12px] text-muted">
       {list.slice(0, 3).map((f) => shortPath(rel(f), 28)).join(" · ")}
       {list.length > 3 && ` +${list.length - 3}`}
     </div>
   );
   const tile = "card block p-4 transition hover:-translate-y-0.5 hover:border-accent/40";
-  const when = (iso: string) => <span className="ml-auto text-[11px] text-muted">{relTime(iso)}</span>;
+  const when = (iso: string) => <span className="ml-auto text-[12px] text-muted">{relTime(iso)}</span>;
 
   const empty = (icon: React.ReactNode, title: string, text: string) => <Empty icon={icon} title={title}>{text}</Empty>;
 
@@ -66,7 +66,7 @@ export function LibraryPage() {
           </div>
           <div className="relative w-64">
             <Search className="pointer-events-none absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted" />
-            <input className="input h-8 pl-8 text-[13px]" placeholder="Search this tab" value={q} onChange={(e) => setQ(e.target.value)} />
+            <input className="input h-8 pl-8 text-[14px]" placeholder="Search this tab" value={q} onChange={(e) => setQ(e.target.value)} />
           </div>
           <a href={`/api${base}/export`} className="inline-flex items-center gap-1 rounded-md px-2 py-1.5 text-xs text-muted hover:bg-raised hover:text-ink" title="Everything for this project as one JSON file">
             <Download className="h-3.5 w-3.5" /> Export all
@@ -101,7 +101,7 @@ export function LibraryPage() {
                 {when(l.createdAt)}
               </div>
               <div className="mt-2 font-medium leading-snug">{l.title}</div>
-              <p className="mt-1 line-clamp-2 text-[13px] text-muted">{l.summary}</p>
+              <p className="mt-1 line-clamp-2 text-[14px] text-muted">{l.summary}</p>
               {files(l.files)}
             </Link>
           ))}
@@ -125,7 +125,7 @@ export function LibraryPage() {
                 {t.grade && <Badge tone={t.grade.score >= 4 ? "good" : t.grade.score >= 3 ? "warn" : "bad"}>{t.grade.score}/5</Badge>}
                 {when(t.createdAt)}
               </div>
-              <p className="mt-2 line-clamp-3 text-[13px]">{t.text}</p>
+              <p className="mt-2 line-clamp-3 text-[14px]">{t.text}</p>
               {files(t.files)}
             </Link>
           ))}
@@ -176,7 +176,7 @@ export function LibraryPage() {
             <div key={c.id} className="card group p-4">
               <div className="flex items-center gap-2">
                 <Badge tone={c.kind === "miss" ? "bad" : c.kind === "concept" ? "accent" : "muted"}>{c.kind}</Badge>
-                {c.suspended ? <Badge>paused</Badge> : <span className="text-[11px] text-muted">due in {untilText(c.fsrs.due)}</span>}
+                {c.suspended ? <Badge>paused</Badge> : <span className="text-[12px] text-muted">due in {untilText(c.fsrs.due)}</span>}
                 <span className="ml-auto flex gap-1 opacity-0 transition group-hover:opacity-100">
                   <button className="text-muted hover:text-ink" title={c.suspended ? "Resume" : "Pause"}
                     onClick={async () => { await patch(`${base}/cards/${c.id}`, { suspended: !c.suspended }); qc.invalidateQueries({ queryKey: ["cards", project.id] }); }}>
@@ -188,18 +188,18 @@ export function LibraryPage() {
                   </button>
                 </span>
               </div>
-              <div className="mt-2 text-[13.5px] font-medium leading-snug">{c.front}</div>
-              <p className="mt-1 line-clamp-2 text-[13px] text-muted">{c.back}</p>
-              {c.file && <div className="mt-2 truncate font-mono text-[11px] text-muted">{rel(c.file)}{c.line ? `:${c.line}` : ""}</div>}
+              <div className="mt-2 text-[14.5px] font-medium leading-snug">{c.front}</div>
+              <p className="mt-1 line-clamp-2 text-[14px] text-muted">{c.back}</p>
+              {c.file && <div className="mt-2 truncate font-mono text-[12px] text-muted">{rel(c.file)}{c.line ? `:${c.line}` : ""}</div>}
             </div>
           ))}
           {tab === "notes" && notes.data?.filter((n) => match(n.text, n.file)).map((n) => (
             <Link key={n.id} to={`${p}/explore`} onClick={() => n.file && setOpenFile(n.file, n.line)} className={tile}>
               <div className="flex items-center gap-2">
-                {n.file && <span className="truncate font-mono text-[11px] text-accent">{rel(n.file)}{n.line ? `:${n.line}` : ""}</span>}
+                {n.file && <span className="truncate font-mono text-[12px] text-accent">{rel(n.file)}{n.line ? `:${n.line}` : ""}</span>}
                 {when(n.createdAt)}
               </div>
-              <p className="mt-2 whitespace-pre-wrap text-[13.5px]">{n.text}</p>
+              <p className="mt-2 whitespace-pre-wrap text-[14.5px]">{n.text}</p>
             </Link>
           ))}
         </div>
@@ -209,16 +209,16 @@ export function LibraryPage() {
             {glossary.data?.filter((t) => match(t.term, ...t.explains.map((e) => e.text))).map((t) => (
               <div key={t.term} className="group py-3">
                 <div className="flex items-center gap-2">
-                  <div className="text-[15px] font-semibold">{t.term}</div>
-                  <span className="text-[11px] text-muted">{t.files.slice(0, 3).map((f) => shortPath(rel(f), 24)).join(" · ")}</span>
+                  <div className="text-[16px] font-semibold">{t.term}</div>
+                  <span className="text-[12px] text-muted">{t.files.slice(0, 3).map((f) => shortPath(rel(f), 24)).join(" · ")}</span>
                   <button className="ml-auto text-muted opacity-0 transition hover:text-accent group-hover:opacity-100" title="Make a review card"
                     onClick={() => setCard({ kind: "concept", front: `What is "${t.term}" here, and why does it matter?`, back: t.explains[0]?.text ?? "", file: t.files[0] })}>
                     <Layers className="h-3.5 w-3.5" />
                   </button>
                 </div>
                 {t.explains.map((e, i) => (
-                  <p key={i} className="mt-1 text-[13.5px] text-ink/85">
-                    {e.text} <Link to={`${p}/lens/${e.lensId}`} className="text-[11px] text-muted hover:text-accent">({e.lensTitle})</Link>
+                  <p key={i} className="mt-1 text-[14.5px] text-ink/85">
+                    {e.text} <Link to={`${p}/lens/${e.lensId}`} className="text-[12px] text-muted hover:text-accent">({e.lensTitle})</Link>
                   </p>
                 ))}
               </div>

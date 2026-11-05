@@ -49,7 +49,7 @@ export function TutorPage() {
         <div className="mt-1 truncate text-base font-semibold">{t.title}</div>
         <div className="mt-1 flex flex-wrap gap-1.5">
           {t.files.map((f) => (
-            <button key={f} onClick={() => setView({ file: f })} className="inline-flex items-center gap-1 rounded-md bg-raised px-2 py-0.5 font-mono text-[11px] hover:text-accent">
+            <button key={f} onClick={() => setView({ file: f })} className="inline-flex items-center gap-1 rounded-md bg-raised px-2 py-0.5 font-mono text-[12px] hover:text-accent">
               <FileCode2 className="h-3 w-3" /> {rel(f)}
             </button>
           ))}
@@ -62,7 +62,7 @@ export function TutorPage() {
               {m.role === "tutor" && m.hintLevel && (
                 <Badge tone={m.hintLevel >= 4 ? "warn" : "accent"} className="mb-1.5"><Lightbulb className="h-3 w-3" /> {LEVEL[m.hintLevel]}</Badge>
               )}
-              {m.role === "user" ? <div className="whitespace-pre-wrap text-[14px]">{m.text}</div> : <Markdown>{m.text}</Markdown>}
+              {m.role === "user" ? <div className="whitespace-pre-wrap text-[15px]">{m.text}</div> : <Markdown>{m.text}</Markdown>}
             </div>
           </div>
         ))}
@@ -81,7 +81,7 @@ export function TutorPage() {
           }}
         />
         <div className="mt-2 flex items-center gap-2">
-          <span className="text-[11px] text-muted">Try first. Each reply gives a bit more.</span>
+          <span className="text-[12px] text-muted">Try first. Each reply gives a bit more.</span>
           <Button variant="ghost" size="sm" className="ml-auto" disabled={job.busy} onClick={() => send(true)}>Just tell me</Button>
           <Button variant="primary" size="sm" icon={<Send className="h-3.5 w-3.5" />} disabled={job.busy || !text.trim()} onClick={() => send()}>Send</Button>
         </div>

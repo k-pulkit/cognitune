@@ -91,11 +91,11 @@ export function LensPage() {
         <p className="mt-1 text-sm italic text-muted">“{l.question}”</p>
         <div className="mt-3 flex flex-wrap gap-1.5">
           {l.files.slice(0, 8).map((f) => (
-            <button key={f} onClick={() => show(f)} className="inline-flex items-center gap-1 rounded-md bg-raised px-2 py-1 font-mono text-[11px] hover:text-accent">
+            <button key={f} onClick={() => show(f)} className="inline-flex items-center gap-1 rounded-md bg-raised px-2 py-1 font-mono text-[12px] hover:text-accent">
               <FileCode2 className="h-3 w-3" /> {rel(f)}
             </button>
           ))}
-          {l.files.length > 8 && <span className="px-1 py-1 text-[11px] text-muted">+{l.files.length - 8} more</span>}
+          {l.files.length > 8 && <span className="px-1 py-1 text-[12px] text-muted">+{l.files.length - 8} more</span>}
         </div>
 
         {l.changed.length > 0 && (
@@ -113,19 +113,19 @@ export function LensPage() {
 
         {/* The one idea */}
         <div className="mt-6 rounded-2xl border border-accent/25 bg-accent/5 p-5">
-          <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-accent"><Sparkles className="h-3.5 w-3.5" /> In one sentence</div>
-          <p className="mt-1.5 text-[17px] font-medium leading-snug">{l.tldr || l.summary}</p>
-          {l.whyItMatters && <p className="mt-2 text-[13.5px] text-muted"><span className="font-medium text-ink/80">Why it matters: </span>{l.whyItMatters}</p>}
+          <div className="flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-wide text-accent"><Sparkles className="h-3.5 w-3.5" /> In one sentence</div>
+          <p className="reading-lg mt-2 font-medium">{l.tldr || l.summary}</p>
+          {l.whyItMatters && <p className="reading mt-3 text-muted"><span className="font-medium text-ink/80">Why it matters: </span>{l.whyItMatters}</p>}
         </div>
-        {l.tldr && l.summary && <p className="mt-4 text-[15px] leading-relaxed">{l.summary}</p>}
+        {l.tldr && l.summary && <p className="reading mt-5">{l.summary}</p>}
 
         {l.sketch && (
           <section className="mt-6 rounded-xl border border-line p-4">
             <h2 className="mb-2 flex items-center gap-1.5 text-sm font-semibold"><PenLine className="h-4 w-4 text-accent" /> {l.diff ? "Your prediction" : "Your take"} and where it differs</h2>
-            <div className="whitespace-pre-wrap rounded-lg bg-raised px-3 py-2 text-[13.5px]">{l.sketch}</div>
+            <div className="reading whitespace-pre-wrap rounded-lg bg-raised px-4 py-3">{l.sketch}</div>
             {l.differences && l.differences.length > 0 && (
               <ul className="mt-3 space-y-1.5">
-                {l.differences.map((d, i) => <li key={i} className="flex gap-2 text-[14px] leading-snug"><span className="text-accent">→</span><span>{d}</span></li>)}
+                {l.differences.map((d, i) => <li key={i} className="reading flex gap-2"><span className="text-accent">→</span><span>{d}</span></li>)}
               </ul>
             )}
           </section>
@@ -134,26 +134,31 @@ export function LensPage() {
         {l.concepts.length > 0 && (
           <section className="mt-8">
             <h2 className={h2}><BookOpen className="h-4 w-4" /> Words you need first</h2>
-            <div className="lens-concepts grid gap-2">
+            <div className="lens-concepts grid gap-4">
               {l.concepts.map((c) => (
-                <div key={c.term} className="card group p-3">
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1 text-sm font-semibold">{c.term}</div>
+                <div key={c.term} className="card group flex flex-col p-5">
+                  <div className="flex items-baseline gap-2">
+                    <div className="flex-1 text-[16px] font-semibold tracking-tight">{c.term}</div>
                     {c.file && (
-                      <button className="font-mono text-[10.5px] text-muted hover:text-accent" onClick={() => show(c.file, c.line)}>
-                        {c.line ? `:${c.line}` : "code"}
+                      <button className="font-mono text-[12px] text-muted hover:text-accent" onClick={() => show(c.file, c.line)} title="Show in the code">
+                        {c.line ? `line ${c.line}` : "code"}
                       </button>
                     )}
                     <button
-                      className="text-muted opacity-0 transition hover:text-accent group-hover:opacity-100"
+                      className="self-center text-muted opacity-0 transition hover:text-accent group-hover:opacity-100"
                       title="Make a review card"
                       onClick={() => setCard({ kind: "concept", front: `What is "${c.term}" in this code, and why does it matter?`, back: c.explain, file: c.file ?? l.files[0], source: { lensId: l.id } })}
                     >
-                      <Layers className="h-3.5 w-3.5" />
+                      <Layers className="h-4 w-4" />
                     </button>
                   </div>
-                  <div className="mt-0.5 text-[13px] leading-snug text-ink/80">{c.explain}</div>
-                  {c.example && <div className="mt-1.5 rounded-md bg-raised px-2 py-1 text-[12.5px] italic text-muted">e.g. {c.example}</div>}
+                  <p className="reading mt-2 text-ink/90">{c.explain}</p>
+                  {c.example && (
+                    <div className="mt-4 border-l-2 border-accent/40 pl-3">
+                      <div className="text-[11.5px] font-semibold uppercase tracking-wide text-muted">Example</div>
+                      <p className="reading mt-0.5 text-ink/80">{c.example}</p>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -211,7 +216,7 @@ export function LensPage() {
           <section className="mt-10">
             <h2 className={h2}><TriangleAlert className="h-4 w-4" /> Gotchas</h2>
             <ul className="space-y-1.5">
-              {l.gotchas.map((g, i) => <li key={i} className="flex gap-2 rounded-lg border border-warn/25 bg-warn/5 px-3 py-2 text-[13.5px]"><span className="text-warn">!</span><span>{g}</span></li>)}
+              {l.gotchas.map((g, i) => <li key={i} className="reading flex gap-2 rounded-lg border border-warn/25 bg-warn/5 px-4 py-2.5"><span className="text-warn">!</span><span>{g}</span></li>)}
             </ul>
           </section>
         )}
@@ -223,8 +228,8 @@ export function LensPage() {
               {l.nextSteps.map((s) => (
                 <button key={s.file} onClick={() => openInExplore(s.file)} className="card flex w-full items-center gap-3 px-3 py-2 text-left transition hover:border-accent/40">
                   <FileCode2 className="h-4 w-4 shrink-0 text-accent" />
-                  <span className="shrink-0 font-mono text-[12px]">{rel(s.file)}</span>
-                  <span className="min-w-0 flex-1 truncate text-[13px] text-muted">{s.why}</span>
+                  <span className="shrink-0 font-mono text-[13px]">{rel(s.file)}</span>
+                  <span className="min-w-0 flex-1 truncate text-[14px] text-muted">{s.why}</span>
                 </button>
               ))}
             </div>
@@ -290,9 +295,9 @@ function Step({ d, n, text, rel, onShow }: {
       <div className="flex items-start gap-3 px-5 pt-4">
         <span className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-accent/12 text-xs font-semibold text-accent">{n}</span>
         <div className="min-w-0 flex-1">
-          <h3 className="text-[15.5px] font-semibold leading-snug">{d.title}</h3>
+          <h3 className="text-[16.5px] font-semibold leading-snug">{d.title}</h3>
           {d.file && (
-            <button className="mt-0.5 font-mono text-[11px] text-muted hover:text-accent" onClick={() => onShow(d.file, d.line)} title="Open the whole file on the right">
+            <button className="mt-0.5 font-mono text-[12px] text-muted hover:text-accent" onClick={() => onShow(d.file, d.line)} title="Open the whole file on the right">
               {rel(d.file)}{r ? `:${r[0]}-${r[1]}` : ""}
             </button>
           )}
@@ -302,7 +307,7 @@ function Step({ d, n, text, rel, onShow }: {
         <div className="lens-step-text min-w-0">
           <Markdown>{d.body}</Markdown>
           {d.pitfall && (
-            <div className="mt-3 flex gap-2 rounded-lg border border-warn/30 bg-warn/8 px-3 py-2 text-[13.5px]">
+            <div className="mt-3 flex gap-2 rounded-lg border border-warn/30 bg-warn/8 px-3 py-2 text-[14.5px]">
               <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-warn" />
               <span><span className="font-medium">Pitfall: </span>{d.pitfall}</span>
             </div>
@@ -316,9 +321,9 @@ function Step({ d, n, text, rel, onShow }: {
       </div>
       {d.check && (
         <div className="border-t border-line bg-raised/40 px-5 py-3">
-          <div className="text-[14px]"><span className="font-semibold text-accent">Check yourself: </span>{d.check.q}</div>
+          <div className="reading"><span className="font-sans text-[14px] font-semibold text-accent">Check yourself: </span>{d.check.q}</div>
           {answer ? (
-            <div className="mt-1.5 text-[14px] text-ink/85">{d.check.a}</div>
+            <div className="reading mt-1.5 text-ink/85">{d.check.a}</div>
           ) : (
             <button className="mt-1.5 inline-flex items-center gap-1 text-xs text-muted hover:text-ink" onClick={() => setAnswer(true)}>
               <Eye className="h-3.5 w-3.5" /> Think first, then show the answer

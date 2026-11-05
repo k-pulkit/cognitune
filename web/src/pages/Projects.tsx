@@ -52,7 +52,7 @@ export function ProjectsPage() {
                 <Icon className="h-[18px] w-[18px]" />
               </div>
               <div className="text-sm font-semibold">{title}</div>
-              <p className="mt-1 text-[13px] leading-snug text-muted">{text}</p>
+              <p className="mt-1 text-[14px] leading-snug text-muted">{text}</p>
             </div>
           ))}
         </div>
@@ -85,7 +85,7 @@ export function ProjectsPage() {
               <div className="min-w-0 flex-1">
                 <div className="truncate font-medium">{p.name}</div>
                 <div className="truncate font-mono text-xs text-muted" title={p.root}>{p.root}</div>
-                <div className="mt-1 text-[11px] text-muted">
+                <div className="mt-1 text-[12px] text-muted">
                   opened {relTime(p.openedAt)}
                   {p.contexts.length > 0 && ` · ${p.contexts.length} context folder${p.contexts.length > 1 ? "s" : ""}`}
                 </div>

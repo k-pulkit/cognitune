@@ -18,7 +18,7 @@ export function Button({
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40",
         size === "sm" && "h-7 px-2.5 text-xs",
         size === "md" && "h-9 px-3.5 text-sm",
-        size === "lg" && "h-11 px-5 text-[15px]",
+        size === "lg" && "h-11 px-5 text-[16px]",
         variant === "primary" && "bg-accent text-accent-ink shadow-sm hover:brightness-110",
         variant === "secondary" && "border border-line bg-panel text-ink hover:bg-raised",
         variant === "ghost" && "text-muted hover:bg-raised hover:text-ink",
@@ -36,7 +36,7 @@ export function Badge({ tone = "muted", children, className }: { tone?: "muted" 
   return (
     <span
       className={clsx(
-        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium",
+        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[12px] font-medium",
         tone === "muted" && "bg-raised text-muted",
         tone === "accent" && "bg-accent/12 text-accent",
         tone === "good" && "bg-good/12 text-good",
@@ -157,7 +157,7 @@ export function Tabs<T extends string>({
         >
           {t.icon}
           {t.label}
-          {t.count !== undefined && t.count > 0 && <span className="rounded-full bg-raised px-1.5 text-[10px] text-muted">{t.count}</span>}
+          {t.count !== undefined && t.count > 0 && <span className="rounded-full bg-raised px-1.5 text-[11.5px] text-muted">{t.count}</span>}
           {t.value === value && <span className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-accent" />}
         </button>
       ))}

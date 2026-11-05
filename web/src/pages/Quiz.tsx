@@ -98,7 +98,7 @@ export function QuizPage() {
         <h1 className="mt-2 text-[26px] font-semibold leading-tight tracking-tight">{q.title}</h1>
         <div className="mt-3 flex flex-wrap gap-1.5">
           {q.files.map((f) => (
-            <button key={f} onClick={() => setPeek({ file: f })} className="inline-flex items-center gap-1 rounded-md bg-raised px-2 py-1 font-mono text-[11px] hover:text-accent">
+            <button key={f} onClick={() => setPeek({ file: f })} className="inline-flex items-center gap-1 rounded-md bg-raised px-2 py-1 font-mono text-[12px] hover:text-accent">
               <FileCode2 className="h-3 w-3" /> {rel(f)}
             </button>
           ))}
@@ -137,9 +137,9 @@ export function QuizPage() {
                 <div className="flex items-start gap-3">
                   <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-accent/10 text-sm font-semibold text-accent">{i + 1}</span>
                   <div className="min-w-0 flex-1">
-                    <div className="text-[15px] font-medium leading-snug">{qq.prompt}</div>
+                    <div className="text-[16px] font-medium leading-snug">{qq.prompt}</div>
                     {qq.file && (
-                      <button className="mt-1 font-mono text-[11px] text-muted hover:text-accent" onClick={() => setPeek({ file: qq.file!, line: qq.line })}>
+                      <button className="mt-1 font-mono text-[12px] text-muted hover:text-accent" onClick={() => setPeek({ file: qq.file!, line: qq.line })}>
                         {rel(qq.file)}{qq.line ? `:${qq.line}` : ""}
                       </button>
                     )}
@@ -155,15 +155,15 @@ export function QuizPage() {
                       </div>
                       <div className="whitespace-pre-wrap rounded-lg bg-raised px-3 py-2 text-sm">{a?.answer || <span className="text-muted">(no answer)</span>}</div>
                     </div>
-                    {g?.feedback && <p className="text-sm">{g.feedback}</p>}
+                    {g?.feedback && <p className="reading">{g.feedback}</p>}
                     {g?.modelAnswer && (
-                      <div className="rounded-lg border border-line px-3 py-2 text-sm">
-                        <span className="font-medium text-muted">A good answer: </span>
+                      <div className="reading rounded-lg border border-line px-4 py-3">
+                        <span className="font-sans text-sm font-medium text-muted">A good answer: </span>
                         {g.modelAnswer}
                       </div>
                     )}
                     {g?.misconception && (
-                      <div className="flex gap-2 rounded-lg border border-bad/25 bg-bad/5 px-3 py-2 text-[13px]">
+                      <div className="flex gap-2 rounded-lg border border-bad/25 bg-bad/5 px-3 py-2 text-[14px]">
                         <Target className="mt-0.5 h-3.5 w-3.5 shrink-0 text-bad" />
                         <span><span className="font-medium">Saved as a weak spot: </span>{g.misconception}</span>
                       </div>
@@ -267,7 +267,7 @@ export function QuizPage() {
       left={doc}
       right={
         <div className="flex h-full flex-col bg-panel">
-          <div className="flex items-center border-b border-line px-4 py-2 font-mono text-[12px] text-muted">
+          <div className="flex items-center border-b border-line px-4 py-2 font-mono text-[13px] text-muted">
             <span className="flex-1 truncate">{rel(peek.file)}{peek.line ? `:${peek.line}` : ""}</span>
             <button className="text-xs hover:text-ink" onClick={() => setPeek(null)}>close</button>
           </div>

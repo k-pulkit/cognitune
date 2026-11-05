@@ -43,7 +43,7 @@ export function TodayPage() {
             <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-accent/15 text-accent"><Sparkles className="h-5 w-5" /></div>
             <div className="min-w-0 flex-1">
               <div className="text-xs font-medium uppercase tracking-wide text-accent">Suggested next, about 10 minutes</div>
-              <div className="mt-0.5 text-[15px]">{t.suggestion.text}</div>
+              <div className="mt-0.5 text-[16px]">{t.suggestion.text}</div>
             </div>
             <Button variant="primary" icon={<ArrowRight className="h-4 w-4" />} disabled={job.busy} onClick={() => go(t.suggestion!.files, t.suggestion!.activity)}>Start</Button>
           </div>
@@ -66,9 +66,9 @@ export function TodayPage() {
             {t.weak.length ? (
               <ul className="mt-3 space-y-2">
                 {t.weak.map((m) => (
-                  <li key={m.id} className="text-[13px] leading-snug">
+                  <li key={m.id} className="text-[14px] leading-snug">
                     {m.text}
-                    <span className="ml-1 text-[11px] text-muted">
+                    <span className="ml-1 text-[12px] text-muted">
                       {m.file && `· ${rel(m.file)}`}{m.seen > 1 && ` · seen ${m.seen}×`}
                     </span>
                   </li>
@@ -85,10 +85,10 @@ export function TodayPage() {
             {t.attention.length ? (
               <ul className="mt-3 space-y-1.5">
                 {t.attention.map((f) => (
-                  <li key={f.path} className="flex items-center gap-2 text-[13px]">
-                    <button className="min-w-0 flex-1 truncate text-left font-mono text-[12px] hover:text-accent" onClick={() => go([f.path], "quiz")}>{rel(f.path)}</button>
+                  <li key={f.path} className="flex items-center gap-2 text-[14px]">
+                    <button className="min-w-0 flex-1 truncate text-left font-mono text-[13px] hover:text-accent" onClick={() => go([f.path], "quiz")}>{rel(f.path)}</button>
                     <Badge tone="warn">{f.level}</Badge>
-                    {f.lastRetrieval && <span className="text-[11px] text-muted">{relTime(f.lastRetrieval)}</span>}
+                    {f.lastRetrieval && <span className="text-[12px] text-muted">{relTime(f.lastRetrieval)}</span>}
                   </li>
                 ))}
               </ul>
@@ -102,8 +102,8 @@ export function TodayPage() {
             {t.nextStop ? (
               <>
                 <div className="mt-3 text-xs text-muted">{t.nextStop.title} · stop {t.nextStop.index + 1}</div>
-                <div className="mt-0.5 text-[15px] font-medium">{t.nextStop.stop.title}</div>
-                <p className="mt-1 text-[13px] text-muted">{t.nextStop.stop.why}</p>
+                <div className="mt-0.5 text-[16px] font-medium">{t.nextStop.stop.title}</div>
+                <p className="mt-1 text-[14px] text-muted">{t.nextStop.stop.why}</p>
                 <div className="mt-4 flex gap-2">
                   <Button size="sm" variant="primary" onClick={() => go(t.nextStop!.stop.files, t.nextStop!.stop.activity)}>Do this stop</Button>
                   <Link to={`${p}/paths/${t.nextStop.pathId}`} className="inline-flex items-center text-xs text-muted hover:text-ink">see the path</Link>

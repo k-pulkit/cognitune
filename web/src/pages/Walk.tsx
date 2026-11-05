@@ -64,12 +64,12 @@ export function WalkPage() {
             {b.verdict && <span className="ml-auto"><VerdictBadge v={b.verdict} /></span>}
           </div>
           <h2 className="mt-1 text-lg font-semibold">{b.title || `Block ${i + 1}`}</h2>
-          <p className="mt-1 text-[14px] leading-relaxed text-muted">{b.why}</p>
-          <div className="mt-5 rounded-lg border border-accent/25 bg-accent/5 p-3 text-[14.5px] font-medium">{b.question}</div>
+          <p className="reading mt-1 text-muted">{b.why}</p>
+          <div className="mt-5 rounded-lg border border-accent/25 bg-accent/5 p-3 text-[15.5px] font-medium">{b.question}</div>
           {b.verdict ? (
             <div className="mt-4 space-y-2">
               <div className="whitespace-pre-wrap rounded-lg bg-raised px-3 py-2 text-sm">{b.answer || <span className="text-muted">(no answer)</span>}</div>
-              {b.feedback && <p className="text-sm">{b.feedback}</p>}
+              {b.feedback && <p className="reading">{b.feedback}</p>}
             </div>
           ) : (
             <>

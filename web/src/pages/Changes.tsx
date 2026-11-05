@@ -151,9 +151,9 @@ export function ChangesPage() {
               if (!f) return null;
               return (
                 <>
-                  <span className="font-mono text-[10px] text-good">+{f.additions}</span>
-                  <span className="font-mono text-[10px] text-bad">-{f.deletions}</span>
-                  <span className={clsx("w-3 text-center font-mono text-[11px] font-bold uppercase", STATUS_TONE[f.status])} title={f.status}>{f.status[0]}</span>
+                  <span className="font-mono text-[11.5px] text-good">+{f.additions}</span>
+                  <span className="font-mono text-[11.5px] text-bad">-{f.deletions}</span>
+                  <span className={clsx("w-3 text-center font-mono text-[12px] font-bold uppercase", STATUS_TONE[f.status])} title={f.status}>{f.status[0]}</span>
                 </>
               );
             }}
@@ -167,7 +167,7 @@ export function ChangesPage() {
   const center = (
     <div className="flex h-full flex-col">
       <div className="flex items-center gap-2 border-b border-line bg-panel px-4 py-2">
-        <div className="min-w-0 flex-1 truncate font-mono text-[13px]">{activeFile ? rel(activeFile.path) : ""}</div>
+        <div className="min-w-0 flex-1 truncate font-mono text-[14px]">{activeFile ? rel(activeFile.path) : ""}</div>
         <Segmented value={mode} onChange={setMode} options={[{ value: "split", label: "Split" }, { value: "unified", label: "Unified" }]} />
       </div>
       <div className="min-h-0 flex-1 overflow-auto bg-panel">

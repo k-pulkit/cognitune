@@ -45,3 +45,32 @@ export function useIsDark(): boolean {
   }, []);
   return dark;
 }
+
+export type ReadingFont = "serif" | "sans";
+
+function readFont(): ReadingFont {
+  try {
+    return localStorage.getItem("groklab.readingFont") === "sans" ? "sans" : "serif";
+  } catch {
+    return "serif";
+  }
+}
+
+/** Set the long-form font on <html> (data-read), before the first paint. */
+export function applyReadingFont(f: ReadingFont = readFont()) {
+  document.documentElement.dataset.read = f;
+}
+
+/** Reading font preference in localStorage (a per-browser convenience). */
+export function useReadingFont() {
+  const [font, setFont] = useState<ReadingFont>(readFont);
+  useEffect(() => {
+    try {
+      localStorage.setItem("groklab.readingFont", font);
+    } catch {
+      /* ignore */
+    }
+    applyReadingFont(font);
+  }, [font]);
+  return { font, setFont };
+}
