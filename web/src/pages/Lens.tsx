@@ -9,10 +9,11 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import type { Card, DeepDive, FileContent, Lens } from "@core/types";
 import { del, get, relTime, useJob } from "@/lib/api";
 import { useProject } from "@/lib/project";
+import { shortPath } from "@/lib/path";
 import { CardDialog } from "@/components/CardDialog";
 import { CodePane } from "@/components/CodePane";
 import { CodeView } from "@/components/CodeView";
-import { Markdown } from "@/components/Markdown";
+import { Inline, Markdown } from "@/components/Markdown";
 import { Split } from "@/components/Split";
 import { Tracer } from "@/components/Tracer";
 import { Badge, Button, Empty, ErrorNote, JobProgress, Segmented, Spinner } from "@/components/ui";
@@ -66,40 +67,49 @@ export function LensPage() {
     setOpenFile(file);
     nav(`/p/${project.id}/explore`);
   };
-  const h2 = "mb-3 flex items-center gap-1.5 text-sm font-semibold uppercase tracking-wide text-muted";
   const dives = l.deepDives;
   const shownDives = mode === "all" ? dives.map((d, i) => [d, i] as const) : dives[step] ? [[dives[step], step] as const] : [];
+  /** A section heading, like a blog post's h2. */
+  const H2 = ({ icon, children, aside }: { icon?: React.ReactNode; children: React.ReactNode; aside?: React.ReactNode }) => (
+    <div className="mb-5 mt-14 flex items-center gap-3">
+      <h2 className="flex items-center gap-2 text-[23px] font-semibold tracking-tight">
+        {icon && <span className="text-accent">{icon}</span>}
+        {children}
+      </h2>
+      {aside && <div className="ml-auto">{aside}</div>}
+    </div>
+  );
 
+  // Blog layout: text sits in a centred reading column (.lens > *), figures, cards and code
+  // break out wider (.wide). See .lens in index.css.
   const doc = (
     <div className="h-full overflow-auto">
-      <article className="lens mx-auto max-w-[1400px] px-10 py-8">
-        <Link to={`/p/${project.id}/library`} className="inline-flex items-center gap-1 text-xs text-muted hover:text-ink">
+      <article className="lens py-10">
+        <Link to={`/p/${project.id}/library`} className="inline-flex items-center gap-1 text-[13px] text-muted hover:text-ink">
           <ArrowLeft className="h-3.5 w-3.5" /> Library
         </Link>
-        <div className="mt-3 flex flex-wrap items-center gap-2">
+        <div className="mt-6 flex flex-wrap items-center gap-2">
           <Badge tone="accent">{l.kind} lens</Badge>
           {l.depth && l.depth !== "standard" && <Badge>{l.depth}</Badge>}
           {l.diff && <Badge tone="warn">change {l.diff.base}..{l.diff.head || "working tree"}</Badge>}
-          <span className="text-xs text-muted">{relTime(l.createdAt)}</span>
-        </div>
-        <div className="mt-2 flex items-start gap-2">
-          <h1 className="min-w-0 flex-1 text-[26px] font-semibold leading-tight tracking-tight">{l.title}</h1>
-          <a href={`/api/projects/${project.id}/lenses/${l.id}/export`} className="mt-1 inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted hover:bg-raised hover:text-ink" title="Download as markdown">
+          <span className="text-[13px] text-muted">{relTime(l.createdAt)}</span>
+          <a href={`/api/projects/${project.id}/lenses/${l.id}/export`} className="ml-auto inline-flex items-center gap-1 rounded-md px-2 py-1 text-[13px] text-muted hover:bg-raised hover:text-ink" title="Download as markdown">
             <Download className="h-3.5 w-3.5" /> .md
           </a>
         </div>
-        <p className="mt-1 text-sm italic text-muted">“{l.question}”</p>
-        <div className="mt-3 flex flex-wrap gap-1.5">
-          {l.files.slice(0, 8).map((f) => (
-            <button key={f} onClick={() => show(f)} className="inline-flex items-center gap-1 rounded-md bg-raised px-2 py-1 font-mono text-[12px] hover:text-accent">
-              <FileCode2 className="h-3 w-3" /> {rel(f)}
+        <h1 className="mt-3 text-[34px] font-bold leading-[1.15] tracking-tight">{l.title}</h1>
+        <p className="mt-3 text-[18px] leading-relaxed text-muted">{l.question}</p>
+        <div className="mt-4 flex flex-wrap gap-1.5">
+          {l.files.slice(0, 6).map((f) => (
+            <button key={f} onClick={() => show(f)} title={rel(f)} className="inline-flex max-w-full items-center gap-1 rounded-md bg-raised px-2 py-1 font-mono text-[12px] text-muted hover:text-accent">
+              <FileCode2 className="h-3 w-3 shrink-0" /> <span className="truncate">{shortPath(rel(f), 64)}</span>
             </button>
           ))}
-          {l.files.length > 8 && <span className="px-1 py-1 text-[12px] text-muted">+{l.files.length - 8} more</span>}
+          {l.files.length > 6 && <span className="px-1 py-1 text-[12px] text-muted">+{l.files.length - 6} more</span>}
         </div>
 
         {l.changed.length > 0 && (
-          <div className="mt-5 flex items-center gap-3 rounded-xl border border-warn/40 bg-warn/8 px-4 py-3 text-sm">
+          <div className="mt-6 flex items-center gap-3 rounded-xl border border-warn/40 bg-warn/8 px-4 py-3 text-[14px]">
             <GitCompareArrows className="h-4 w-4 shrink-0 text-warn" />
             <div className="min-w-0 flex-1">The code changed since this lens was made ({l.changed.map((f) => rel(f)).join(", ")}). It may be out of date.</div>
             <Button size="sm" icon={<RefreshCw className="h-3.5 w-3.5" />} disabled={refresh.busy}
@@ -111,34 +121,36 @@ export function LensPage() {
         {refresh.busy && refresh.job && <div className="mt-3"><JobProgress kind="lens" elapsed={refresh.elapsed} /></div>}
         {refresh.error && <div className="mt-3"><ErrorNote error={refresh.error} onClose={refresh.clearError} /></div>}
 
-        {/* The one idea */}
-        <div className="mt-6 rounded-2xl border border-accent/25 bg-accent/5 p-5">
-          <div className="flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-wide text-accent"><Sparkles className="h-3.5 w-3.5" /> In one sentence</div>
-          <p className="reading-lg mt-2 font-medium">{l.tldr || l.summary}</p>
-          {l.whyItMatters && <p className="reading mt-3 text-muted"><span className="font-medium text-ink/80">Why it matters: </span>{l.whyItMatters}</p>}
+        {/* The one idea, as a pull quote */}
+        <div className="mt-10 border-l-4 border-accent pl-5">
+          <div className="text-[12px] font-semibold uppercase tracking-wider text-accent">The idea in one sentence</div>
+          <p className="read-lead mt-2"><Inline>{l.tldr || l.summary}</Inline></p>
         </div>
-        {l.tldr && l.summary && <p className="reading mt-5">{l.summary}</p>}
+        {l.whyItMatters && (
+          <p className="read mt-6"><strong>Why it matters.</strong> <Inline>{l.whyItMatters}</Inline></p>
+        )}
+        {l.tldr && l.summary && <div className="mt-5"><Markdown>{l.summary}</Markdown></div>}
 
         {l.sketch && (
-          <section className="mt-6 rounded-xl border border-line p-4">
-            <h2 className="mb-2 flex items-center gap-1.5 text-sm font-semibold"><PenLine className="h-4 w-4 text-accent" /> {l.diff ? "Your prediction" : "Your take"} and where it differs</h2>
-            <div className="reading whitespace-pre-wrap rounded-lg bg-raised px-4 py-3">{l.sketch}</div>
+          <div className="mt-8 rounded-2xl bg-raised/70 p-6">
+            <div className="flex items-center gap-2 text-[15px] font-semibold"><PenLine className="h-4 w-4 text-accent" /> {l.diff ? "Your prediction" : "Your take"}, and where it differs</div>
+            <p className="read mt-3 italic text-muted">“{l.sketch}”</p>
             {l.differences && l.differences.length > 0 && (
-              <ul className="mt-3 space-y-1.5">
-                {l.differences.map((d, i) => <li key={i} className="reading flex gap-2"><span className="text-accent">→</span><span>{d}</span></li>)}
+              <ul className="read mt-4 space-y-2">
+                {l.differences.map((d, i) => <li key={i} className="flex gap-2.5"><span className="mt-0.5 text-accent">→</span><span><Inline>{d}</Inline></span></li>)}
               </ul>
             )}
-          </section>
+          </div>
         )}
 
         {l.concepts.length > 0 && (
-          <section className="mt-8">
-            <h2 className={h2}><BookOpen className="h-4 w-4" /> Words you need first</h2>
-            <div className="lens-concepts grid gap-4">
+          <>
+            <H2 icon={<BookOpen className="h-5 w-5" />}>Words you need first</H2>
+            <div className="wide lens-concepts grid gap-5">
               {l.concepts.map((c) => (
-                <div key={c.term} className="card group flex flex-col p-5">
+                <div key={c.term} className="card group flex flex-col p-6">
                   <div className="flex items-baseline gap-2">
-                    <div className="flex-1 text-[16px] font-semibold tracking-tight">{c.term}</div>
+                    <div className="flex-1 text-[18px] font-semibold tracking-tight">{c.term}</div>
                     {c.file && (
                       <button className="font-mono text-[12px] text-muted hover:text-accent" onClick={() => show(c.file, c.line)} title="Show in the code">
                         {c.line ? `line ${c.line}` : "code"}
@@ -152,94 +164,95 @@ export function LensPage() {
                       <Layers className="h-4 w-4" />
                     </button>
                   </div>
-                  <p className="reading mt-2 text-ink/90">{c.explain}</p>
+                  <p className="read mt-2"><Inline>{c.explain}</Inline></p>
                   {c.example && (
-                    <div className="mt-4 border-l-2 border-accent/40 pl-3">
-                      <div className="text-[11.5px] font-semibold uppercase tracking-wide text-muted">Example</div>
-                      <p className="reading mt-0.5 text-ink/80">{c.example}</p>
-                    </div>
+                    <p className="read mt-4 rounded-xl bg-raised/70 px-4 py-3 text-muted">
+                      <span className="mr-1.5 text-[12px] font-semibold uppercase tracking-wider text-ink/70">Example</span>
+                      <Inline>{c.example}</Inline>
+                    </p>
                   )}
                 </div>
               ))}
             </div>
-          </section>
+          </>
         )}
 
         {l.trace && (
-          <section className="mt-8">
-            <h2 className={h2}>Trace</h2>
-            <Tracer trace={l.trace} onStep={(f, line) => show(f ?? l.files[0], line)} />
-          </section>
+          <>
+            <H2>Trace a run</H2>
+            <div className="wide"><Tracer trace={l.trace} onStep={(f, line) => show(f ?? l.files[0], line)} /></div>
+          </>
         )}
 
         {l.intuition && (
-          <section className="mt-8">
-            <h2 className={h2}><Lightbulb className="h-4 w-4" /> Intuition</h2>
+          <>
+            <H2 icon={<Lightbulb className="h-5 w-5" />}>The intuition</H2>
             <Markdown>{l.intuition}</Markdown>
-          </section>
+          </>
         )}
 
         {dives.length > 0 && (
-          <section className="mt-10">
-            <div className="mb-4 flex items-center gap-3">
-              <h2 className={clsx(h2, "mb-0")}>Walkthrough · {dives.length} steps</h2>
-              <div className="ml-auto">
-                <Segmented value={mode} onChange={(m) => { setMode(m); setStep(0); }} options={[{ value: "all", label: "All steps" }, { value: "step", label: "One at a time" }]} />
-              </div>
-            </div>
+          <>
+            <H2
+              aside={<Segmented value={mode} onChange={(m) => { setMode(m); setStep(0); }} options={[{ value: "all", label: "All steps" }, { value: "step", label: "One at a time" }]} />}
+            >
+              Walkthrough <span className="text-[17px] font-normal text-muted">· {dives.length} steps</span>
+            </H2>
             {mode === "step" && (
-              <div className="mb-4 flex items-center gap-1.5">
+              <div className="mb-6 flex items-center gap-1.5">
                 {dives.map((d, i) => (
                   <button key={i} title={d.title} onClick={() => setStep(i)}
                     className={clsx("h-1.5 flex-1 rounded-full transition", i < step ? "bg-accent/50" : i === step ? "bg-accent" : "bg-line")} />
                 ))}
               </div>
             )}
-            <ol className="space-y-5">
+            <ol className="wide space-y-8">
               {shownDives.map(([d, i]) => (
                 <Step key={i} d={d} n={i + 1} text={d.file ? fileText.get(d.file) : undefined} rel={rel} onShow={show} />
               ))}
             </ol>
             {mode === "step" && (
-              <div className="mt-4 flex items-center justify-between">
+              <div className="mt-6 flex items-center justify-between">
                 <Button size="sm" variant="ghost" icon={<ChevronLeft className="h-4 w-4" />} disabled={step === 0} onClick={() => setStep(step - 1)}>Back</Button>
-                <span className="text-xs text-muted">Step {step + 1} of {dives.length}</span>
+                <span className="text-[13px] text-muted">Step {step + 1} of {dives.length}</span>
                 <Button size="sm" variant={step < dives.length - 1 ? "primary" : "secondary"} disabled={step === dives.length - 1} onClick={() => setStep(step + 1)}>
                   Next <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>
             )}
-          </section>
+          </>
         )}
 
         {l.gotchas && l.gotchas.length > 0 && (
-          <section className="mt-10">
-            <h2 className={h2}><TriangleAlert className="h-4 w-4" /> Gotchas</h2>
-            <ul className="space-y-1.5">
-              {l.gotchas.map((g, i) => <li key={i} className="reading flex gap-2 rounded-lg border border-warn/25 bg-warn/5 px-4 py-2.5"><span className="text-warn">!</span><span>{g}</span></li>)}
+          <>
+            <H2 icon={<TriangleAlert className="h-5 w-5" />}>Gotchas</H2>
+            <ul className="read space-y-3">
+              {l.gotchas.map((g, i) => <li key={i} className="flex gap-3"><span className="mt-[0.55em] h-1.5 w-1.5 shrink-0 rounded-full bg-warn" /><span><Inline>{g}</Inline></span></li>)}
             </ul>
-          </section>
+          </>
         )}
 
         {l.nextSteps && l.nextSteps.length > 0 && (
-          <section className="mt-10">
-            <h2 className={h2}><ArrowRight className="h-4 w-4" /> Read next</h2>
-            <div className="space-y-1.5">
+          <>
+            <H2 icon={<ArrowRight className="h-5 w-5" />}>Read next</H2>
+            <div className="space-y-2">
               {l.nextSteps.map((s) => (
-                <button key={s.file} onClick={() => openInExplore(s.file)} className="card flex w-full items-center gap-3 px-3 py-2 text-left transition hover:border-accent/40">
-                  <FileCode2 className="h-4 w-4 shrink-0 text-accent" />
-                  <span className="shrink-0 font-mono text-[13px]">{rel(s.file)}</span>
-                  <span className="min-w-0 flex-1 truncate text-[14px] text-muted">{s.why}</span>
+                <button key={s.file} onClick={() => openInExplore(s.file)} className="card flex w-full items-start gap-3 px-4 py-3 text-left transition hover:border-accent/40">
+                  <FileCode2 className="mt-1 h-4 w-4 shrink-0 text-accent" />
+                  <span className="min-w-0">
+                    <span className="block font-mono text-[13px]">{rel(s.file)}</span>
+                    <span className="read block text-muted"><Inline>{s.why}</Inline></span>
+                  </span>
                 </button>
               ))}
             </div>
-          </section>
+          </>
         )}
 
-        <section className="mt-10 rounded-xl border border-line bg-raised/50 p-5">
-          <div className="text-sm font-semibold">Did it land?</div>
-          <p className="mt-0.5 text-sm text-muted">Reading feels like understanding. A quiz on the same files tells you if it is.</p>
-          <div className="mt-3 flex flex-wrap gap-2">
+        <section className="mt-16 rounded-2xl border border-line bg-raised/50 p-6">
+          <div className="text-[17px] font-semibold">Did it land?</div>
+          <p className="read mt-1 text-muted">Reading feels like understanding. A quiz on the same files tells you if it is.</p>
+          <div className="mt-4 flex flex-wrap gap-2">
             <Button
               variant="primary"
               icon={<ListChecks className="h-4 w-4" />}
@@ -291,44 +304,40 @@ function Step({ d, n, text, rel, onShow }: {
   }, [text, r?.[0], r?.[1]]); // eslint-disable-line react-hooks/exhaustive-deps
   const keyMark = useMemo(() => (d.line ? [{ from: d.line, to: d.line, cls: "hl" }] : []), [d.line]);
   return (
-    <li className="card overflow-hidden">
-      <div className="flex items-start gap-3 px-5 pt-4">
-        <span className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-accent/12 text-xs font-semibold text-accent">{n}</span>
-        <div className="min-w-0 flex-1">
-          <h3 className="text-[16.5px] font-semibold leading-snug">{d.title}</h3>
-          {d.file && (
-            <button className="mt-0.5 font-mono text-[12px] text-muted hover:text-accent" onClick={() => onShow(d.file, d.line)} title="Open the whole file on the right">
-              {rel(d.file)}{r ? `:${r[0]}-${r[1]}` : ""}
-            </button>
-          )}
+    <li className={clsx("lens-step", snippet && "has-code")}>
+      <div className="lens-step-text min-w-0">
+        <div className="flex items-baseline gap-3">
+          <span className="font-mono text-[15px] font-semibold text-accent">{String(n).padStart(2, "0")}</span>
+          <h3 className="text-[20px] font-semibold leading-snug tracking-tight">{d.title}</h3>
         </div>
-      </div>
-      <div className={clsx("lens-step px-5 pb-4 pt-3", snippet && "has-code")}>
-        <div className="lens-step-text min-w-0">
-          <Markdown>{d.body}</Markdown>
-          {d.pitfall && (
-            <div className="mt-3 flex gap-2 rounded-lg border border-warn/30 bg-warn/8 px-3 py-2 text-[14.5px]">
-              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-warn" />
-              <span><span className="font-medium">Pitfall: </span>{d.pitfall}</span>
-            </div>
-          )}
-        </div>
-        {snippet && (
-          <div className="lens-step-code min-w-0 max-h-[420px] overflow-auto rounded-lg border border-line bg-panel">
-            <CodeView text={snippet.body} lang={text!.lang} firstLine={snippet.first} marks={keyMark} onLineClick={(line) => onShow(d.file, line)} />
+        {d.file && (
+          <button className="mt-1 block max-w-full truncate text-left font-mono text-[12px] text-muted hover:text-accent" onClick={() => onShow(d.file, d.line)} title={`${rel(d.file)} (open the whole file on the right)`}>
+            {shortPath(rel(d.file), 48)}{r ? `:${r[0]}-${r[1]}` : ""}
+          </button>
+        )}
+        <div className="mt-3"><Markdown>{d.body}</Markdown></div>
+        {d.pitfall && (
+          <p className="read mt-4 flex gap-2.5 rounded-xl bg-warn/8 px-4 py-3">
+            <AlertTriangle className="mt-[0.3em] h-4 w-4 shrink-0 text-warn" />
+            <span><strong>Pitfall.</strong> <Inline>{d.pitfall}</Inline></span>
+          </p>
+        )}
+        {d.check && (
+          <div className="mt-4 rounded-xl border border-accent/25 px-4 py-3">
+            <p className="read"><strong className="text-accent">Check yourself.</strong> <Inline>{d.check.q}</Inline></p>
+            {answer ? (
+              <p className="read mt-2 text-muted"><Inline>{d.check.a}</Inline></p>
+            ) : (
+              <button className="mt-2 inline-flex items-center gap-1.5 text-[13px] text-muted hover:text-ink" onClick={() => setAnswer(true)}>
+                <Eye className="h-3.5 w-3.5" /> Think first, then show the answer
+              </button>
+            )}
           </div>
         )}
       </div>
-      {d.check && (
-        <div className="border-t border-line bg-raised/40 px-5 py-3">
-          <div className="reading"><span className="font-sans text-[14px] font-semibold text-accent">Check yourself: </span>{d.check.q}</div>
-          {answer ? (
-            <div className="reading mt-1.5 text-ink/85">{d.check.a}</div>
-          ) : (
-            <button className="mt-1.5 inline-flex items-center gap-1 text-xs text-muted hover:text-ink" onClick={() => setAnswer(true)}>
-              <Eye className="h-3.5 w-3.5" /> Think first, then show the answer
-            </button>
-          )}
+      {snippet && (
+        <div className="lens-step-code min-w-0 max-h-[460px] overflow-auto rounded-xl border border-line bg-panel shadow-soft">
+          <CodeView text={snippet.body} lang={text!.lang} firstLine={snippet.first} marks={keyMark} onLineClick={(line) => onShow(d.file, line)} />
         </div>
       )}
     </li>

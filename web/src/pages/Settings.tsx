@@ -146,7 +146,7 @@ export function SettingsPage() {
           </Field>
           <Field label="Reading font" hint="For lessons, feedback and tutor replies. Buttons and labels stay in Inter.">
             <div className="flex items-center gap-4">
-              <Segmented value={font} onChange={setFont} options={[{ value: "serif", label: "Serif" }, { value: "sans", label: "Sans" }]} />
+              <Segmented value={font} onChange={setFont} options={[{ value: "sans", label: "Sans" }, { value: "serif", label: "Serif" }]} />
               <span className="reading text-muted">Read the code, then explain it.</span>
             </div>
           </Field>

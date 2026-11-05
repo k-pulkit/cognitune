@@ -62,3 +62,23 @@ export function Markdown({ children }: { children: string }) {
     </div>
   );
 }
+
+/**
+ * Markdown for one short field (a summary, a concept, a check question): `code`, **bold**,
+ * *italic* and links render; paragraphs become plain text runs so it can sit inside a sentence.
+ */
+export function Inline({ children, className }: { children: string; className?: string }) {
+  return (
+    <span className={className ? `md-inline ${className}` : "md-inline"}>
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          p: ({ children: c }) => <>{c}{" "}</>,
+          a: ({ href, children: c }) => <a href={href} target="_blank" rel="noreferrer">{c}</a>,
+        }}
+      >
+        {children}
+      </ReactMarkdown>
+    </span>
+  );
+}
