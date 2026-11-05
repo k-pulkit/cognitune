@@ -1,0 +1,141 @@
+import { useEffect, useMemo, useState } from "react";
+import clsx from "clsx";
+import { useQuery } from "@tanstack/react-query";
+import { GitCompare } from "lucide-react";
+import type { DiffFile, DiffSpec } from "@core/types";
+import { get } from "@/lib/api";
+import { useProject } from "@/lib/project";
+import { ActionPanel } from "@/components/ActionPanel";
+import { DiffView } from "@/components/DiffView";
+import { Split } from "@/components/Split";
+import { Empty, ErrorNote, Segmented, Spinner } from "@/components/ui";
+
+interface Refs {
+  branches: string[];
+  commits: { sha: string; subject: string; when: string }[];
+  current: string;
+}
+
+const STATUS_TONE: Record<DiffFile["status"], string> = {
+  added: "text-good",
+  deleted: "text-bad",
+  modified: "text-warn",
+  renamed: "text-accent",
+};
+
+/** A change between two refs (or the working tree): read the diff, then lens or quiz the change itself. */
+export function ChangesPage() {
+  const { project, rel } = useProject();
+  const [spec, setSpec] = useState<DiffSpec>({ base: "HEAD", head: "" });
+  const [active, setActive] = useState<string | null>(null);
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [mode, setMode] = useState<"split" | "unified">("split");
+  const refs = useQuery({ queryKey: ["refs", project.id], queryFn: () => get<Refs>(`/projects/${project.id}/refs`), enabled: project.isGit });
+  const diff = useQuery({
+    queryKey: ["diff", project.id, spec],
+    queryFn: () => get<DiffFile[]>(`/projects/${project.id}/diff?base=${encodeURIComponent(spec.base)}&head=${encodeURIComponent(spec.head)}`),
+    enabled: project.isGit,
+  });
+
+  const files = diff.data ?? [];
+  useEffect(() => {
+    setPicked(new Set(files.map((f) => f.path)));
+    setActive((a) => (a && files.some((f) => f.path === a) ? a : files[0]?.path ?? null));
+  }, [diff.data]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const activeFile = useMemo(() => files.find((f) => f.path === active), [files, active]);
+
+  if (!project.isGit) {
+    return (
+      <Empty icon={<GitCompare className="h-6 w-6" />} title="Not a git repository">
+        Changes needs git history. Explore, lenses and quizzes work without it.
+      </Empty>
+    );
+  }
+
+  const refOptions = (
+    <>
+      <option value="HEAD">HEAD</option>
+      {refs.data?.branches.map((b) => <option key={b} value={b}>{b}</option>)}
+      {refs.data?.commits.map((c) => <option key={c.sha} value={c.sha}>{c.sha} · {c.subject.slice(0, 50)}</option>)}
+    </>
+  );
+
+  const left = (
+    <div className="flex h-full flex-col bg-panel">
+      <div className="space-y-2 border-b border-line p-3">
+        <div>
+          <div className="label">From</div>
+          <select className="input h-8 py-0 text-xs" value={spec.base} onChange={(e) => setSpec({ ...spec, base: e.target.value })}>
+            {refOptions}
+          </select>
+        </div>
+        <div>
+          <div className="label">To</div>
+          <select className="input h-8 py-0 text-xs" value={spec.head} onChange={(e) => setSpec({ ...spec, head: e.target.value })}>
+            <option value="">Working tree (uncommitted)</option>
+            {refOptions}
+          </select>
+        </div>
+      </div>
+      <div className="flex items-center gap-2 px-3 py-2 text-xs text-muted">
+        <span>{files.length} files</span>
+        <span className="text-good">+{files.reduce((s, f) => s + f.additions, 0)}</span>
+        <span className="text-bad">-{files.reduce((s, f) => s + f.deletions, 0)}</span>
+        <button className="ml-auto hover:text-ink" onClick={() => setPicked(picked.size === files.length ? new Set() : new Set(files.map((f) => f.path)))}>
+          {picked.size === files.length ? "none" : "all"}
+        </button>
+      </div>
+      <div className="min-h-0 flex-1 overflow-auto px-1 pb-3">
+        {diff.isLoading && <div className="p-3"><Spinner /></div>}
+        {diff.error && <div className="p-2"><ErrorNote error={(diff.error as Error).message} /></div>}
+        {files.map((f) => (
+          <div
+            key={f.path}
+            onClick={() => setActive(f.path)}
+            className={clsx("flex h-8 cursor-pointer items-center gap-2 rounded-md px-2 text-[13px]", active === f.path ? "bg-accent/12" : "hover:bg-raised")}
+          >
+            <input
+              type="checkbox"
+              className="h-3.5 w-3.5 accent-[rgb(var(--accent))]"
+              checked={picked.has(f.path)}
+              onClick={(e) => e.stopPropagation()}
+              onChange={() => {
+                const n = new Set(picked);
+                if (n.has(f.path)) n.delete(f.path); else n.add(f.path);
+                setPicked(n);
+              }}
+            />
+            <span className={clsx("w-3 font-mono text-[11px] font-bold uppercase", STATUS_TONE[f.status])}>{f.status[0]}</span>
+            <span className="min-w-0 flex-1 truncate" title={rel(f.path)}>{rel(f.path)}</span>
+            <span className="font-mono text-[10px] text-good">+{f.additions}</span>
+            <span className="font-mono text-[10px] text-bad">-{f.deletions}</span>
+          </div>
+        ))}
+        {!diff.isLoading && !files.length && <div className="px-3 py-8 text-center text-sm text-muted">No changes between these two.</div>}
+      </div>
+    </div>
+  );
+
+  const center = (
+    <div className="flex h-full flex-col">
+      <div className="flex items-center gap-2 border-b border-line bg-panel px-4 py-2">
+        <div className="min-w-0 flex-1 truncate font-mono text-[13px]">{activeFile ? rel(activeFile.path) : ""}</div>
+        <Segmented value={mode} onChange={setMode} options={[{ value: "split", label: "Split" }, { value: "unified", label: "Unified" }]} />
+      </div>
+      <div className="min-h-0 flex-1 overflow-auto bg-panel">
+        {activeFile ? <DiffView patch={activeFile.patch} mode={mode} /> : <Empty title="Pick a file" />}
+      </div>
+    </div>
+  );
+
+  return (
+    <Split
+      id="changes-list"
+      initial={300}
+      className="h-full"
+      left={left}
+      right={<Split id="changes-panel" side="right" initial={360} min={300} max={560} left={center} right={<ActionPanel files={[...picked]} diff={spec} onRemove={(f) => setPicked(new Set([...picked].filter((x) => x !== f)))} practiceFile={activeFile?.status !== "deleted" ? activeFile?.path : null} />} />}
+    />
+  );
+}
