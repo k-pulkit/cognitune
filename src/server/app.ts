@@ -154,7 +154,9 @@ export function createApi(store: Store, opts: { pruneEveryMs?: number } = {}) {
   });
   api.post("/projects/:pid/lenses", async (c) => {
     const p = project(c);
-    const req = await body<{ files: string[]; kind: string; question?: string; diff?: DiffSpec; sketch?: string; traceInput?: string }>(c);
+    const req = await body<{
+      files: string[]; kind: string; question?: string; diff?: DiffSpec; sketch?: string; traceInput?: string; depth?: "overview" | "standard" | "deep";
+    }>(c);
     return startJob(c, "lens", p, (l) => l.lens(p, { ...req, files: req.files ?? [] }));
   });
   api.post("/projects/:pid/lenses/:id/refresh", (c) => {

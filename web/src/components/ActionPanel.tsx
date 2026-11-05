@@ -71,6 +71,7 @@ export function ActionPanel({
   const [sketchFirst, setSketchFirst] = useState(false);
   const [sketch, setSketch] = useState("");
   const [traceInput, setTraceInput] = useState("");
+  const [depth, setDepth] = useState<"overview" | "standard" | "deep">("standard");
   const [count, setCount] = useState<number | null>(null);
   const [level, setLevel] = useState(2);
   const [huntLevel, setHuntLevel] = useState(1);
@@ -105,6 +106,7 @@ export function ActionPanel({
         files, kind: question.trim() ? "custom" : kind, question: question.trim() || undefined, diff,
         sketch: sketchFirst ? sketch.trim() || undefined : undefined,
         traceInput: kind === "trace" ? traceInput : undefined,
+        depth,
       },
       (j) => nav(`${p}/lens/${j.resultId}`),
     );
@@ -218,6 +220,18 @@ export function ActionPanel({
                 <input className="input" placeholder="e.g. add(3)  (empty = the model picks one)" value={traceInput} onChange={(e) => setTraceInput(e.target.value)} />
               </section>
             )}
+            <section>
+              <div className="label">Depth</div>
+              <Segmented
+                value={depth}
+                onChange={setDepth}
+                options={[
+                  { value: "overview", label: "Overview", title: "3-4 steps: the big picture in a few minutes" },
+                  { value: "standard", label: "Standard", title: "4-7 steps: enough to change it safely" },
+                  { value: "deep", label: "Deep", title: "6-10 steps: edge cases, ordering, failure paths" },
+                ]}
+              />
+            </section>
             <section>
               <div className="label">Or ask your own question</div>
               <textarea

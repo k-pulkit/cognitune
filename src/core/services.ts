@@ -116,14 +116,18 @@ export class Learn {
 
   async lens(
     project: Project,
-    req: { files: string[]; kind: string; question?: string; diff?: DiffSpec; sketch?: string; traceInput?: string; refreshOf?: string },
+    req: {
+      files: string[]; kind: string; question?: string; diff?: DiffSpec; sketch?: string; traceInput?: string; refreshOf?: string;
+      depth?: P.LensDepth;
+    },
   ): Promise<Lens> {
     const ws = new Workspace(project);
     const old = req.refreshOf ? this.store.get(project.id, "lenses", req.refreshOf) : undefined;
     if (req.refreshOf && !old) throw new Error("lens not found");
     const r = old
-      ? { files: old.files, kind: old.kind, question: old.question, diff: old.diff, sketch: undefined, traceInput: old.trace?.input }
+      ? { files: old.files, kind: old.kind, question: old.question, diff: old.diff, sketch: undefined, traceInput: old.trace?.input, depth: old.depth }
       : req;
+    const depth: P.LensDepth = r.depth === "overview" || r.depth === "deep" ? r.depth : "standard";
     const files = r.files.map((f) => ws.guard(f));
     if (!files.length) throw new Error("pick at least one file");
     const kind = P.LENS_KINDS.find((k) => k.id === r.kind);
@@ -141,7 +145,7 @@ export class Learn {
     };
     const tasks: TaskName[] = ["lens", ...(sketch ? ["lensSketch" as const] : []), ...(trace ? ["lensTrace" as const] : [])];
     const raw = await this.ask<Record<string, unknown>>(
-      ws, tasks, P.lensSystem({ sketch: !!sketch, trace }), P.lensPrompt(question, this.bundle(ws, files), extras),
+      ws, tasks, P.lensSystem({ sketch: !!sketch, trace, depth }), P.lensPrompt(question, this.bundle(ws, files), extras),
       { cache: !old && !sketch },
     );
     const lens: Lens = {
@@ -156,13 +160,21 @@ export class Learn {
       summary: str(raw.summary),
       concepts: arr(raw.concepts).map((c) => {
         const o = c as Record<string, unknown>;
-        return { term: str(o.term, 120), explain: str(o.explain) };
+        return {
+          term: str(o.term, 120), explain: str(o.explain), example: str(o.example, 1000) || undefined,
+          file: ws.absFromRel(str(o.file, 500)), line: num(o.line),
+        };
       }).filter((c) => c.term),
       intuition: str(raw.intuition, 12_000),
-      deepDives: arr(raw.deepDives).map((d) => {
-        const o = d as Record<string, unknown>;
-        return { title: str(o.title, 200), file: ws.absFromRel(str(o.file, 500)), line: num(o.line), body: str(o.body, 8000) };
-      }).filter((d) => d.title || d.body),
+      deepDives: arr(raw.deepDives).map((d) => cleanDive(d as Record<string, unknown>, ws)).filter((d) => d.title || d.body),
+      tldr: str(raw.tldr, 400) || undefined,
+      whyItMatters: str(raw.whyItMatters, 800) || undefined,
+      gotchas: strs(raw.gotchas, 400, 6),
+      nextSteps: arr(raw.nextSteps).map((n) => {
+        const o = n as Record<string, unknown>;
+        return { file: ws.absFromRel(str(o.file, 500)) ?? "", why: str(o.why, 400) };
+      }).filter((n) => n.file).slice(0, 4),
+      depth,
       fileHashes: this.hashes(ws, files),
       sketch,
       differences: sketch ? strs(raw.differences) : undefined,
@@ -476,6 +488,27 @@ export class Learn {
   progress(project: Project): FileProgress[] {
     return progressOf(this.store, project);
   }
+}
+
+/** A step of the walkthrough; a bad or missing range becomes a small window around the key line. */
+function cleanDive(o: Record<string, unknown>, ws: Workspace) {
+  const file = ws.absFromRel(str(o.file, 500));
+  const line = num(o.line);
+  let startLine = num(o.startLine);
+  let endLine = num(o.endLine);
+  if (!startLine || !endLine || endLine < startLine) {
+    startLine = line ? Math.max(1, line - 3) : undefined;
+    endLine = line ? line + 6 : undefined;
+  }
+  if (startLine && endLine && endLine - startLine > 40) endLine = startLine + 40;
+  const chk = (o.check ?? {}) as Record<string, unknown>;
+  const q = str(chk.q, 600);
+  const a = str(chk.a, 1000);
+  return {
+    title: str(o.title, 200), file, line: line ?? startLine, startLine, endLine, body: str(o.body, 8000),
+    pitfall: str(o.pitfall, 800) || undefined,
+    check: q && a ? { q, a } : undefined,
+  };
 }
 
 function cleanTrace(v: unknown, ws: Workspace): Trace | undefined {

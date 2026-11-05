@@ -13,6 +13,7 @@ const verdict = z.enum(["right", "partial", "wrong"]);
 export const SCHEMAS = {
   lens: z.object({
     title: text,
+    tldr: text.min(10),
     summary: text,
     concepts: z.array(z.object({ term: text, explain: text })).optional(),
     intuition: text.optional(),

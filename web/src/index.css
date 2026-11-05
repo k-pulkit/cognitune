@@ -60,7 +60,7 @@ body {
 /* ---- code (shiki dual theme) ---- */
 .shiki, .shiki span { color: var(--shiki-light); background-color: transparent !important; }
 .dark .shiki, .dark .shiki span { color: var(--shiki-dark); }
-.code-view pre { margin: 0; padding: 12px 0; font-size: 12.5px; line-height: 1.6; counter-reset: line; }
+.code-view pre { margin: 0; padding: 12px 0; font-size: 12.5px; line-height: 1.6; counter-reset: line var(--line-start, 0); }
 .code-view code { display: block; min-width: max-content; }
 .code-view .line { display: inline-block; width: 100%; padding-right: 24px; }
 .code-view .line::before {

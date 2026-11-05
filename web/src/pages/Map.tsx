@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { forceCenter, forceCollide, forceLink, forceManyBody, forceSimulation, forceX, forceY, type SimulationNodeDatum } from "d3-force";
 import { Map as MapIcon } from "lucide-react";
@@ -7,6 +7,9 @@ import type { FileLevel, FileProgress, Graph } from "@core/types";
 import { get } from "@/lib/api";
 import { useProject } from "@/lib/project";
 import { shortPath } from "@/lib/path";
+import { treeFromPaths } from "@/lib/tree";
+import { FileTree } from "@/components/FileTree";
+import { Split } from "@/components/Split";
 import { Badge, Empty, Spinner } from "@/components/ui";
 
 type N = SimulationNodeDatum & { id: string; fanIn: number; fanOut: number; r: number };
@@ -37,6 +40,22 @@ function layout(g: Graph): { nodes: N[]; links: { s: N; t: N }[] } {
   return { nodes, links: g.edges.map((e) => ({ s: byId.get(e.from)!, t: byId.get(e.to)! })) };
 }
 
+/**
+ * Keep only the picked files (empty = all), plus their direct importers and imports when
+ * `neighbours` is on, so one area of a big repo can be read on its own.
+ */
+function narrow(g: Graph, picked: Set<string>, neighbours: boolean): Graph {
+  if (!picked.size) return g;
+  const keep = new Set([...picked].filter((p) => g.nodes.some((n) => n.path === p)));
+  if (neighbours) {
+    for (const e of g.edges) {
+      if (picked.has(e.from)) keep.add(e.to);
+      if (picked.has(e.to)) keep.add(e.from);
+    }
+  }
+  return { nodes: g.nodes.filter((n) => keep.has(n.path)), edges: g.edges.filter((e) => keep.has(e.from) && keep.has(e.to)) };
+}
+
 /** The import graph: who depends on whom, sized by how many files import each one. */
 export function MapPage() {
   const { project, rel, setOpenFile, setSelected } = useProject();
@@ -44,13 +63,37 @@ export function MapPage() {
   const g = useQuery({ queryKey: ["graph", project.id], queryFn: () => get<Graph>(`/projects/${project.id}/graph`) });
   const prog = useQuery({ queryKey: ["progress", project.id], queryFn: () => get<FileProgress[]>(`/projects/${project.id}/progress`) });
   const levels = useMemo(() => new Map((prog.data ?? []).map((p) => [p.path, p.level])), [prog.data]);
-  const lay = useMemo(() => (g.data ? layout(g.data) : null), [g.data]);
-  const [hover, setHover] = useState<string | null>(null);
+  const key = `gl.map.${project.id}`;
+  const [picked, setPicked] = useState<Set<string>>(() => {
+    try {
+      return new Set(JSON.parse(sessionStorage.getItem(key) ?? "[]") as string[]);
+    } catch {
+      return new Set();
+    }
+  });
+  const [neighbours, setNeighbours] = useState(true);
+  const [pinned, setPinned] = useState<string | null>(null);
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(key, JSON.stringify([...picked]));
+    } catch {
+      /* private mode */
+    }
+  }, [key, picked]);
+  const shown = useMemo(() => (g.data ? narrow(g.data, picked, neighbours) : null), [g.data, picked, neighbours]);
+  const lay = useMemo(() => (shown ? layout(shown) : null), [shown]);
+  // The tree lists every file in the graph, so you can pick from all of them.
+  const tree = useMemo(() => (g.data ? treeFromPaths(project.root, g.data.nodes.map((n) => n.path).sort()) : []), [g.data, project.root]);
+  const [hoverRaw, setHover] = useState<string | null>(null);
+  const hover = hoverRaw ?? pinned;
+  useEffect(() => {
+    setView({ x: 0, y: 0, k: 1 });
+  }, [shown]);
   const [view, setView] = useState<{ x: number; y: number; k: number }>({ x: 0, y: 0, k: 1 });
   const drag = useRef<{ x: number; y: number } | null>(null);
 
   if (g.isLoading) return <div className="p-8"><Spinner /></div>;
-  if (!lay || !lay.nodes.length) {
+  if (!g.data?.nodes.length || !lay) {
     return (
       <Empty icon={<MapIcon className="h-6 w-6" />} title="No imports found">
         The map reads import lines in TypeScript, JavaScript and Python files. This folder has none that point to other files in it.
@@ -58,7 +101,8 @@ export function MapPage() {
     );
   }
   const hubs = [...lay.nodes].sort((a, b) => b.fanIn - a.fanIn).slice(0, 15);
-  const label = new Set(hubs.slice(0, 8).map((n) => n.id));
+  // A small graph can label every file; a big one only the top hubs.
+  const label = new Set((lay.nodes.length <= 25 ? lay.nodes : hubs.slice(0, 8)).map((n) => n.id));
   const near = new Set<string>();
   if (hover) for (const l of lay.links) {
     if (l.s.id === hover) near.add(l.t.id);
@@ -67,7 +111,16 @@ export function MapPage() {
   const xs = lay.nodes.map((n) => n.x ?? 0);
   const ys = lay.nodes.map((n) => n.y ?? 0);
   const pad = 40;
-  const box = { x: Math.min(...xs) - pad, y: Math.min(...ys) - pad, w: Math.max(...xs) - Math.min(...xs) + pad * 2, h: Math.max(...ys) - Math.min(...ys) + pad * 2 };
+  // Never zoom in past a minimum size, so a small graph keeps normal-size circles and labels.
+  const MIN_W = 380;
+  const MIN_H = 280;
+  const rawW = Math.max(...xs) - Math.min(...xs) + pad * 2;
+  const rawH = Math.max(...ys) - Math.min(...ys) + pad * 2;
+  const cx = (Math.max(...xs) + Math.min(...xs)) / 2;
+  const cy = (Math.max(...ys) + Math.min(...ys)) / 2;
+  const w = Math.max(rawW, MIN_W);
+  const h = Math.max(rawH, MIN_H);
+  const box = { x: cx - w / 2, y: cy - h / 2, w, h };
   const vb = `${box.x + view.x} ${box.y + view.y} ${box.w / view.k} ${box.h / view.k}`;
   const open = (path: string) => {
     setOpenFile(path);
@@ -75,7 +128,41 @@ export function MapPage() {
     nav(`/p/${project.id}/explore`);
   };
 
-  return (
+  const left = (
+    <div className="flex h-full flex-col bg-panel">
+      <div className="border-b border-line px-3 py-2.5">
+        <div className="text-sm font-semibold">Show only</div>
+        <div className="text-[11px] text-muted">{picked.size ? `${picked.size} file${picked.size === 1 ? "" : "s"} ticked` : "Tick folders or files; none ticked shows all."}</div>
+        <div className="mt-2 flex items-center gap-3 text-xs">
+          <label className="flex cursor-pointer items-center gap-1.5">
+            <input type="checkbox" className="accent-[rgb(var(--accent))]" checked={neighbours} onChange={(e) => setNeighbours(e.target.checked)} />
+            with direct imports and importers
+          </label>
+          {picked.size > 0 && <button className="ml-auto text-muted hover:text-ink" onClick={() => setPicked(new Set())}>clear</button>}
+        </div>
+      </div>
+      <div className="min-h-0 flex-1">
+        <FileTree
+          roots={tree}
+          selected={[...picked]}
+          onToggle={(paths, on) => {
+            const n = new Set(picked);
+            for (const p of paths) if (on) n.add(p); else n.delete(p);
+            setPicked(n);
+          }}
+          openFile={pinned}
+          onOpen={(p) => setPinned(pinned === p ? null : p)}
+          levels={levels}
+        />
+      </div>
+    </div>
+  );
+
+  if (!lay.nodes.length) {
+    return <Split id="map-tree" collapsible initial={280} className="h-full" left={left} right={<Empty title="Nothing to show">None of the ticked files import or are imported by another file here.</Empty>} />;
+  }
+
+  const graph = (
     <div className="flex h-full">
       <div className="relative min-w-0 flex-1 bg-panel">
         <svg
@@ -139,7 +226,10 @@ export function MapPage() {
       </div>
       <aside className="w-[300px] shrink-0 overflow-auto border-l border-line bg-panel p-4">
         <h1 className="text-base font-semibold">Map</h1>
-        <p className="text-xs text-muted">{lay.nodes.length} files, {lay.links.length} imports. Files many others import are a good place to start.</p>
+        <p className="text-xs text-muted">
+          {lay.nodes.length}{picked.size ? ` of ${g.data.nodes.length}` : ""} files, {lay.links.length} imports. Files many others import are a good place to start.
+          {pinned && " Click a file in the tree again to unpin it."}
+        </p>
         <div className="label mt-4">Most depended on</div>
         <ol className="space-y-1">
           {hubs.map((n) => (
@@ -155,4 +245,6 @@ export function MapPage() {
       </aside>
     </div>
   );
+
+  return <Split id="map-tree" collapsible initial={280} className="h-full" left={left} right={graph} />;
 }

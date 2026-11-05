@@ -62,13 +62,24 @@ export interface LensKind {
 export interface Concept {
   term: string;
   explain: string;
+  /** A tiny concrete example or analogy. */
+  example?: string;
+  file?: string;
+  line?: number;
 }
 
 export interface DeepDive {
+  /** The idea of the step, as a claim. */
   title: string;
   file?: string;
+  /** The key line. */
   line?: number;
+  /** The lines shown next to the text. */
+  startLine?: number;
+  endLine?: number;
   body: string;
+  pitfall?: string;
+  check?: { q: string; a: string };
 }
 
 export interface Lens {
@@ -85,6 +96,12 @@ export interface Lens {
   /** Markdown; may hold one mermaid block. */
   intuition: string;
   deepDives: DeepDive[];
+  /** One sentence: the mental model. Missing on lenses made before 0.2. */
+  tldr?: string;
+  whyItMatters?: string;
+  gotchas?: string[];
+  nextSteps?: { file: string; why: string }[];
+  depth?: "overview" | "standard" | "deep";
   /** File hash when the lens was made; a later change shows a "refresh" banner. */
   fileHashes?: Record<string, string>;
   /** The learner's own take before the lens (sketch first, or a prediction on a change). */

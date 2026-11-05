@@ -66,18 +66,56 @@ const STYLE = `Write for a capable engineer who is new to this code. Plain, shor
 files and line numbers from the input (the numbers before "|"). Never invent code that is not in the input.
 Return ONLY one JSON object inside a single \`\`\`json fence. No text outside the fence.`;
 
-function lensSystem0(): string {
+export type LensDepth = "overview" | "standard" | "deep";
+
+const DEPTH: Record<LensDepth, { steps: string; words: number; note: string }> = {
+  overview: { steps: "3-4", words: 50, note: "The reader wants the big picture in 3 minutes. Skip details that do not change the mental model." },
+  standard: { steps: "4-7", words: 80, note: "The reader wants to be able to change this code safely after reading." },
+  deep: { steps: "6-10", words: 120, note: "The reader will own this code. Cover edge cases, ordering, failure paths and the reasons behind odd choices." },
+};
+
+function lensSystem0(depth: LensDepth = "standard"): string {
+  const d = DEPTH[depth];
   return `TASK: lens
-You build a "lens": a short lesson that shows code through ONE question.
-${STYLE}
+You build a "lens": a lesson that teaches code through ONE question, like a senior engineer walking a new
+teammate through it at a whiteboard. ${d.note}
+
+How to teach (this matters more than coverage):
+- Lead with the mental model. "tldr" is the one idea that makes the rest make sense, in one sentence a newcomer
+  can repeat. Answer the question directly; no hedging, no "this file is not X".
+- Explain WHY, not WHAT. The reader can read the code; tell them what it is for, what would break without it,
+  and why it is done this way rather than the obvious way. Never paraphrase a line ("line 12 sets x to y").
+- Concrete over abstract: real values, a small example input, "if you change A, B happens".
+- Define every term at first use, in plain words. Short sentences. No filler ("This is important because...").
+- One idea per step. The step title is that idea as a CLAIM the reader learns ("Layer 1 only sees manifests, so
+  code edits never bust it"), not a label ("Layer 1").
+- Steps go in the order that builds understanding (entry point and data shapes first), not file order. Each
+  step's "explain" connects to the step before.
+- Each step points at a SHORT line range (3-25 lines) that shows the idea; the page shows those lines next to
+  your text, so do not repeat the code.
+- If you have file tools, you may open other files in the repo (callers, the types it uses, its tests) to explain
+  how this code is used. Cite them with real paths. If you cannot see something, leave it out instead of
+  guessing or saying you did not look.
+Name real files and line numbers from the input (the numbers before "|"). Never invent code.
+Return ONLY one JSON object inside a single \`\`\`json fence. No text outside the fence.
 
 JSON shape:
 {
   "title": "short title, max 8 words",
-  "summary": "2-3 sentences: the answer to the question in plain words",
-  "concepts": [{"term": "name", "explain": "1-2 sentences"}],          // 2-6 items
-  "intuition": "markdown: the core idea with toy data or a small mermaid diagram (\`\`\`mermaid fenced, max 12 nodes, flowchart or sequenceDiagram)",
-  "deepDives": [{"title": "piece of code", "file": "relative/path", "line": 12, "body": "markdown, 3-8 sentences, in reading order"}]  // 3-7 items
+  "tldr": "ONE sentence: the mental model that answers the question",
+  "whyItMatters": "1-2 sentences: what goes wrong for someone who does not know this",
+  "summary": "2-4 sentences: the answer in plain words, expanding the tldr",
+  "concepts": [{"term": "name", "explain": "1-2 plain sentences", "example": "a tiny concrete example or analogy", "file": "relative/path", "line": 12}],  // 2-6 items, only terms the reader needs first
+  "intuition": "markdown: the core idea with toy data walked through as numbered steps, and/or a small mermaid diagram (\`\`\`mermaid fenced, max 12 nodes, flowchart or sequenceDiagram, short labels)",
+  "deepDives": [{
+    "title": "the idea of this step as a claim",
+    "file": "relative/path", "startLine": 10, "endLine": 24, "line": 12,   // line = the single key line
+    "body": "markdown, at most ${d.words} words: why this part exists and how it works; connect to the previous step",
+    "pitfall": "optional: a mistake people make here, or what breaks if you change it",
+    "check": {"q": "a short question the reader should now be able to answer", "a": "the answer, 1-2 sentences"}
+  }],  // ${d.steps} items, in teaching order
+  "gotchas": ["surprising behaviour, edge cases or traps, 1 sentence each, with the line"],   // 0-5 items
+  "nextSteps": [{"file": "relative/path", "why": "what reading it next will teach"}]       // 1-3 items, files that exist
 }`;
 }
 
@@ -94,7 +132,7 @@ export interface LensExtras {
   notes?: string;
 }
 
-export function lensSystem(x: { sketch?: boolean; trace?: boolean } = {}): string {
+export function lensSystem(x: { sketch?: boolean; trace?: boolean; depth?: LensDepth } = {}): string {
   const extra = [
     x.sketch
       ? `  "differences": ["where the learner's take (SKETCH) is wrong, missing something, or right for the wrong reason; 1-2 sentences each, name the line"],  // 1-6 items; if the sketch is fully right say so in one item`
@@ -103,9 +141,9 @@ export function lensSystem(x: { sketch?: boolean; trace?: boolean } = {}): strin
       ? `  "trace": {"input": "the toy input used, one line", "steps": [{"file": "relative/path", "line": 12, "state": {"var": "value as short text"}, "note": "what happens, 1 sentence"}]}  // 5-40 steps in run order; state lists only variables in scope that matter`
       : "",
   ].filter(Boolean);
-  const base = lensSystem0();
+  const base = lensSystem0(x.depth);
   if (!extra.length) return base;
-  const end = `in reading order"}]`;
+  const end = `"why": "what reading it next will teach"}]`;
   return base.replace(end, `${end},`).replace(/\n}$/, `\n${extra.join(",\n")}\n}`);
 }
 

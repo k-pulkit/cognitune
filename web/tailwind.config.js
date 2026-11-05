@@ -17,6 +17,8 @@ export default {
         sans: ["'Inter Variable'", "system-ui", "sans-serif"],
         mono: ["'JetBrains Mono Variable'", "ui-monospace", "monospace"],
       },
+      // Steps used across the app that Tailwind's default opacity scale lacks (bg-accent/12 etc.).
+      opacity: { 8: "0.08", 12: "0.12", 35: "0.35", 45: "0.45", 55: "0.55", 85: "0.85" },
       boxShadow: { soft: "0 1px 2px rgb(0 0 0 / 0.06), 0 4px 16px -4px rgb(0 0 0 / 0.08)" },
       keyframes: { shimmer: { "100%": { transform: "translateX(100%)" } } },
     },
