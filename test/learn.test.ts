@@ -104,6 +104,9 @@ describe("learning features", () => {
     const l = await get(`/lenses/${j.resultId}`);
     expect(l.sketch).toBe("It adds two numbers.");
     expect(l.differences.length).toBeGreaterThan(0);
+    expect(l.tldr).toContain("one idea");
+    expect(l.deepDives[0].check.q).toBeTruthy();
+    expect(l.nextSteps[0].file).toBe(add());
     expect(l.fileHashes[add()]).toBeTruthy();
 
     const t = await job("/lenses", { files: [add()], kind: "trace", traceInput: "a = 1" });
@@ -126,7 +129,7 @@ describe("learning features", () => {
 
   it("caches a lens reply: the same lens twice is one model call", async () => {
     let calls = 0;
-    const learn = new Learn(store, { name: "count", complete: async () => (calls++, '```json\n{"title":"t","summary":"s","deepDives":[{"title":"a","body":"b"}]}\n```') });
+    const learn = new Learn(store, { name: "count", complete: async () => (calls++, '```json\n{"title":"t","tldr":"the one idea here","summary":"s","deepDives":[{"title":"a","body":"b","line":2}]}\n```') });
     const p = store.project(pid)!;
     await learn.lens(p, { files: [add()], kind: "explain" });
     await learn.lens(p, { files: [add()], kind: "explain" });
@@ -134,11 +137,14 @@ describe("learning features", () => {
   });
 
   it("retries once when the reply has the wrong shape", async () => {
-    const replies = ['```json\n{"title":"t"}\n```', '```json\n{"title":"t","summary":"s","deepDives":[{"title":"a","body":"b"}]}\n```'];
+    const replies = ['```json\n{"title":"t"}\n```', '```json\n{"title":"t","tldr":"the one idea here","summary":"s","deepDives":[{"title":"a","body":"b","line":2}]}\n```'];
     const prompts: string[] = [];
     const learn = new Learn(store, { name: "retry", complete: async (r) => (prompts.push(r.prompt), replies.shift()!) });
     const l = await learn.lens(store.project(pid)!, { files: [add()], kind: "flow" });
     expect(l.title).toBe("t");
+    expect(l.tldr).toBe("the one idea here");
+    // A step with only a key line gets a small window of lines to show.
+    expect([l.deepDives[0].startLine, l.deepDives[0].endLine]).toEqual([1, 8]);
     expect(prompts[1]).toContain("COULD NOT BE USED");
     const bad = new Learn(store, { name: "bad", complete: async () => '```json\n{"nope":1}\n```' });
     await expect(bad.lens(store.project(pid)!, { files: [add()], kind: "state" })).rejects.toThrow(/expected shape/);

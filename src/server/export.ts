@@ -8,12 +8,14 @@ import type { Workspace } from "../core/workspace.js";
 
 export function lensMarkdown(l: Lens, ws: Workspace): string {
   const out: string[] = [`# ${l.title}`, "", `> ${l.question}`, "", `Covers: ${l.files.map((f) => ws.rel(f)).join(", ")}`, ""];
+  if (l.tldr) out.push(`**TL;DR:** ${l.tldr}`, "");
+  if (l.whyItMatters) out.push(`*Why it matters:* ${l.whyItMatters}`, "");
   if (l.summary) out.push(l.summary, "");
   if (l.sketch) {
     out.push("## Your take first", "", l.sketch, "");
     if (l.differences?.length) out.push("### Differences", "", ...l.differences.map((d) => `- ${d}`), "");
   }
-  if (l.concepts.length) out.push("## Concepts", "", ...l.concepts.map((c) => `- **${c.term}**: ${c.explain}`), "");
+  if (l.concepts.length) out.push("## Concepts", "", ...l.concepts.map((c) => `- **${c.term}**: ${c.explain}${c.example ? ` *Example:* ${c.example}` : ""}`), "");
   if (l.intuition) out.push("## Intuition", "", l.intuition, "");
   if (l.trace) {
     out.push("## Trace", "", `Input: \`${l.trace.input}\``, "", "| # | Line | State | Note |", "|---|---|---|---|");
@@ -25,8 +27,15 @@ export function lensMarkdown(l: Lens, ws: Workspace): string {
   }
   if (l.deepDives.length) {
     out.push("## Deep dives", "");
-    for (const d of l.deepDives) out.push(`### ${d.title}${d.file ? ` (${ws.rel(d.file)}${d.line ? `:${d.line}` : ""})` : ""}`, "", d.body, "");
+    for (const d of l.deepDives) {
+      const where = d.file ? ` (${ws.rel(d.file)}${d.startLine ? `:${d.startLine}-${d.endLine}` : d.line ? `:${d.line}` : ""})` : "";
+      out.push(`### ${d.title}${where}`, "", d.body, "");
+      if (d.pitfall) out.push(`> **Pitfall:** ${d.pitfall}`, "");
+      if (d.check) out.push(`<details><summary>Check yourself: ${d.check.q}</summary>\n\n${d.check.a}\n</details>`, "");
+    }
   }
+  if (l.gotchas?.length) out.push("## Gotchas", "", ...l.gotchas.map((g) => `- ${g}`), "");
+  if (l.nextSteps?.length) out.push("## Read next", "", ...l.nextSteps.map((n) => `- \`${ws.rel(n.file)}\`: ${n.why}`), "");
   return out.join("\n");
 }
 

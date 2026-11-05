@@ -26,8 +26,10 @@ function plainHtml(text: string, mark: (n: number) => string) {
  * `marks` adds a class to ranges (e.g. practice holes).
  */
 export function CodeView({
-  text, lang, focusLine, marks, className, onLineClick,
+  text, lang, focusLine, marks, className, onLineClick, firstLine = 1,
 }: {
+  /** Number the first line as this (a snippet from the middle of a file). Marks and focus use file numbers too. */
+  firstLine?: number;
   text: string;
   lang: string;
   focusLine?: number | null;
@@ -42,7 +44,8 @@ export function CodeView({
 
   useEffect(() => {
     let live = true;
-    const mark = (n: number) => {
+    const mark = (local: number) => {
+      const n = local + firstLine - 1;
       const cls = (marks ?? []).filter((x) => n >= x.from && n <= x.to).map((x) => x.cls);
       return clsx(cls, n === focusLine && "hl");
     };
@@ -67,12 +70,12 @@ export function CodeView({
     return () => {
       live = false;
     };
-  }, [text, lang, focusLine, marks]);
+  }, [text, lang, focusLine, marks, firstLine]);
 
   useEffect(() => {
     // The highlighter re-renders after a click too, so keep the guard until another line is focused.
     if (!focusLine || !box.current || clicked.current === focusLine) return;
-    const el = box.current.querySelector<HTMLElement>(`[data-line="${focusLine}"]`);
+    const el = box.current.querySelector<HTMLElement>(`[data-line="${focusLine - firstLine + 1}"]`);
     el?.scrollIntoView({ block: "center", behavior: "smooth" });
   }, [html, focusLine]);
 
@@ -80,12 +83,14 @@ export function CodeView({
     <div
       ref={box}
       className={clsx("code-view font-mono", onLineClick && "clickable", className)}
+      style={firstLine > 1 ? ({ "--line-start": firstLine - 1 } as React.CSSProperties) : undefined}
       onClick={(e) => {
         if (window.getSelection()?.toString()) return; // selecting text is not a click on a line
         const line = (e.target as HTMLElement).closest<HTMLElement>("[data-line]")?.dataset.line;
         if (line && onLineClick) {
-          clicked.current = Number(line);
-          onLineClick(Number(line));
+          const n = Number(line) + firstLine - 1;
+          clicked.current = n;
+          onLineClick(n);
         }
       }}
       dangerouslySetInnerHTML={{ __html: html }}

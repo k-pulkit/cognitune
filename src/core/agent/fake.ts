@@ -32,16 +32,20 @@ export class FakeAgent implements Agent {
         return {
           ...sketch,
           ...trace,
+          tldr: `The one idea: ${file} turns input into output in a single pass.`,
+          whyItMatters: "Without this model you will change the wrong line.",
+          gotchas: ["Line 3 runs even when the input is empty."],
+          nextSteps: [{ file, why: "Read it again with the steps in mind." }],
           title: `How ${file} works`,
           summary: `This is a fake lesson about ${file}. It shows the shape of a real one.`,
           concepts: [
-            { term: "Entry point", explain: "Where the work starts." },
+            { term: "Entry point", explain: "Where the work starts.", example: "Like the front door of a house.", file, line: 1 },
             { term: "Side effect", explain: "A change outside the function, like a file write." },
           ],
           intuition: "Input flows to output:\n\n```mermaid\nflowchart LR\n  A[input] --> B[transform] --> C[output]\n```",
           deepDives: [
-            { title: "The top of the file", file, line: 1, body: "Imports and setup." },
-            { title: "The main logic", file, line: 3, body: "Where the work happens." },
+            { title: "The top of the file sets up what the rest needs", file, line: 1, startLine: 1, endLine: 4, body: "Imports and setup.", check: { q: "What does line 1 bring in?", a: "The types the rest uses." } },
+            { title: "The main logic", file, line: 3, startLine: 3, endLine: 8, body: "Where the work happens.", pitfall: "Changing the order here breaks the output." },
           ],
         };
       }
