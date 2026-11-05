@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import clsx from "clsx";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, Cpu } from "lucide-react";
-import type { AgentInfo, Settings } from "@core/types";
-import { get, put } from "@/lib/api";
+import { Check, Cpu, HardDrive, History } from "lucide-react";
+import type { AgentInfo, Job, Settings, StorageUsage } from "@core/types";
+import { get, post, put, relTime } from "@/lib/api";
 import { Button, ErrorNote, Segmented } from "@/components/ui";
 import { useTheme } from "@/lib/theme";
 
@@ -21,6 +21,72 @@ const PROVIDERS: { id: Settings["agent.mode"]; label: string; text: string }[] =
   { id: "sdk", label: "Anthropic API key", text: "ANTHROPIC_API_KEY from the environment." },
   { id: "fake", label: "Demo", text: "Canned answers, no model." },
 ];
+
+const mb = (b: number) => (b < 1024 * 1024 ? `${Math.max(1, Math.round(b / 1024))} KB` : `${(b / 1024 / 1024).toFixed(1)} MB`);
+
+/** What groklab keeps on disk, and a button to apply the limits now. */
+function StorageCard() {
+  const qc = useQueryClient();
+  const u = useQuery({ queryKey: ["storage"], queryFn: () => get<StorageUsage>("/storage") });
+  const clean = useMutation({
+    mutationFn: () => post<{ removed: number; freedBytes: number; usage: StorageUsage }>("/storage/prune"),
+    onSuccess: (r) => qc.setQueryData(["storage"], r.usage),
+  });
+  if (!u.data) return null;
+  const max = Math.max(1, ...u.data.parts.map((x) => x.bytes));
+  return (
+    <div className="card mt-6 p-5">
+      <div className="flex items-center gap-2">
+        <HardDrive className="h-4 w-4 text-accent" />
+        <div className="text-sm font-semibold">Storage</div>
+        <span className="text-sm text-muted">{mb(u.data.totalBytes)}</span>
+        <Button size="sm" className="ml-auto shrink-0 whitespace-nowrap" loading={clean.isPending} onClick={() => clean.mutate()}>Clean up now</Button>
+      </div>
+      <div className="mt-0.5 break-all font-mono text-[11px] text-muted">{u.data.home}</div>
+      <p className="mt-1 text-xs text-muted">
+        Plain JSON files, one per item. Archived items and forgotten projects are removed after the keep time below, the reply cache keeps
+        to its size, and long lists (quiz attempts, card history, tutor chats, jobs) are capped. Cleanup runs at start and every 6 hours.
+      </p>
+      <div className="mt-3 space-y-1.5">
+        {u.data.parts.map((x) => (
+          <div key={x.name} className="flex items-center gap-3 text-xs">
+            <span className="w-32 shrink-0 capitalize text-muted">{x.name}</span>
+            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-raised"><div className="h-full bg-accent/60" style={{ width: `${(x.bytes / max) * 100}%` }} /></div>
+            <span className="w-28 shrink-0 text-right tabular-nums text-muted">{mb(x.bytes)} · {x.files} file{x.files === 1 ? "" : "s"}</span>
+          </div>
+        ))}
+      </div>
+      <div className="mt-3 text-[11px] text-muted">
+        {clean.data ? `Removed ${clean.data.removed} item${clean.data.removed === 1 ? "" : "s"}, freed ${mb(clean.data.freedBytes)}.` : u.data.lastPrune ? `Last cleanup ${relTime(u.data.lastPrune.at)}: removed ${u.data.lastPrune.removed}.` : ""}
+      </div>
+    </div>
+  );
+}
+
+function JobsCard() {
+  const jobs = useQuery({ queryKey: ["jobs"], queryFn: () => get<Job[]>("/jobs") });
+  const list = (jobs.data ?? []).slice(0, 12);
+  if (!list.length) return null;
+  const secs = (j: Job) => (j.endedAt ? Math.round((Date.parse(j.endedAt) - Date.parse(j.startedAt)) / 1000) : null);
+  return (
+    <div className="card mt-6 p-5">
+      <div className="flex items-center gap-2 text-sm font-semibold"><History className="h-4 w-4 text-accent" /> Recent model calls</div>
+      <table className="mt-3 w-full text-xs">
+        <tbody>
+          {list.map((j) => (
+            <tr key={j.id} className="border-b border-line/60 last:border-0">
+              <td className="py-1.5 pr-3 font-medium">{j.kind}</td>
+              <td className={clsx("py-1.5 pr-3", j.status === "failed" ? "text-bad" : j.status === "running" ? "text-accent" : "text-good")}>{j.status}</td>
+              <td className="py-1.5 pr-3 tabular-nums text-muted">{secs(j) !== null ? `${secs(j)} s` : ""}</td>
+              <td className="max-w-[320px] truncate py-1.5 pr-3 text-muted" title={j.error}>{j.error ?? ""}</td>
+              <td className="py-1.5 text-right text-muted">{relTime(j.startedAt)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
 
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
@@ -135,6 +201,24 @@ export function SettingsPage() {
           <Field label="Context size" hint="Most bytes of code sent in one prompt.">
             <input type="number" min={10000} step={10000} className="input w-40" value={draft["context.maxBytes"]} onChange={(e) => set("context.maxBytes", Number(e.target.value))} />
           </Field>
+          <Field label="Cards from misses" hint="Each wrong or partial quiz answer becomes a review card.">
+            <Segmented value={draft["cards.fromMisses"] ? "on" : "off"} onChange={(v) => set("cards.fromMisses", v === "on")} options={[{ value: "on", label: "On" }, { value: "off", label: "Off" }]} />
+          </Field>
+          <Field label="Fade after" hint="Days without recall before an understood file shows as fading. 0 = never.">
+            <input type="number" min={0} className="input w-32" value={draft["progress.fadeDays"]} onChange={(e) => set("progress.fadeDays", Number(e.target.value))} />
+          </Field>
+          <Field label="Notes in prompts" hint="Send your margin notes on a file with its code, so lenses and the tutor can use them.">
+            <Segmented value={draft["notes.inPrompts"] ? "on" : "off"} onChange={(v) => set("notes.inPrompts", v === "on")} options={[{ value: "on", label: "On" }, { value: "off", label: "Off" }]} />
+          </Field>
+          <Field label="Keep archive" hint="Days an archived item or forgotten project is kept before it is removed for good. 0 = forever.">
+            <input type="number" min={0} className="input w-32" value={draft["storage.archiveDays"]} onChange={(e) => set("storage.archiveDays", Number(e.target.value))} />
+          </Field>
+          <Field label="Reply cache" hint="Most MB of saved model replies (the same lens twice is free). Oldest go first.">
+            <input type="number" min={0} className="input w-32" value={draft["storage.cacheMB"]} onChange={(e) => set("storage.cacheMB", Number(e.target.value))} />
+          </Field>
+          <Field label="Attempts per quiz" hint="Older graded attempts are dropped; the best one is always kept.">
+            <input type="number" min={1} className="input w-32" value={draft["storage.maxAttempts"]} onChange={(e) => set("storage.maxAttempts", Number(e.target.value))} />
+          </Field>
         </div>
 
         {save.error && <div className="mt-4"><ErrorNote error={(save.error as Error).message} /></div>}
@@ -143,6 +227,8 @@ export function SettingsPage() {
           <Button variant="ghost" disabled={!dirty} onClick={() => setDraft(q.data.settings)}>Reset</Button>
           <Button variant="primary" disabled={!dirty} loading={save.isPending} onClick={() => save.mutate(draft)}>Save</Button>
         </div>
+        <StorageCard />
+        <JobsCard />
       </div>
     </div>
   );

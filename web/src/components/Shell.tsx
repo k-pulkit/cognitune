@@ -1,10 +1,14 @@
 import clsx from "clsx";
 import { useQuery } from "@tanstack/react-query";
-import { BarChart3, BookOpen, Compass, FolderGit2, GitCompare, Home, Monitor, Moon, Settings, Sun } from "lucide-react";
-import { NavLink, Outlet, useParams } from "react-router-dom";
-import type { AgentInfo } from "@core/types";
+import { useEffect, useState } from "react";
+import {
+  BarChart3, BookOpen, Command, Compass, FolderGit2, GitCompare, Home, Layers, Map as MapIcon, Monitor, Moon, Route, Settings, Sun, Sunrise,
+} from "lucide-react";
+import { NavLink, Outlet, useNavigate, useParams } from "react-router-dom";
+import type { AgentInfo, Card, Project } from "@core/types";
 import { get } from "@/lib/api";
 import { useTheme, type ThemePref } from "@/lib/theme";
+import { Palette, ShortcutHelp } from "./Palette";
 
 export function Logo({ className }: { className?: string }) {
   return (
@@ -22,7 +26,7 @@ export function Logo({ className }: { className?: string }) {
   );
 }
 
-function NavItem({ to, icon, label, end }: { to: string; icon: React.ReactNode; label: string; end?: boolean }) {
+function NavItem({ to, icon, label, end, badge }: { to: string; icon: React.ReactNode; label: string; end?: boolean; badge?: number }) {
   return (
     <NavLink
       to={to}
@@ -36,6 +40,9 @@ function NavItem({ to, icon, label, end }: { to: string; icon: React.ReactNode; 
     >
       {icon}
       <span>{label}</span>
+      {!!badge && (
+        <span className="absolute right-1.5 top-1 min-w-[16px] rounded-full bg-accent px-1 text-center text-[9.5px] font-semibold leading-4 text-accent-ink">{badge > 99 ? "99+" : badge}</span>
+      )}
     </NavLink>
   );
 }
@@ -49,17 +56,41 @@ export function Shell() {
   const health = useQuery({ queryKey: ["health"], queryFn: () => get<{ agent: AgentInfo }>("/health"), staleTime: 60_000 });
   const ready = health.data?.agent.ready;
   const ThemeIcon = pref === "dark" ? Moon : pref === "light" ? Sun : Monitor;
+  const nav = useNavigate();
+  const [palette, setPalette] = useState(false);
+  const [help, setHelp] = useState(false);
+  const due = useQuery({ queryKey: ["cards-due", pid], queryFn: () => get<Card[]>(`/projects/${pid}/cards/due`), enabled: !!pid, staleTime: 60_000 });
+  const projects = useQuery({ queryKey: ["projects"], queryFn: () => get<Project[]>("/projects"), enabled: !!pid, staleTime: 60_000 });
+  const root = projects.data?.find((p) => p.id === pid)?.root;
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setPalette((v) => !v);
+        return;
+      }
+      const typing = (e.target as HTMLElement).closest("input, textarea, [contenteditable], .cm-editor");
+      if (!typing && e.key === "?") setHelp(true);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   return (
     <div className="flex h-full">
-      <aside className="flex w-[72px] shrink-0 flex-col items-stretch gap-1 border-r border-line bg-panel px-2 py-3">
+      <aside className="flex w-[72px] shrink-0 flex-col items-stretch gap-1 overflow-y-auto border-r border-line bg-panel px-2 py-3">
         <NavLink to="/" className="mb-3 flex justify-center" title="groklab: projects">
           <Logo className="h-9 w-9" />
         </NavLink>
         {pid ? (
           <>
+            <NavItem to={`/p/${pid}/today`} icon={<Sunrise className="h-5 w-5" />} label="Today" />
             <NavItem to={`/p/${pid}/explore`} icon={<Compass className="h-5 w-5" />} label="Explore" />
             <NavItem to={`/p/${pid}/changes`} icon={<GitCompare className="h-5 w-5" />} label="Changes" />
+            <NavItem to={`/p/${pid}/review`} icon={<Layers className="h-5 w-5" />} label="Review" badge={due.data?.length} />
+            <NavItem to={`/p/${pid}/map`} icon={<MapIcon className="h-5 w-5" />} label="Map" />
+            <NavItem to={`/p/${pid}/paths`} icon={<Route className="h-5 w-5" />} label="Paths" />
             <NavItem to={`/p/${pid}/library`} icon={<BookOpen className="h-5 w-5" />} label="Library" />
             <NavItem to={`/p/${pid}/progress`} icon={<BarChart3 className="h-5 w-5" />} label="Progress" />
           </>
@@ -67,6 +98,14 @@ export function Shell() {
           <NavItem to="/" end icon={<Home className="h-5 w-5" />} label="Projects" />
         )}
         <div className="flex-1" />
+        <button
+          onClick={() => setPalette(true)}
+          title="Go to or do (Ctrl/Cmd+K). Press ? for all shortcuts."
+          className="flex flex-col items-center gap-1 rounded-xl py-2 text-[10.5px] font-medium text-muted transition hover:bg-raised hover:text-ink"
+        >
+          <Command className="h-5 w-5" />
+          <span>Ctrl K</span>
+        </button>
         {pid && <NavItem to="/" end icon={<FolderGit2 className="h-5 w-5" />} label="Projects" />}
         <NavItem to="/settings" icon={<Settings className="h-5 w-5" />} label="Settings" />
         <button
@@ -89,6 +128,24 @@ export function Shell() {
       <main className="min-w-0 flex-1">
         <Outlet />
       </main>
+      {palette && (
+        <Palette
+          pid={pid}
+          root={root}
+          onClose={() => setPalette(false)}
+          openFile={(path) => {
+            // The open file is kept per project in sessionStorage by ProjectProvider.
+            try {
+              sessionStorage.setItem(`gl.open.${pid}`, JSON.stringify(path));
+            } catch {
+              /* ignore */
+            }
+            nav(`/p/${pid}/explore`);
+            window.dispatchEvent(new CustomEvent("groklab:open", { detail: path }));
+          }}
+        />
+      )}
+      {help && <ShortcutHelp onClose={() => setHelp(false)} />}
     </div>
   );
 }

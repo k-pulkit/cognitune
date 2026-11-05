@@ -89,6 +89,13 @@ const STEPS: Record<string, string[]> = {
   grade: ["Reading your answers", "Checking against the code", "Writing feedback"],
   practice: ["Reading the file", "Choosing the key logic", "Cutting the holes"],
   review: ["Reading your code", "Comparing with the original", "Writing feedback"],
+  teachback: ["Reading your explanation", "Checking it against the code", "Writing feedback"],
+  tutor: ["Reading the conversation", "Thinking of a good question", "Writing"],
+  walk: ["Reading the file", "Finding the reading order", "Writing check questions"],
+  walkcheck: ["Reading your answer", "Checking the block"],
+  hunt: ["Reading the file", "Choosing where to break it", "Planting the bugs"],
+  huntgrade: ["Matching your marks", "Checking your reasons", "Writing feedback"],
+  path: ["Reading the repo layout", "Ordering the stops", "Writing the path"],
 };
 
 /** Progress card for a running model job. The steps are a guide to the wait, not real stages. */
@@ -162,4 +169,53 @@ export function Score({ score, size = "md" }: { score: number; size?: "sm" | "md
   const pct = Math.round(score * 100);
   const tone = score >= 0.67 ? "text-good" : score >= 0.4 ? "text-warn" : "text-bad";
   return <span className={clsx("font-semibold tabular-nums", tone, size === "sm" ? "text-xs" : "text-sm")}>{pct}%</span>;
+}
+
+/** A centred dialog over a dimmed page. Escape or a click outside closes it. */
+export function Modal({
+  title, onClose, children, footer, wide,
+}: { title: ReactNode; onClose: () => void; children: ReactNode; footer?: ReactNode; wide?: boolean }) {
+  return (
+    <div
+      className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4 backdrop-blur-sm"
+      onClick={onClose}
+      onKeyDown={(e) => e.key === "Escape" && onClose()}
+    >
+      <div className={clsx("card flex max-h-[85vh] w-full flex-col overflow-hidden", wide ? "max-w-2xl" : "max-w-lg")} onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center border-b border-line px-5 py-3">
+          <h2 className="text-base font-semibold">{title}</h2>
+          <button className="ml-auto text-muted hover:text-ink" onClick={onClose} aria-label="Close">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="min-h-0 flex-1 overflow-auto px-5 py-4">{children}</div>
+        {footer && <div className="flex items-center justify-end gap-2 border-t border-line px-5 py-3">{footer}</div>}
+      </div>
+    </div>
+  );
+}
+
+/** Small page header used by the activity pages. */
+export function PageHead({ back, badges, title, sub, actions }: { back?: ReactNode; badges?: ReactNode; title: ReactNode; sub?: ReactNode; actions?: ReactNode }) {
+  return (
+    <div>
+      {back}
+      {badges && <div className="mt-3 flex flex-wrap items-center gap-2">{badges}</div>}
+      <div className="mt-2 flex items-start gap-3">
+        <h1 className="min-w-0 flex-1 text-[26px] font-semibold leading-tight tracking-tight">{title}</h1>
+        {actions && <div className="flex shrink-0 gap-2">{actions}</div>}
+      </div>
+      {sub && <div className="mt-1 text-sm text-muted">{sub}</div>}
+    </div>
+  );
+}
+
+/** "in 3 d" / "in 10 min" for a future time. */
+export function untilText(iso: string): string {
+  const s = Math.max(0, Math.round((Date.parse(iso) - Date.now()) / 1000));
+  if (s < 90) return "now";
+  if (s < 3600) return `${Math.round(s / 60)} min`;
+  if (s < 86400) return `${Math.round(s / 3600)} h`;
+  if (s < 86400 * 60) return `${Math.round(s / 86400)} d`;
+  return `${Math.round(s / (86400 * 30))} mo`;
 }

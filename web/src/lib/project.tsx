@@ -43,6 +43,15 @@ export function ProjectProvider({ pid, children, fallback }: { pid: string; chil
   const [focusLine, setFocusLine] = useState<number | null>(null);
 
   useEffect(() => save(`gl.sel.${pid}`, selected), [pid, selected]);
+  // The command palette opens files from outside this provider.
+  useEffect(() => {
+    const on = (e: Event) => {
+      setOpen((e as CustomEvent<string>).detail);
+      setFocusLine(null);
+    };
+    window.addEventListener("groklab:open", on);
+    return () => window.removeEventListener("groklab:open", on);
+  }, []);
   useEffect(() => save(`gl.open.${pid}`, openFile), [pid, openFile]);
 
   const setSelected = useCallback((paths: string[]) => setSelectedRaw([...new Set(paths)]), []);

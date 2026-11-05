@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import clsx from "clsx";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, CheckCircle2, CircleHelp, FileCode2, RotateCcw, Send, Trash2 } from "lucide-react";
+import { ArrowLeft, CheckCircle2, CircleHelp, Download, FileCode2, Layers, MessageCircleQuestion, RotateCcw, Send, Target, Trash2 } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import type { Answer, Attempt, FileContent, Quiz } from "@core/types";
+import type { Answer, Attempt, Card, FileContent, Quiz } from "@core/types";
 import { del, get, relTime, useJob } from "@/lib/api";
 import { useProject } from "@/lib/project";
+import { CardDialog } from "@/components/CardDialog";
 import { CodeView } from "@/components/CodeView";
 import { Split } from "@/components/Split";
 import { Badge, Button, Empty, ErrorNote, JobProgress, Score, Segmented, Spinner, VerdictBadge } from "@/components/ui";
@@ -24,6 +25,8 @@ export function QuizPage() {
   const [retake, setRetake] = useState(false);
   const [shown, setShown] = useState<number | null>(null);
   const [peek, setPeek] = useState<{ file: string; line?: number } | null>(null);
+  const [card, setCard] = useState<Partial<Card> | null>(null);
+  const tutor = useJob();
   const file = useQuery({
     queryKey: ["file", project.id, peek?.file],
     queryFn: () => get<FileContent>(`/projects/${project.id}/file?path=${encodeURIComponent(peek!.file)}`),
@@ -86,6 +89,10 @@ export function QuizPage() {
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <Badge tone="accent">quiz</Badge>
           {q.diff && <Badge tone="warn">change</Badge>}
+          {q.questions.some((x) => x.misconceptionId) && <Badge tone="bad"><Target className="h-3 w-3" /> weak spots</Badge>}
+          <a href={`/api/projects/${project.id}/quizzes/${q.id}/export`} className="ml-auto inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs text-muted hover:bg-raised hover:text-ink" title="Download as markdown">
+            <Download className="h-3.5 w-3.5" /> .md
+          </a>
           <span className="text-xs text-muted">{q.questions.length} questions · {relTime(q.createdAt)}</span>
         </div>
         <h1 className="mt-2 text-[26px] font-semibold leading-tight tracking-tight">{q.title}</h1>
@@ -155,7 +162,41 @@ export function QuizPage() {
                         {g.modelAnswer}
                       </div>
                     )}
-                    {qq.focus && <div className="text-xs text-muted">Tests: {qq.focus}</div>}
+                    {g?.misconception && (
+                      <div className="flex gap-2 rounded-lg border border-bad/25 bg-bad/5 px-3 py-2 text-[13px]">
+                        <Target className="mt-0.5 h-3.5 w-3.5 shrink-0 text-bad" />
+                        <span><span className="font-medium">Saved as a weak spot: </span>{g.misconception}</span>
+                      </div>
+                    )}
+                    <div className="flex flex-wrap items-center gap-2">
+                      {qq.focus && <span className="text-xs text-muted">Tests: {qq.focus}</span>}
+                      {g && g.verdict !== "right" && (
+                        <span className="ml-auto flex gap-1">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            icon={<MessageCircleQuestion className="h-3.5 w-3.5" />}
+                            disabled={tutor.busy}
+                            onClick={() =>
+                              tutor.run(
+                                `/projects/${project.id}/threads`,
+                                {
+                                  files: q.files,
+                                  text: `I got this quiz question ${g.verdict}:\n\n"${qq.prompt}"\n\nMy answer was: ${a?.answer || "(none)"}\n\nHelp me see what I missed, without just telling me.`,
+                                },
+                                (j) => nav(`/p/${project.id}/tutor/${j.resultId}`),
+                              )
+                            }
+                          >
+                            Ask the tutor
+                          </Button>
+                          <Button size="sm" variant="ghost" icon={<Layers className="h-3.5 w-3.5" />}
+                            onClick={() => setCard({ kind: "miss", front: qq.prompt, back: g.modelAnswer, file: qq.file, line: qq.line, source: { quizId: q.id, qid: qq.id } })}>
+                            Card
+                          </Button>
+                        </span>
+                      )}
+                    </div>
                   </div>
                 ) : (
                   <div className="mt-4 pl-10">
@@ -206,6 +247,9 @@ export function QuizPage() {
           </Button>
         </div>
         {job.busy && job.job && <div className="mt-3"><JobProgress kind="grade" elapsed={job.elapsed} /></div>}
+        {tutor.busy && tutor.job && <div className="mt-3"><JobProgress kind="tutor" elapsed={tutor.elapsed} /></div>}
+        {tutor.error && <div className="mt-3"><ErrorNote error={tutor.error} onClose={tutor.clearError} /></div>}
+        {card && <CardDialog initial={card} onClose={() => setCard(null)} />}
         {job.error && <div className="mt-3"><ErrorNote error={job.error} onClose={job.clearError} /></div>}
       </div>
     </div>

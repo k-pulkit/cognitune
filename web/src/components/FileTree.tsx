@@ -29,6 +29,7 @@ const LEVEL_DOT: Record<FileLevel, string> = {
   new: "",
   seen: "bg-muted/50",
   understood: "bg-good",
+  fading: "bg-warn/50",
   stale: "bg-warn",
 };
 

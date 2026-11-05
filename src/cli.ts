@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, extname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -80,9 +80,10 @@ if (opts.demo) {
     console.error("demo sample not found in this install");
     process.exit(2);
   }
-  // Demo data goes to a fresh temp folder, so it never mixes with real progress.
+  // Demo data goes to one fixed temp folder: it never mixes with real progress, and repeated
+  // demo runs reuse it instead of leaving a new folder behind each time.
   process.env.GROKLAB_AGENT = "fake";
-  process.env.GROKLAB_HOME = mkdtempSync(join(tmpdir(), "groklab-demo-"));
+  process.env.GROKLAB_HOME = join(tmpdir(), "groklab-demo");
   process.env.GROKLAB_FAKE_DELAY_MS ??= "1500";
   opts.folder = sample;
 }
