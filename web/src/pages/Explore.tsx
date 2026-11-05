@@ -4,6 +4,7 @@ import { CheckSquare, FolderPlus, Square, X } from "lucide-react";
 import type { FileContent, FileProgress, TreeNode } from "@core/types";
 import { get, patch } from "@/lib/api";
 import { useProject } from "@/lib/project";
+import { shortPath } from "@/lib/path";
 import { ActionPanel } from "@/components/ActionPanel";
 import { CodeView } from "@/components/CodeView";
 import { FileTree } from "@/components/FileTree";
@@ -38,7 +39,7 @@ export function ExplorePage() {
       <div className="flex items-center gap-2 border-b border-line px-3 py-2.5">
         <div className="min-w-0 flex-1">
           <div className="truncate text-sm font-semibold">{project.name}</div>
-          <div className="truncate font-mono text-[11px] text-muted" title={project.root}>{project.root}</div>
+          <div className="truncate font-mono text-[11px] text-muted" title={project.root}>{shortPath(project.root, 30)}</div>
         </div>
         <Button size="sm" variant="ghost" icon={<FolderPlus className="h-4 w-4" />} title="Add a context folder (docs, notes, a session folder)" onClick={() => setAddingCtx(true)} />
       </div>

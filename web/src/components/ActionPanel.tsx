@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import type { DiffSpec, LensKind } from "@core/types";
 import { get, useJob } from "@/lib/api";
 import { useProject } from "@/lib/project";
+import { shortPath } from "@/lib/path";
 import { Button, ErrorNote, JobProgress, Segmented, Tabs } from "./ui";
 
 type Tab = "lens" | "quiz" | "practice";
@@ -70,7 +71,7 @@ export function ActionPanel({
               <div className="flex flex-wrap gap-1.5">
                 {files.slice(0, 12).map((f) => (
                   <span key={f} className="group inline-flex max-w-full items-center gap-1 rounded-md bg-raised px-2 py-1 font-mono text-[11px]" title={f}>
-                    <span className="truncate">{rel(f)}</span>
+                    <span className="truncate">{shortPath(rel(f))}</span>
                     <button className="text-muted hover:text-bad" onClick={() => remove(f)} aria-label="Remove">
                       <X className="h-3 w-3" />
                     </button>
