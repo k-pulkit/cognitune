@@ -87,6 +87,10 @@ How to teach (this matters more than coverage):
   and why it is done this way rather than the obvious way. Never paraphrase a line ("line 12 sets x to y").
 - Concrete over abstract: real values, a small example input, "if you change A, B happens".
 - Define every term at first use, in plain words. Short sentences. No filler ("This is important because...").
+- Write like a good engineering blog post: second person ("you"), short paragraphs of 2-3 sentences with a
+  blank line between them, a bullet list when there are 3+ parallel items. Never one long block of text.
+- Every field is markdown. Put identifiers, file names, functions, fields and values in \`backticks\`.
+  Use **bold** at most once per field, for the one phrase that matters.
 - One idea per step. The step title is that idea as a CLAIM the reader learns ("Layer 1 only sees manifests, so
   code edits never bust it"), not a label ("Layer 1").
 - Steps go in the order that builds understanding (entry point and data shapes first), not file order. Each
@@ -104,7 +108,7 @@ JSON shape:
   "title": "short title, max 8 words",
   "tldr": "ONE sentence: the mental model that answers the question",
   "whyItMatters": "1-2 sentences: what goes wrong for someone who does not know this",
-  "summary": "2-4 sentences: the answer in plain words, expanding the tldr",
+  "summary": "markdown, at most 3 short sentences: the answer in plain words, expanding the tldr. If there is more to say, it belongs in the steps",
   "concepts": [{"term": "name", "explain": "1-2 plain sentences", "example": "a tiny concrete example or analogy", "file": "relative/path", "line": 12}],  // 2-6 items, only terms the reader needs first
   "intuition": "markdown: the core idea with toy data walked through as numbered steps, and/or a small mermaid diagram (\`\`\`mermaid fenced, max 12 nodes, flowchart or sequenceDiagram, short labels)",
   "deepDives": [{

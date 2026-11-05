@@ -50,9 +50,9 @@ export type ReadingFont = "serif" | "sans";
 
 function readFont(): ReadingFont {
   try {
-    return localStorage.getItem("groklab.readingFont") === "sans" ? "sans" : "serif";
+    return localStorage.getItem("groklab.readingFont") === "serif" ? "serif" : "sans";
   } catch {
-    return "serif";
+    return "sans";
   }
 }
 

@@ -34,8 +34,8 @@
 
 html, body, #root { height: 100%; }
 /* Long-form font: Source Serif 4 (optical sizes) or Inter, picked in Settings. */
-:root { --read-font: 'Source Serif 4 Variable', Georgia, 'Times New Roman', serif; }
-:root[data-read="sans"] { --read-font: 'Inter Variable', system-ui, sans-serif; }
+:root { --read-font: 'Inter Variable', system-ui, sans-serif; }
+:root[data-read="serif"] { --read-font: 'Source Serif 4 Variable', Georgia, 'Times New Roman', serif; }
 body {
   @apply bg-bg text-ink font-sans antialiased;
   /* Inter: single-storey a off, open digits, slashed zero off; tabular numbers where it matters are set per element. */
@@ -90,25 +90,37 @@ body {
 .code-view .line.hole { background: rgb(var(--warn) / 0.12); box-shadow: inset 3px 0 0 rgb(var(--warn)); }
 
 /* ---- markdown ---- */
-.prose-g { @apply text-ink; font-family: var(--read-font); font-size: 16.5px; line-height: 1.72; }
-:root[data-read="sans"] .prose-g { font-size: 15.5px; line-height: 1.7; }
-/* Comfortable line length: about 70 characters, wherever prose sits. */
-.prose-g p, .prose-g li, .reading { max-width: 72ch; }
-/* Short reading blocks outside markdown (summaries, feedback, concept text). */
-.reading { font-family: var(--read-font); font-size: 16.5px; line-height: 1.7; }
-:root[data-read="sans"] .reading { font-size: 15.5px; }
+/* Long-form text, sized like a good engineering blog: 17px, airy line height, full-strength ink. */
+.prose-g { @apply text-ink; font-family: var(--read-font); font-size: 17px; line-height: 1.75; letter-spacing: -0.003em; }
+:root[data-read="serif"] .prose-g { font-size: 18px; line-height: 1.7; letter-spacing: 0; }
+.read { font-family: var(--read-font); font-size: 17px; line-height: 1.75; letter-spacing: -0.003em; }
+:root[data-read="serif"] .read { font-size: 18px; letter-spacing: 0; }
+.read-lead { font-family: var(--read-font); font-size: 22px; line-height: 1.5; font-weight: 500; letter-spacing: -0.01em; }
+:root[data-read="serif"] .read-lead { font-size: 23px; font-weight: 400; }
+/* Older class names, kept so every page shares the same reading style. */
+.reading { font-family: var(--read-font); font-size: 16px; line-height: 1.7; }
 .reading-lg { font-family: var(--read-font); font-size: 21px; line-height: 1.45; }
-:root[data-read="sans"] .reading-lg { font-size: 19px; }
-.prose-g > * + * { @apply mt-4; }
+/* Inline code in text: a soft chip, a bit smaller than the text so it does not shout. */
+.prose-g :not(pre) > code, .md-inline code, .read code {
+  font-family: 'JetBrains Mono Variable', ui-monospace, monospace;
+  font-size: 0.86em;
+  padding: 0.12em 0.4em;
+  border-radius: 6px;
+  background: rgb(var(--raised));
+  border: 1px solid rgb(var(--line) / 0.8);
+  white-space: break-spaces;
+}
+.md-inline strong, .read strong { font-weight: 600; }
+.prose-g > * + * { margin-top: 1.1em; }
 /* Headings stay in the UI face, so the page keeps one voice for structure and one for reading. */
 .prose-g h1, .prose-g h2, .prose-g h3 { @apply font-sans font-semibold tracking-tight; }
 .prose-g h1 { @apply text-xl; }
 .prose-g h2 { @apply text-lg; }
 .prose-g h3 { @apply text-base; }
 .prose-g a { @apply text-accent underline-offset-2 hover:underline; }
-.prose-g ul { @apply list-disc pl-5 space-y-1; }
-.prose-g ol { @apply list-decimal pl-5 space-y-1; }
-.prose-g :not(pre) > code { @apply rounded bg-raised px-1.5 py-0.5 font-mono text-[0.85em]; }
+.prose-g ul { @apply list-disc pl-6 space-y-2; }
+.prose-g ol { @apply list-decimal pl-6 space-y-2; }
+.prose-g li::marker { color: rgb(var(--muted)); }
 .prose-g pre { @apply overflow-auto rounded-lg border border-line bg-raised p-3 font-mono text-[13.5px] leading-relaxed; }
 .prose-g blockquote { @apply border-l-2 border-accent/50 pl-3 text-muted; }
 .prose-g table { @apply w-full text-sm; }
@@ -133,19 +145,31 @@ body {
 }
 @keyframes shimmer { 100% { transform: translateX(100%); } }
 
-/* ---- lens page: uses the width it has ----
-   The article is a size container, so the layout follows the pane width (the file pane can be
-   open or folded), not the window width. */
-.lens { container-type: inline-size; }
-
+/* ---- lens page: a blog layout ----
+   Text sits in one centred reading column (about 68 characters). Cards, figures and the
+   walkthrough break out into a wider track. The article is a size container, so the steps
+   go side by side by the pane width (the file pane can be open or folded), not the window. */
+.lens {
+  container-type: inline-size;
+  display: grid;
+  grid-template-columns:
+    [full-start] minmax(1.5rem, 1fr)
+    [wide-start] minmax(0, 13rem)
+    [content-start] min(44rem, calc(100% - 3rem))
+    [content-end] minmax(0, 13rem)
+    [wide-end] minmax(1.5rem, 1fr)
+    [full-end];
+}
+.lens > * { grid-column: content; }
+.lens > .wide { grid-column: wide; }
+.lens .prose-g p, .lens .prose-g li { max-width: none; }
 .lens-concepts { grid-template-columns: 1fr; }
-.lens-step { display: grid; gap: 1rem; grid-template-columns: minmax(0, 1fr); }
-.lens-step.has-code .lens-step-code { order: -1; } /* narrow: code above the text */
-@container (min-width: 640px) {
+.lens-step { display: grid; gap: 1.5rem; grid-template-columns: minmax(0, 1fr); }
+@container (min-width: 760px) {
   .lens-concepts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
-@container (min-width: 960px) {
-  /* wide: text on the left, its code on the right */
-  .lens-step.has-code { grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); align-items: start; }
-  .lens-step.has-code .lens-step-code { order: 0; position: sticky; top: 0; }
+@container (min-width: 1100px) {
+  /* wide: the step's text on the left, its code on the right, code stays in view */
+  .lens-step.has-code { grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); align-items: start; gap: 2.5rem; }
+  .lens-step.has-code .lens-step-code { position: sticky; top: 1rem; }
 }

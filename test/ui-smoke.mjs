@@ -73,7 +73,7 @@ ok(await page.getByText("In one sentence").isVisible(), "lens opens with the one
 await page.getByText("Think first, then show the answer").first().click();
 await page.getByText("The types the rest uses.").waitFor();
 ok(true, "a step's check-yourself answer reveals");
-ok((await page.locator("li.card .code-view .line").count()) > 0, "steps show their own lines of code");
+ok((await page.locator("li.lens-step .code-view .line").count()) > 0, "steps show their own lines of code");
 await page.getByRole("button", { name: "One at a time" }).click();
 await page.getByText("Step 1 of 2").waitFor();
 ok(true, "one-step-at-a-time mode");
