@@ -1,8 +1,9 @@
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
-import { extname, join, relative, resolve, sep, basename } from "node:path";
-import type { DiffFile, DiffSpec, FileContent, GitRepo, Project, TreeNode } from "./types.js";
+import { dirname, extname, join, relative, resolve, sep, basename } from "node:path";
+import { importGraph } from "./graph.js";
+import type { DiffFile, DiffSpec, FileContent, GitRepo, Graph, Project, TreeNode } from "./types.js";
 
 /** Read-only view of a project's folders: tree, files, git. */
 
@@ -105,6 +106,29 @@ export class Workspace {
       kind: "dir" as const,
       children: buildTree(r, listFiles(r)),
     }));
+  }
+
+  /** Every file in the main folder, absolute paths. */
+  files(): string[] {
+    const r = this.project.root;
+    return existsSync(r) ? listFiles(r).map((f) => join(r, f)) : [];
+  }
+
+  graph(): Graph {
+    return importGraph(this.project.root, this.files());
+  }
+
+  /**
+   * The file's recent git history with patches, newest first, cut to `maxBytes`.
+   * Throws when the file is not in a git repo.
+   */
+  history(path: string, maxBytes: number): string {
+    const abs = this.guard(path);
+    const dir = dirname(abs);
+    if (!isGitRepo(dir)) throw new Error("the history lens needs a file inside a git repo");
+    const out = git(dir, ["log", "--follow", "-n", "15", "-p", "--format=--- commit %h, %an, %cr%n%s%n%n%b", "--", abs]);
+    if (!out.trim()) throw new Error("this file has no commits yet");
+    return out.length > maxBytes ? `${out.slice(0, maxBytes)}\n(older history cut)` : out;
   }
 
   // ---- files -----------------------------------------------------------

@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process";
-import { existsSync, readFileSync, statSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, statSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, extname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { serve } from "@hono/node-server";
@@ -15,13 +16,15 @@ Usage: groklab [folder] [options]
   --port <n>       Port (default 4711, or GROKLAB_PORT)
   --host <addr>    Address to bind (default 127.0.0.1)
   --no-open        Do not open the browser
+  --demo           Try it with a small sample repo and canned answers (no model, temp data)
   -h, --help       Show this help
 
-Data lives in ~/.groklab (GROKLAB_HOME). Your folders are never written.
-Model: the claude CLI if installed, else ANTHROPIC_API_KEY. GROKLAB_AGENT=fake for a demo without a model.`;
+Data lives in ~/.groklab (GROKLAB_HOME). Your folders are never written. Old archive
+and cache entries are cleaned up on their own (Settings > Storage).
+Model: the claude, codex or copilot CLI if installed (their own login), else ANTHROPIC_API_KEY.`;
 
 function parseArgs(argv: string[]) {
-  const out = { folder: "", port: Number(process.env.GROKLAB_PORT) || 4711, host: "127.0.0.1", open: true };
+  const out = { folder: "", port: Number(process.env.GROKLAB_PORT) || 4711, host: "127.0.0.1", open: true, demo: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "-h" || a === "--help") {
@@ -30,6 +33,7 @@ function parseArgs(argv: string[]) {
     } else if (a === "--port") out.port = Number(argv[++i]);
     else if (a === "--host") out.host = argv[++i];
     else if (a === "--no-open") out.open = false;
+    else if (a === "--demo") out.demo = true;
     else if (!a.startsWith("-")) out.folder = a;
     else {
       console.error(`unknown option: ${a}\n\n${HELP}`);
@@ -62,10 +66,29 @@ function openBrowser(url: string) {
   }
 }
 
+/** The sample repo shipped in the package (demo/sample), from dist/ or from source. */
+function demoDir(): string | null {
+  const here = dirname(fileURLToPath(import.meta.url));
+  for (const d of [join(here, "..", "demo", "sample"), join(here, "demo", "sample")]) if (existsSync(d)) return d;
+  return null;
+}
+
 const opts = parseArgs(process.argv.slice(2));
+if (opts.demo) {
+  const sample = demoDir();
+  if (!sample) {
+    console.error("demo sample not found in this install");
+    process.exit(2);
+  }
+  // Demo data goes to a fresh temp folder, so it never mixes with real progress.
+  process.env.GROKLAB_AGENT = "fake";
+  process.env.GROKLAB_HOME = mkdtempSync(join(tmpdir(), "groklab-demo-"));
+  process.env.GROKLAB_FAKE_DELAY_MS ??= "1500";
+  opts.folder = sample;
+}
 const store = new Store();
 const app = new Hono();
-app.route("/api", createApi(store));
+app.route("/api", createApi(store, { pruneEveryMs: 6 * 3_600_000 }));
 
 const web = webDir();
 app.get("*", (c) => {
@@ -86,7 +109,7 @@ if (opts.folder) {
     console.error(`not a folder: ${root}`);
     process.exit(2);
   }
-  path = `/p/${store.openProject(root).id}/explore`;
+  path = `/p/${store.openProject(root).id}/today`;
 }
 
 serve({ fetch: app.fetch, port: opts.port, hostname: opts.host }, (info) => {
