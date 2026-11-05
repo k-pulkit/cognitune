@@ -129,13 +129,18 @@ await page.goto(`${url}/p/${pid}/explore`);
 await page.getByPlaceholder("Filter files").waitFor();
 await page.locator("[title^='Fold this pane']").first().click({ force: true });
 ok(!(await page.getByPlaceholder("Filter files").isVisible()), "tree folds away");
-await page.locator("[title='Hover to peek, click to pin open']").first().hover();
+await page.locator("[title^='Hover to peek, click to pin open']").first().hover();
 await page.getByPlaceholder("Filter files").waitFor({ state: "visible" });
 ok(true, "hovering the rail peeks the tree");
-await page.locator("[title='Hover to peek, click to pin open']").first().click();
+await page.locator("[title^='Hover to peek, click to pin open']").first().click();
 await page.mouse.move(800, 400);
 await page.waitForTimeout(400);
 ok(await page.getByPlaceholder("Filter files").isVisible(), "click pins it open again");
+
+await page.keyboard.press("[");
+ok(!(await page.getByPlaceholder("Filter files").isVisible()), "[ folds the tree");
+await page.keyboard.press("[");
+ok(await page.getByPlaceholder("Filter files").isVisible(), "[ again brings it back");
 
 // Add context from the picker; chips fold after 5
 await page.getByRole("button", { name: "Lens" }).first().click();
