@@ -5,10 +5,11 @@ import { GitCompare } from "lucide-react";
 import type { DiffFile, DiffSpec, GitRepo } from "@core/types";
 import { get } from "@/lib/api";
 import { useProject } from "@/lib/project";
-import { shortPath } from "@/lib/path";
 import { ActionPanel } from "@/components/ActionPanel";
 import { Combobox, type ComboOption } from "@/components/Combobox";
 import { DiffView } from "@/components/DiffView";
+import { FileTree } from "@/components/FileTree";
+import { treeFromPaths } from "@/lib/tree";
 import { Split } from "@/components/Split";
 import { Empty, ErrorNote, Segmented, Spinner } from "@/components/ui";
 
@@ -77,6 +78,8 @@ export function ChangesPage() {
   }, [diff.data]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const activeFile = useMemo(() => files.find((f) => f.path === active), [files, active]);
+  const byPath = useMemo(() => new Map(files.map((f) => [f.path, f])), [files]);
+  const tree = useMemo(() => (spec.repo ? treeFromPaths(spec.repo, files.map((f) => f.path)) : []), [spec.repo, files]);
 
   if (repos.isLoading) return <div className="p-8"><Spinner /></div>;
   if (!list.length) {
@@ -127,32 +130,35 @@ export function ChangesPage() {
           {picked.size === files.length ? "none" : "all"}
         </button>
       </div>
-      <div className="min-h-0 flex-1 overflow-auto px-1 pb-3">
+      <div className="min-h-0 flex-1">
         {diff.isLoading && <div className="p-3"><Spinner /></div>}
         {diff.error && <div className="p-2"><ErrorNote error={(diff.error as Error).message} /></div>}
-        {files.map((f) => (
-          <div
-            key={f.path}
-            onClick={() => setActive(f.path)}
-            className={clsx("flex h-8 cursor-pointer items-center gap-2 rounded-md px-2 text-[13px]", active === f.path ? "bg-accent/12" : "hover:bg-raised")}
-          >
-            <input
-              type="checkbox"
-              className="h-3.5 w-3.5 accent-[rgb(var(--accent))]"
-              checked={picked.has(f.path)}
-              onClick={(e) => e.stopPropagation()}
-              onChange={() => {
-                const n = new Set(picked);
-                if (n.has(f.path)) n.delete(f.path); else n.add(f.path);
-                setPicked(n);
-              }}
-            />
-            <span className={clsx("w-3 font-mono text-[11px] font-bold uppercase", STATUS_TONE[f.status])}>{f.status[0]}</span>
-            <span className="min-w-0 flex-1 truncate" title={rel(f.path)}>{shortPath(rel(f.path))}</span>
-            <span className="font-mono text-[10px] text-good">+{f.additions}</span>
-            <span className="font-mono text-[10px] text-bad">-{f.deletions}</span>
-          </div>
-        ))}
+        {files.length > 0 && (
+          <FileTree
+            key={`${spec.repo}|${spec.base}|${spec.head}`}
+            roots={tree}
+            openAll
+            selected={[...picked]}
+            onToggle={(paths, on) => {
+              const n = new Set(picked);
+              for (const p of paths) if (on) n.add(p); else n.delete(p);
+              setPicked(n);
+            }}
+            openFile={active}
+            onOpen={setActive}
+            meta={(path) => {
+              const f = byPath.get(path);
+              if (!f) return null;
+              return (
+                <>
+                  <span className="font-mono text-[10px] text-good">+{f.additions}</span>
+                  <span className="font-mono text-[10px] text-bad">-{f.deletions}</span>
+                  <span className={clsx("w-3 text-center font-mono text-[11px] font-bold uppercase", STATUS_TONE[f.status])} title={f.status}>{f.status[0]}</span>
+                </>
+              );
+            }}
+          />
+        )}
         {!diff.isLoading && !files.length && <div className="px-3 py-8 text-center text-sm text-muted">No changes between these two.</div>}
       </div>
     </div>

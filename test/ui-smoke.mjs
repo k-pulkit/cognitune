@@ -123,6 +123,10 @@ await shot("8-progress");
 await page.goto(`${url}/p/${pid}/changes`);
 await page.getByText(/files$/).first().waitFor();
 ok(true, "changes page loads");
+if (process.env.SMOKE_DIFF_DIR) {
+  await page.getByText(process.env.SMOKE_DIFF_DIR, { exact: true }).waitFor();
+  ok(true, "changed files show as a tree with folded folders");
+}
 await page.getByRole("button", { name: /^Working tree/ }).click();
 await page.getByPlaceholder("Type to filter").fill("groklab 0.1");
 ok((await page.locator("[data-i]").count()) === 1, "typing filters the ref list");

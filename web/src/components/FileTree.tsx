@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import clsx from "clsx";
 import { ChevronRight, File, FileCode2, FileText, Folder, FolderOpen, Search } from "lucide-react";
 import type { FileLevel, TreeNode } from "@core/types";
@@ -37,7 +37,7 @@ const LEVEL_DOT: Record<FileLevel, string> = {
  * the filter opens every folder that has a match.
  */
 export function FileTree({
-  roots, selected, onToggle, openFile, onOpen, levels,
+  roots, selected, onToggle, openFile, onOpen, levels, meta, openAll = false,
 }: {
   roots: TreeNode[];
   selected: string[];
@@ -45,14 +45,19 @@ export function FileTree({
   openFile: string | null;
   onOpen: (path: string) => void;
   levels?: Map<string, FileLevel>;
+  /** Extra content at the end of a file row (e.g. diff status and line counts). */
+  meta?: (path: string) => ReactNode;
+  /** Start with every folder open (a diff), instead of only the roots (a whole repo). */
+  openAll?: boolean;
 }) {
   const [q, setQ] = useState("");
-  const [open, setOpen] = useState<Set<string>>(() => new Set(roots.map((r) => r.path)));
+  // Track the folders the user toggled; their meaning flips with openAll.
+  const [toggled, setToggled] = useState<Set<string>>(() => (openAll ? new Set() : new Set(roots.map((r) => r.path))));
   const sel = useMemo(() => new Set(selected), [selected]);
   const shown = useMemo(() => filterTree(roots, q.trim()), [roots, q]);
 
   const row = (n: TreeNode, depth: number) => {
-    const isOpen = q ? true : open.has(n.path);
+    const isOpen = q ? true : openAll ? !toggled.has(n.path) : toggled.has(n.path);
     const files = n.kind === "dir" ? filesUnder(n) : [n.path];
     const ticked = files.filter((f) => sel.has(f)).length;
     const all = ticked > 0 && ticked === files.length;
@@ -68,7 +73,7 @@ export function FileTree({
           )}
           style={{ paddingLeft: depth * 14 + 4 }}
           onClick={() => {
-            if (n.kind === "dir") setOpen((s) => {
+            if (n.kind === "dir") setToggled((s) => {
               const next = new Set(s);
               if (next.has(n.path)) next.delete(n.path); else next.add(n.path);
               return next;
@@ -91,6 +96,7 @@ export function FileTree({
           <Icon className={clsx("h-4 w-4 shrink-0", n.kind === "dir" ? "text-accent/80" : "text-muted")} />
           <span className="truncate">{n.name}</span>
           {level && level !== "new" && <span title={level} className={clsx("ml-auto h-1.5 w-1.5 shrink-0 rounded-full", LEVEL_DOT[level])} />}
+          {meta && n.kind === "file" && <span className="ml-auto flex shrink-0 items-center gap-1.5">{meta(n.path)}</span>}
         </div>
         {n.kind === "dir" && isOpen && n.children?.map((c) => row(c, depth + 1))}
       </div>
