@@ -116,3 +116,21 @@ body {
   animation: shimmer 1.6s infinite;
 }
 @keyframes shimmer { 100% { transform: translateX(100%); } }
+
+/* ---- lens page: uses the width it has ----
+   The article is a size container, so the layout follows the pane width (the file pane can be
+   open or folded), not the window width. */
+.lens { container-type: inline-size; }
+.lens .prose-g { font-size: 15.5px; line-height: 1.7; }
+.lens-concepts { grid-template-columns: 1fr; }
+.lens-step { display: grid; gap: 1rem; grid-template-columns: minmax(0, 1fr); }
+.lens-step.has-code .lens-step-code { order: -1; } /* narrow: code above the text */
+@container (min-width: 640px) {
+  .lens-concepts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@container (min-width: 960px) {
+  .lens-concepts { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  /* wide: text on the left, its code on the right */
+  .lens-step.has-code { grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); align-items: start; }
+  .lens-step.has-code .lens-step-code { order: 0; position: sticky; top: 0; }
+}
