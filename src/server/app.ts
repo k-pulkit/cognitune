@@ -80,8 +80,7 @@ export function createApi(store: Store) {
   });
   api.get("/projects/:pid", (c) => {
     const p = project(c);
-    const ws = new Workspace(p);
-    return c.json({ ...p, isGit: ws.isGit, running: jobs.running(p.id) });
+    return c.json({ ...p, running: jobs.running(p.id) });
   });
   api.patch("/projects/:pid", async (c) => {
     const p = project(c);
@@ -100,9 +99,10 @@ export function createApi(store: Store) {
 
   api.get("/projects/:pid/tree", (c) => c.json(new Workspace(project(c)).tree()));
   api.get("/projects/:pid/file", (c) => c.json(new Workspace(project(c)).read(c.req.query("path") ?? "")));
-  api.get("/projects/:pid/refs", (c) => c.json(new Workspace(project(c)).refs()));
+  api.get("/projects/:pid/repos", (c) => c.json(new Workspace(project(c)).repos()));
+  api.get("/projects/:pid/refs", (c) => c.json(new Workspace(project(c)).refs(c.req.query("repo") || undefined)));
   api.get("/projects/:pid/diff", (c) => {
-    const spec: DiffSpec = { base: c.req.query("base") || "HEAD", head: c.req.query("head") ?? "" };
+    const spec: DiffSpec = { repo: c.req.query("repo") || undefined, base: c.req.query("base") || "HEAD", head: c.req.query("head") ?? "" };
     return c.json(new Workspace(project(c)).diff(spec));
   });
 

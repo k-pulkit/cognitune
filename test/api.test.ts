@@ -90,6 +90,22 @@ describe("api", () => {
     expect((await api.request(`/projects/${id}/diff?base=nope`)).status).toBe(400);
   });
 
+  it("finds git repos inside a folder that is not one, and diffs each", async () => {
+    const ws = mkdtempSync(join(tmpdir(), "groklab-ws-"));
+    mkdirSync(join(ws, "team"));
+    execFileSync("git", ["clone", "-q", root, join(ws, "team", "app")]);
+    mkdirSync(join(ws, "node_modules", "dep"), { recursive: true });
+    execFileSync("git", ["init", "-q"], { cwd: join(ws, "node_modules", "dep") });
+    writeFileSync(join(ws, "team", "app", "src", "add.py"), "def add(a, b):\n    return 0\n");
+    const id = (await (await post("/projects", { root: ws })).json()).id;
+    const repos = await (await api.request(`/projects/${id}/repos`)).json();
+    expect(repos.map((r: { name: string }) => r.name)).toEqual(["team/app"]);
+    const repo = encodeURIComponent(repos[0].path);
+    const diff = await (await api.request(`/projects/${id}/diff?base=HEAD&repo=${repo}`)).json();
+    expect(diff.map((d: { path: string }) => d.path)).toEqual([join(ws, "team", "app", "src", "add.py")]);
+    expect((await api.request(`/projects/${id}/diff?base=HEAD&repo=${encodeURIComponent("/etc")}`)).status).toBe(400);
+  });
+
   it("makes a lens, keeps it, and maps file paths back", async () => {
     const job = await (await post(`/projects/${pid}/lenses`, { files: [file()], kind: "flow" })).json();
     const done = await waitJob(api, job.id);
