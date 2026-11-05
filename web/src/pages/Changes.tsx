@@ -7,6 +7,7 @@ import { get } from "@/lib/api";
 import { useProject } from "@/lib/project";
 import { shortPath } from "@/lib/path";
 import { ActionPanel } from "@/components/ActionPanel";
+import { Combobox, type ComboOption } from "@/components/Combobox";
 import { DiffView } from "@/components/DiffView";
 import { Split } from "@/components/Split";
 import { Empty, ErrorNote, Segmented, Spinner } from "@/components/ui";
@@ -86,13 +87,11 @@ export function ChangesPage() {
     );
   }
 
-  const refOptions = (
-    <>
-      <option value="HEAD">HEAD</option>
-      {refs.data?.branches.map((b) => <option key={b} value={b}>{b}</option>)}
-      {refs.data?.commits.map((c) => <option key={c.sha} value={c.sha}>{c.sha} · {c.subject.slice(0, 50)}</option>)}
-    </>
-  );
+  const refOptions: ComboOption[] = [
+    { value: "HEAD", label: "HEAD", hint: refs.data?.current, group: "Current" },
+    ...(refs.data?.branches ?? []).map((b) => ({ value: b, label: b, group: "Branches" })),
+    ...(refs.data?.commits ?? []).map((c) => ({ value: c.sha, label: `${c.sha} ${c.subject}`, hint: c.when, group: "Recent commits" })),
+  ];
 
   const left = (
     <div className="flex h-full flex-col bg-panel">
@@ -100,25 +99,24 @@ export function ChangesPage() {
         {list.length > 1 && (
           <div>
             <div className="label">Repository ({list.length})</div>
-            <select className="input h-8 py-0 text-xs" value={repo?.path ?? ""} onChange={(e) => pickRepo(e.target.value)}>
-              {list.map((r) => (
-                <option key={r.path} value={r.path}>{r.name}{r.branch ? ` · ${r.branch}` : ""}</option>
-              ))}
-            </select>
+            <Combobox
+              value={repo?.path ?? ""}
+              onChange={pickRepo}
+              options={list.map((r) => ({ value: r.path, label: r.name, hint: r.branch }))}
+            />
           </div>
         )}
         <div>
           <div className="label">From</div>
-          <select className="input h-8 py-0 text-xs" value={spec.base} onChange={(e) => setSpec({ ...spec, base: e.target.value })}>
-            {refOptions}
-          </select>
+          <Combobox value={spec.base} onChange={(v) => setSpec({ ...spec, base: v })} options={refOptions} />
         </div>
         <div>
           <div className="label">To</div>
-          <select className="input h-8 py-0 text-xs" value={spec.head} onChange={(e) => setSpec({ ...spec, head: e.target.value })}>
-            <option value="">Working tree (uncommitted)</option>
-            {refOptions}
-          </select>
+          <Combobox
+            value={spec.head}
+            onChange={(v) => setSpec({ ...spec, head: v })}
+            options={[{ value: "", label: "Working tree (uncommitted)", group: "Current" }, ...refOptions]}
+          />
         </div>
       </div>
       <div className="flex items-center gap-2 px-3 py-2 text-xs text-muted">

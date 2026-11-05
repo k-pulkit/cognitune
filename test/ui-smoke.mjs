@@ -123,6 +123,16 @@ await shot("8-progress");
 await page.goto(`${url}/p/${pid}/changes`);
 await page.getByText(/files$/).first().waitFor();
 ok(true, "changes page loads");
+await page.getByRole("button", { name: /^Working tree/ }).click();
+await page.getByPlaceholder("Type to filter").fill("groklab 0.1");
+ok((await page.locator("[data-i]").count()) === 1, "typing filters the ref list");
+await page.keyboard.press("Enter");
+await page.getByRole("button", { name: /groklab 0\.1\.0/ }).waitFor();
+ok(true, "Enter picks the filtered ref");
+await page.getByRole("button", { name: /groklab 0\.1\.0/ }).click();
+await page.getByPlaceholder("Type to filter").waitFor();
+await shot("12-combobox");
+await page.keyboard.press("Escape");
 await shot("9-changes");
 // Fold the file tree, peek it by hovering the rail, pin it back
 await page.goto(`${url}/p/${pid}/explore`);
