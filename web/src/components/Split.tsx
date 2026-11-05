@@ -79,6 +79,20 @@ export function Split({
   useEffect(() => () => clearTimeout(leaveTimer.current), []);
 
   const fixedLeft = side === "left";
+
+  // "[" folds or pins the left pane, "]" the right one (not while typing).
+  useEffect(() => {
+    if (!collapsible) return;
+    const key = fixedLeft ? "[" : "]";
+    const on = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement;
+      if (e.key !== key || e.ctrlKey || e.metaKey || e.altKey || t.closest("input, textarea, select, [contenteditable=true], .cm-editor")) return;
+      setCollapsed((c) => !c);
+      setPeek(false);
+    };
+    window.addEventListener("keydown", on);
+    return () => window.removeEventListener("keydown", on);
+  }, [collapsible, fixedLeft]);
   const Fold = fixedLeft ? ChevronLeft : ChevronRight;
   const Unfold = fixedLeft ? ChevronRight : ChevronLeft;
 
@@ -101,8 +115,8 @@ export function Split({
             setCollapsed(true);
             setPeek(false);
           }}
-          title="Fold this pane away (hover the edge to see it again)"
-          className="absolute top-1/2 z-20 -mt-4 grid h-8 w-4 -translate-x-1/2 place-items-center rounded-full border border-line bg-panel text-muted opacity-0 shadow-sm transition hover:text-accent group-hover:opacity-100"
+          title={`Fold this pane away (key ${fixedLeft ? "[" : "]"}); hover the edge to see it again`}
+          className="absolute top-1/2 z-20 -mt-5 grid h-10 w-5 -translate-x-1/2 place-items-center rounded-full border border-line bg-panel text-muted shadow-sm transition hover:border-accent/50 hover:text-accent"
         >
           <Fold className="h-3 w-3" />
         </button>
@@ -122,7 +136,7 @@ export function Split({
         setCollapsed(false);
         setPeek(false);
       }}
-      title="Hover to peek, click to pin open"
+      title={`Hover to peek, click to pin open (key ${fixedLeft ? "[" : "]"})`}
     >
       <Unfold className="h-3 w-3 text-muted group-hover:text-accent" />
     </div>

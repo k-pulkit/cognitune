@@ -57,6 +57,8 @@ function splitRows(rows: Row[]): { left?: Row; right?: Row; hunk?: string }[] {
 }
 
 const num = "w-12 shrink-0 select-none pr-3 text-right text-muted/60";
+/** Long lines wrap instead of running off the side; the wrap is marked by the row height only. */
+const TEXT = "min-w-0 flex-1 whitespace-pre-wrap break-all pr-4";
 
 /** GitHub-style diff: split (before | after) for changes, one column for new or deleted files. */
 export function DiffView({ patch, mode }: { patch: string; mode: "split" | "unified" }) {
@@ -68,7 +70,7 @@ export function DiffView({ patch, mode }: { patch: string; mode: "split" | "unif
 
   if (mode === "unified" || allOneSide) {
     return (
-      <div className="min-w-max py-1 font-mono text-[12.5px] leading-6">
+      <div className="min-h-full py-1 font-mono text-[12.5px] leading-6">
         {rows.map((r, i) =>
           r.kind === "hunk" ? (
             <div key={i} className="diff-hunk px-4">{r.text}</div>
@@ -77,7 +79,7 @@ export function DiffView({ patch, mode }: { patch: string; mode: "split" | "unif
               <span className={num}>{r.left ?? ""}</span>
               <span className={num}>{r.right ?? ""}</span>
               <span className="w-4 shrink-0 select-none text-muted">{r.kind === "add" ? "+" : r.kind === "del" ? "-" : ""}</span>
-              <span className="whitespace-pre pr-6">{r.text}</span>
+              <span className={TEXT}>{r.text}</span>
             </div>
           ),
         )}
@@ -91,8 +93,9 @@ export function DiffView({ patch, mode }: { patch: string; mode: "split" | "unif
 type Pair = { left?: Row; right?: Row; hunk?: string };
 
 /**
- * Before | after. Each side scrolls sideways on its own; rows have a fixed height, so the two
- * sides stay lined up while the page scrolls up and down. The divider drags (double-click resets).
+ * Before | after as one grid: each row holds both sides, so a wrapped long line makes the whole
+ * row taller and the two sides stay lined up. The divider spans the full height and drags
+ * (double-click centres it).
  */
 function SplitDiff({ rows }: { rows: Pair[] }) {
   const box = useRef<HTMLDivElement>(null);
@@ -128,35 +131,33 @@ function SplitDiff({ rows }: { rows: Pair[] }) {
     window.addEventListener("pointerup", up);
   };
 
-  const column = (side: 0 | 1) => (
-    <div className="min-w-0 overflow-x-auto overflow-y-hidden" style={{ width: side === 0 ? `${pct}%` : `${100 - pct}%` }}>
-      <div className="inline-block min-w-full py-1">
-        {rows.map((s, i) => {
-          if (s.hunk) return <div key={i} className="diff-hunk h-6 whitespace-pre px-4">{side === 0 ? s.hunk : ""}</div>;
-          const r = side === 0 ? s.left : s.right;
-          return (
-            <div key={i} className={clsx("flex h-6", r?.kind === "del" && "diff-del", r?.kind === "add" && "diff-add", !r && "bg-raised/60")}>
-              <span className={num}>{r ? (side === 0 ? r.left : r.right) : ""}</span>
-              <span className="whitespace-pre pr-6">{r?.text ?? ""}</span>
-            </div>
-          );
-        })}
-      </div>
+  const cell = (r: Row | undefined, side: 0 | 1, key: string) => (
+    <div key={key} className={clsx("flex min-w-0", r?.kind === "del" && "diff-del", r?.kind === "add" && "diff-add", !r && "bg-raised/60")}>
+      <span className={num}>{r ? (side === 0 ? r.left : r.right) : ""}</span>
+      <span className={TEXT}>{r?.text ?? ""}</span>
     </div>
   );
 
   return (
-    <div ref={box} className="relative flex font-mono text-[12.5px] leading-6">
-      {column(0)}
+    <div ref={box} className="relative min-h-full font-mono text-[12.5px] leading-6">
+      <div className="grid py-1" style={{ gridTemplateColumns: `${pct}% ${100 - pct}%` }}>
+        {rows.map((s, i) =>
+          s.hunk ? (
+            <div key={i} className="diff-hunk col-span-2 whitespace-pre-wrap break-all px-4">{s.hunk}</div>
+          ) : (
+            [cell(s.left, 0, `${i}l`), cell(s.right, 1, `${i}r`)]
+          ),
+        )}
+      </div>
       <div
-        className="group relative w-px shrink-0 cursor-col-resize bg-line"
+        className="group absolute inset-y-0 z-10 w-px cursor-col-resize bg-line"
+        style={{ left: `${pct}%` }}
         onPointerDown={startDrag}
         onDoubleClick={() => setPct(50)}
         title="Drag to move, double-click to centre"
       >
         <div className="absolute inset-y-0 -left-1.5 -right-1.5 transition group-hover:bg-accent/30" />
       </div>
-      {column(1)}
     </div>
   );
 }
