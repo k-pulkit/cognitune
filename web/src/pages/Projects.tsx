@@ -24,7 +24,7 @@ export function ProjectsPage() {
     mutationFn: (root: string) => post<Project>("/projects", { root }),
     onSuccess: (p) => {
       qc.invalidateQueries({ queryKey: ["projects"] });
-      nav(`/p/${p.id}/explore`);
+      nav(`/p/${p.id}/today`);
     },
   });
   const forget = useMutation({

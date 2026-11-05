@@ -1,12 +1,14 @@
 import { useState } from "react";
 import clsx from "clsx";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, ChevronDown, FileCode2, Lightbulb, ListChecks, Trash2 } from "lucide-react";
+import { ArrowLeft, ChevronDown, Download, FileCode2, GitCompareArrows, Layers, Lightbulb, ListChecks, PenLine, RefreshCw, Trash2 } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import type { FileContent, Lens } from "@core/types";
+import type { Card, FileContent, Lens } from "@core/types";
 import { del, get, relTime, useJob } from "@/lib/api";
 import { useProject } from "@/lib/project";
+import { CardDialog } from "@/components/CardDialog";
 import { CodeView } from "@/components/CodeView";
+import { Tracer } from "@/components/Tracer";
 import { Markdown } from "@/components/Markdown";
 import { Split } from "@/components/Split";
 import { Badge, Button, Empty, ErrorNote, JobProgress, Spinner } from "@/components/ui";
@@ -19,7 +21,9 @@ export function LensPage() {
   const job = useJob();
   const [openDive, setOpenDive] = useState<number | null>(null);
   const [view, setView] = useState<{ file: string; line?: number } | null>(null);
-  const lens = useQuery({ queryKey: ["lens", project.id, id], queryFn: () => get<Lens>(`/projects/${project.id}/lenses/${id}`) });
+  const [card, setCard] = useState<Partial<Card> | null>(null);
+  const refresh = useJob();
+  const lens = useQuery({ queryKey: ["lens", project.id, id], queryFn: () => get<Lens & { changed: string[] }>(`/projects/${project.id}/lenses/${id}`) });
   const file = useQuery({
     queryKey: ["file", project.id, view?.file],
     queryFn: () => get<FileContent>(`/projects/${project.id}/file?path=${encodeURIComponent(view!.file)}`),
@@ -43,7 +47,12 @@ export function LensPage() {
           {l.diff && <Badge tone="warn">change {l.diff.base}..{l.diff.head || "working tree"}</Badge>}
           <span className="text-xs text-muted">{relTime(l.createdAt)}</span>
         </div>
-        <h1 className="mt-2 text-[26px] font-semibold leading-tight tracking-tight">{l.title}</h1>
+        <div className="mt-2 flex items-start gap-2">
+          <h1 className="min-w-0 flex-1 text-[26px] font-semibold leading-tight tracking-tight">{l.title}</h1>
+          <a href={`/api/projects/${project.id}/lenses/${l.id}/export`} className="mt-1 inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted hover:bg-raised hover:text-ink" title="Download as markdown">
+            <Download className="h-3.5 w-3.5" /> .md
+          </a>
+        </div>
         <p className="mt-1 text-sm italic text-muted">“{l.question}”</p>
         <div className="mt-3 flex flex-wrap gap-1.5">
           {l.files.map((f) => (
@@ -52,6 +61,33 @@ export function LensPage() {
             </button>
           ))}
         </div>
+
+        {l.changed.length > 0 && (
+          <div className="mt-5 flex items-center gap-3 rounded-xl border border-warn/40 bg-warn/8 px-4 py-3 text-sm">
+            <GitCompareArrows className="h-4 w-4 shrink-0 text-warn" />
+            <div className="min-w-0 flex-1">
+              The code changed since this lens was made ({l.changed.map((f) => rel(f)).join(", ")}). It may be out of date.
+            </div>
+            <Button size="sm" icon={<RefreshCw className="h-3.5 w-3.5" />} disabled={refresh.busy}
+              onClick={() => refresh.run(`/projects/${project.id}/lenses/${l.id}/refresh`, {}, (j) => nav(`/p/${project.id}/lens/${j.resultId}`, { replace: true }))}>
+              Refresh
+            </Button>
+          </div>
+        )}
+        {refresh.busy && refresh.job && <div className="mt-3"><JobProgress kind="lens" elapsed={refresh.elapsed} /></div>}
+        {refresh.error && <div className="mt-3"><ErrorNote error={refresh.error} onClose={refresh.clearError} /></div>}
+
+        {l.sketch && (
+          <section className="mt-6 rounded-xl border border-line p-4">
+            <h2 className="mb-2 flex items-center gap-1.5 text-sm font-semibold"><PenLine className="h-4 w-4 text-accent" /> {l.diff ? "Your prediction" : "Your take"} and where it differs</h2>
+            <div className="whitespace-pre-wrap rounded-lg bg-raised px-3 py-2 text-[13.5px]">{l.sketch}</div>
+            {l.differences && l.differences.length > 0 && (
+              <ul className="mt-3 space-y-1.5">
+                {l.differences.map((d, i) => <li key={i} className="flex gap-2 text-[14px] leading-snug"><span className="text-accent">→</span><span>{d}</span></li>)}
+              </ul>
+            )}
+          </section>
+        )}
 
         {l.summary && (
           <div className="mt-6 rounded-xl border border-accent/25 bg-accent/5 p-4 text-[15px] leading-relaxed">{l.summary}</div>
@@ -62,12 +98,28 @@ export function LensPage() {
             <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">Concepts</h2>
             <div className="grid gap-2 sm:grid-cols-2">
               {l.concepts.map((c) => (
-                <div key={c.term} className="card p-3">
-                  <div className="text-sm font-semibold">{c.term}</div>
+                <div key={c.term} className="card group p-3">
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 text-sm font-semibold">{c.term}</div>
+                    <button
+                      className="text-muted opacity-0 transition hover:text-accent group-hover:opacity-100"
+                      title="Make a review card"
+                      onClick={() => setCard({ kind: "concept", front: `What is "${c.term}" in this code, and why does it matter?`, back: c.explain, file: l.files[0], source: { lensId: l.id } })}
+                    >
+                      <Layers className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
                   <div className="mt-0.5 text-[13px] leading-snug text-muted">{c.explain}</div>
                 </div>
               ))}
             </div>
+          </section>
+        )}
+
+        {l.trace && (
+          <section className="mt-8">
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">Trace</h2>
+            <Tracer trace={l.trace} onStep={(f, line) => show(f ?? l.files[0], line)} />
           </section>
         )}
 
@@ -136,6 +188,7 @@ export function LensPage() {
             </Button>
           </div>
           {job.busy && job.job && <div className="mt-3"><JobProgress kind="quiz" elapsed={job.elapsed} /></div>}
+          {card && <CardDialog initial={card} onClose={() => setCard(null)} />}
           {job.error && <div className="mt-3"><ErrorNote error={job.error} onClose={job.clearError} /></div>}
         </section>
       </article>

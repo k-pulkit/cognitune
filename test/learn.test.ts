@@ -224,6 +224,17 @@ describe("learning features", () => {
     expect(e).toContain("pkg/c.py>pkg/b.py");
   });
 
+  it("import graph follows tsconfig path aliases", () => {
+    const d = mkdtempSync(join(tmpdir(), "groklab-alias-"));
+    mkdirSync(join(d, "web", "src", "lib"), { recursive: true });
+    writeFileSync(join(d, "web", "tsconfig.json"), '{ // comment\n "compilerOptions": { "baseUrl": ".", "paths": { "@/*": ["src/*"], } } }');
+    writeFileSync(join(d, "web", "src", "main.tsx"), 'import { a } from "@/lib/a";\nimport x from "react";\n');
+    writeFileSync(join(d, "web", "src", "lib", "a.ts"), "export const a = 1;\n");
+    const files = ["web/tsconfig.json", "web/src/main.tsx", "web/src/lib/a.ts"].map((f) => join(d, f));
+    const g = importGraph(d, files);
+    expect(g.edges).toEqual([{ from: join(d, "web", "src", "main.tsx"), to: join(d, "web", "src", "lib", "a.ts") }]);
+  });
+
   it("glossary merges lens concepts; notes attach to lines", async () => {
     await job("/lenses", { files: [add()], kind: "explain" });
     await job("/lenses", { files: [add()], kind: "concepts" });

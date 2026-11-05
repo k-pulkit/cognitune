@@ -1,0 +1,26 @@
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - name: Browser smoke test (fake model)
+        run: |
+          npx playwright-core install chromium
+          export CHROME=$(ls -d ~/.cache/ms-playwright/chromium-*/chrome-linux64/chrome | tail -1)
+          GROKLAB_HOME=$(mktemp -d) GROKLAB_AGENT=fake node dist/cli.js . --port 4799 --no-open &
+          sleep 3
+          node test/ui-smoke.mjs --url http://127.0.0.1:4799

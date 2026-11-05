@@ -37,12 +37,14 @@ export function CodeView({
 }) {
   const [html, setHtml] = useState<string>("");
   const box = useRef<HTMLDivElement>(null);
+  /** A line the user clicked is already in view; do not scroll to it. */
+  const clicked = useRef<number | null>(null);
 
   useEffect(() => {
     let live = true;
     const mark = (n: number) => {
-      const m = marks?.find((x) => n >= x.from && n <= x.to);
-      return clsx(m?.cls, n === focusLine && "hl");
+      const cls = (marks ?? []).filter((x) => n >= x.from && n <= x.to).map((x) => x.cls);
+      return clsx(cls, n === focusLine && "hl");
     };
     const lines = text.split("\n").length;
     if (lines > MAX_HIGHLIGHT_LINES || lang === "text") {
@@ -68,7 +70,8 @@ export function CodeView({
   }, [text, lang, focusLine, marks]);
 
   useEffect(() => {
-    if (!focusLine || !box.current) return;
+    // The highlighter re-renders after a click too, so keep the guard until another line is focused.
+    if (!focusLine || !box.current || clicked.current === focusLine) return;
     const el = box.current.querySelector<HTMLElement>(`[data-line="${focusLine}"]`);
     el?.scrollIntoView({ block: "center", behavior: "smooth" });
   }, [html, focusLine]);
@@ -76,10 +79,14 @@ export function CodeView({
   return (
     <div
       ref={box}
-      className={clsx("code-view font-mono", className)}
+      className={clsx("code-view font-mono", onLineClick && "clickable", className)}
       onClick={(e) => {
+        if (window.getSelection()?.toString()) return; // selecting text is not a click on a line
         const line = (e.target as HTMLElement).closest<HTMLElement>("[data-line]")?.dataset.line;
-        if (line && onLineClick) onLineClick(Number(line));
+        if (line && onLineClick) {
+          clicked.current = Number(line);
+          onLineClick(Number(line));
+        }
       }}
       dangerouslySetInnerHTML={{ __html: html }}
     />

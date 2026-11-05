@@ -129,6 +129,8 @@ if (process.env.SMOKE_DIFF_DIR) {
 }
 await page.getByRole("button", { name: /^Working tree/ }).click();
 await page.getByPlaceholder("Type to filter").fill("groklab 0.1");
+// The ref list loads in the background; give it a moment before counting.
+for (let i = 0; i < 50 && (await page.locator("[data-i]").count()) !== 1; i++) await page.waitForTimeout(100);
 ok((await page.locator("[data-i]").count()) === 1, "typing filters the ref list");
 await page.keyboard.press("Enter");
 await page.getByRole("button", { name: /groklab 0\.1\.0/ }).waitFor();
@@ -169,6 +171,143 @@ ok(true, "picker adds files; chips fold after 5");
 await page.getByRole("button", { name: /^\+\d+ more$/ }).click();
 ok(await page.getByRole("button", { name: "show less" }).isVisible(), "chips expand");
 await shot("11-context");
+
+
+// ---- learning features -------------------------------------------------
+const P = `${url}/p/${pid}`;
+const openExplore = async (act) => {
+  await page.goto(`${P}/explore${act ? `?do=${act}` : ""}`);
+  await page.getByPlaceholder("Filter files").first().waitFor();
+};
+const pickFile = async (name) => {
+  await page.getByPlaceholder("Filter files").first().fill(name);
+  await page.getByText(name, { exact: true }).first().click();
+  await page.locator(".code-view .line").first().waitFor();
+};
+
+// Today
+await page.goto(`${P}/today`);
+await page.getByRole("heading", { name: "Today" }).waitFor();
+ok(await page.getByText("Review cards").first().isVisible(), "today shows the review card box");
+await shot("13-today");
+
+// Review: the quiz misses above became cards
+await page.goto(`${P}/review`);
+await page.getByRole("button", { name: /Reveal/ }).waitFor();
+ok(true, "review shows a due card from a quiz miss");
+await page.keyboard.press("Space");
+await page.getByRole("button", { name: /^Good/ }).waitFor();
+await shot("14-review");
+await page.getByRole("button", { name: /^Good/ }).click();
+await page.waitForTimeout(300);
+ok(true, "rating a card moves on");
+
+// Lens with my take first, then the trace lens
+await openExplore();
+await pickFile("backoff.ts").catch(async () => pickFile("prompts.ts"));
+await page.getByText("My take first").click();
+await page.getByPlaceholder(/In 2-3 lines/).fill("It builds prompts for each task.");
+await page.getByRole("button", { name: "Make the lens" }).click();
+await page.waitForURL(/\/lens\//, { timeout: 30000 });
+await page.getByText(/where it differs/).waitFor();
+ok(await page.getByText(/you missed the error path/).isVisible(), "sketch-first lens shows the differences");
+await openExplore();
+await page.getByRole("button", { name: /Trace a run/ }).click();
+await page.getByPlaceholder(/e\.g\. add\(3\)/).fill("n = 3");
+await page.getByRole("button", { name: "Make the lens" }).click();
+await page.waitForURL(/\/lens\//, { timeout: 30000 });
+await page.getByText("Step 1: line 1 runs.").waitFor();
+await page.getByRole("button", { name: "Next step" }).click();
+await page.getByText("Step 2: line 2 runs.").waitFor();
+ok(true, "trace lens steps forward");
+await shot("15-trace");
+
+// Teach back
+await openExplore("teach");
+await page.getByPlaceholder(/What does this code do, how/).fill("It builds the system and user prompts for each model task and parses the JSON reply from the last fence.");
+await page.getByRole("button", { name: "Grade my explanation" }).click();
+await page.waitForURL(/\/teach\//, { timeout: 30000 });
+await page.getByText("Fake teach-back grade.").waitFor();
+ok(true, "teach-back is graded");
+await shot("16-teach");
+
+// Tutor
+await openExplore("tutor");
+await page.getByPlaceholder(/Why does this return early/).fill("Why is the last fence used?");
+await page.getByRole("button", { name: "Ask the tutor" }).click();
+await page.waitForURL(/\/tutor\//, { timeout: 30000 });
+await page.getByText("What do you see on line 2?").first().waitFor();
+await page.getByRole("button", { name: "Just tell me" }).click();
+await page.getByText(/Here is the answer/).waitFor({ timeout: 30000 });
+ok(true, "tutor hints first, tells on request");
+await shot("17-tutor");
+
+// Walk
+await openExplore("walk");
+await page.getByRole("button", { name: "Walk me through it" }).click();
+await page.waitForURL(/\/walk\//, { timeout: 30000 });
+await page.getByPlaceholder(/Your answer, from the block/).fill("it imports the shared types it needs");
+await page.getByRole("button", { name: "Check" }).click();
+await page.getByText(/Fake check/).waitFor({ timeout: 30000 });
+ok(true, "walk block is checked");
+await shot("18-walk");
+
+// Bug hunt
+await openExplore("hunt");
+await page.getByRole("button", { name: "Start the hunt" }).click();
+await page.waitForURL(/\/hunt\//, { timeout: 30000 });
+await page.locator(".code-view .line").first().click();
+await page.getByPlaceholder(/What is wrong/).fill("the first line changed");
+await page.getByRole("button", { name: "Check my hunt" }).click();
+await page.getByRole("heading", { name: "Found" }).waitFor({ timeout: 30000 });
+ok(true, "bug hunt finds the planted bug");
+await shot("19-hunt");
+
+// Notes: click a line, add a note
+await openExplore("notes");
+await page.locator(".code-view .line").nth(4).click();
+await page.getByPlaceholder(/Click a line in the code/).fill("my note");
+await page.getByRole("button", { name: "Add note" }).click();
+await page.getByText("line 5").first().waitFor();
+ok(true, "a note pins to the clicked line");
+
+// Weak spots quiz
+await openExplore("quiz");
+await page.getByRole("button", { name: "Quiz my weak spots" }).click();
+await page.waitForURL(/\/quiz\//, { timeout: 30000 });
+await page.getByText("weak spots").first().waitFor();
+ok(true, "weak-spot quiz opens");
+
+// Map, paths, glossary, heatmap, palette
+await page.goto(`${P}/map`);
+await page.getByText("Most depended on").waitFor({ timeout: 30000 });
+ok((await page.locator("svg circle").count()) > 5, "map draws the import graph");
+await shot("20-map");
+await page.goto(`${P}/paths`);
+await page.getByRole("button", { name: "Make a path" }).click();
+await page.waitForURL(/\/paths\/[a-z0-9]+$/, { timeout: 30000 });
+await page.getByText("Stop 1", { exact: false }).first().waitFor();
+ok(true, "a learning path is made");
+await shot("21-path");
+await page.goto(`${P}/library?tab=glossary`);
+await page.getByText("Entry point").first().waitFor();
+ok(true, "glossary lists lens concepts");
+await page.goto(`${P}/progress`);
+await page.getByRole("button", { name: "Whole repo" }).click();
+await page.locator("button[title*='understood'], button[title*='seen']").first().waitFor();
+ok(true, "progress heatmap shows the repo");
+await shot("22-heatmap");
+await page.keyboard.press("Control+k");
+await page.getByPlaceholder(/Type a page/).fill("map");
+await page.keyboard.press("Enter");
+await page.waitForURL(/\/map$/);
+ok(true, "command palette jumps to a page");
+
+await page.goto(`${url}/settings`);
+await page.getByRole("button", { name: "Clean up now" }).click();
+await page.getByText(/Removed \d+ item/).waitFor();
+ok(true, "storage cleanup runs from settings");
+await shot("23-storage");
 
 await page.goto(`${url}/settings`);
 await page.getByText("Model ready: fake").waitFor();

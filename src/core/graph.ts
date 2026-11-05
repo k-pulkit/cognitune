@@ -1,5 +1,5 @@
 import { existsSync, readFileSync, statSync } from "node:fs";
-import { dirname, extname, join, resolve } from "node:path";
+import { dirname, extname, join, relative, resolve } from "node:path";
 import type { Graph } from "./types.js";
 
 /**
@@ -23,8 +23,52 @@ function isFile(p: string): boolean {
   }
 }
 
-function resolveJs(from: string, spec: string, known: Set<string>): string | null {
-  if (!spec.startsWith(".")) return null;
+/** A tsconfig "paths" entry: "@/*" -> ["<abs>/web/src/*"]. */
+interface Alias {
+  prefix: string;
+  targets: string[];
+  /** Folder of the tsconfig; its aliases apply to files under it first. */
+  dir: string;
+}
+
+/** Read "paths" aliases from tsconfig.json files at the root and one folder down. */
+function readAliases(root: string, files: string[]): Alias[] {
+  const configs = files.filter((f) => {
+    const rel = f.slice(root.length + 1);
+    return /(^|\/)tsconfig[\w.-]*\.json$/.test(rel) && rel.split("/").length <= 2;
+  });
+  const out: Alias[] = [];
+  for (const cfg of configs) {
+    try {
+      // tsconfig allows comments and trailing commas.
+      const text = readFileSync(cfg, "utf8").replace(/\/\*[\s\S]*?\*\/|(^|[^:"])\/\/.*$/gm, "$1").replace(/,(\s*[}\]])/g, "$1");
+      const co = (JSON.parse(text).compilerOptions ?? {}) as { baseUrl?: string; paths?: Record<string, string[]> };
+      const base = resolve(dirname(cfg), co.baseUrl ?? ".");
+      for (const [k, v] of Object.entries(co.paths ?? {})) {
+        out.push({ prefix: k.replace(/\*$/, ""), targets: v.map((t) => resolve(base, t.replace(/\*$/, ""))), dir: dirname(cfg) });
+      }
+    } catch {
+      /* not JSON we can read */
+    }
+  }
+  // Longest prefix first, so "@core/" wins over "@/".
+  return out.sort((a, b) => b.prefix.length - a.prefix.length);
+}
+
+function resolveJs(from: string, spec: string, known: Set<string>, aliases: Alias[] = []): string | null {
+  if (!spec.startsWith(".")) {
+    // The nearest tsconfig's aliases first (deepest folder that holds the file), then the others.
+    const matching = aliases
+      .filter((x) => x.prefix && spec.startsWith(x.prefix))
+      .sort((a, b) => Number(from.startsWith(b.dir + "/")) * b.dir.length - Number(from.startsWith(a.dir + "/")) * a.dir.length);
+    for (const a of matching) {
+      for (const t of a.targets) {
+        const hit = resolveJs(from, `./${relativeTo(from, join(t, spec.slice(a.prefix.length)))}`, known);
+        if (hit) return hit;
+      }
+    }
+    return null;
+  }
   const base = resolve(dirname(from), spec);
   const tries = [base];
   // ESM TS writes "./x.js" for "./x.ts".
@@ -33,6 +77,10 @@ function resolveJs(from: string, spec: string, known: Set<string>): string | nul
   for (const e of JS_EXT) tries.push(base + e);
   for (const e of JS_EXT) tries.push(join(base, `index${e}`));
   return tries.find((t) => known.has(t)) ?? null;
+}
+
+function relativeTo(from: string, to: string): string {
+  return relative(dirname(from), to) || ".";
 }
 
 /** Python roots: the folder itself, plus any `src/` folder that holds packages. */
@@ -89,6 +137,7 @@ function pyImports(from: string, src: string, roots: string[], known: Set<string
 /** `files` are absolute paths under `root`. */
 export function importGraph(root: string, files: string[]): Graph {
   const list = files.filter((f) => /\.(m?[jt]sx?|cjs|mts|py)$/.test(f)).slice(0, MAX_FILES);
+  const aliases = readAliases(root, files);
   const known = new Set(list);
   const roots = pyRoots(root, list);
   const edges = new Map<string, Set<string>>();
@@ -107,7 +156,7 @@ export function importGraph(root: string, files: string[]): Graph {
       for (const t of pyImports(f, src, roots, known)) if (t !== f) to.add(t);
     } else {
       for (const m of src.matchAll(JS_RE)) {
-        const t = resolveJs(f, m[1] ?? m[2] ?? m[3], known);
+        const t = resolveJs(f, m[1] ?? m[2] ?? m[3], known, aliases);
         if (t && t !== f) to.add(t);
       }
     }

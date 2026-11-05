@@ -1,11 +1,12 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CheckSquare, FolderPlus, Square, X } from "lucide-react";
-import type { FileContent, FileProgress, TreeNode } from "@core/types";
+import { CheckSquare, FolderPlus, Layers, Square, X } from "lucide-react";
+import type { FileContent, FileProgress, Note, TreeNode } from "@core/types";
 import { get, patch } from "@/lib/api";
 import { useProject } from "@/lib/project";
 import { shortPath } from "@/lib/path";
 import { ActionPanel } from "@/components/ActionPanel";
+import { CardDialog } from "@/components/CardDialog";
 import { CodeView } from "@/components/CodeView";
 import { FileTree } from "@/components/FileTree";
 import { FolderPicker } from "@/components/FolderPicker";
@@ -17,6 +18,16 @@ export function ExplorePage() {
   const { project, selected, setSelected, toggle, openFile, setOpenFile, focusLine, rel } = useProject();
   const qc = useQueryClient();
   const [addingCtx, setAddingCtx] = useState(false);
+  const [carding, setCarding] = useState(false);
+  const notes = useQuery({
+    queryKey: ["notes", project.id, openFile],
+    queryFn: () => get<Note[]>(`/projects/${project.id}/notes?file=${encodeURIComponent(openFile!)}`),
+    enabled: !!openFile,
+  });
+  const noteMarks = useMemo(
+    () => (notes.data ?? []).filter((n) => n.line).map((n) => ({ from: n.line!, to: n.line!, cls: "note" })),
+    [notes.data],
+  );
   const tree = useQuery({ queryKey: ["tree", project.id, project.contexts], queryFn: () => get<TreeNode[]>(`/projects/${project.id}/tree`) });
   const progress = useQuery({ queryKey: ["progress", project.id], queryFn: () => get<FileProgress[]>(`/projects/${project.id}/progress`) });
   const file = useQuery({
@@ -88,6 +99,9 @@ export function ExplorePage() {
             {levels.get(openFile) && levels.get(openFile) !== "new" && (
               <Badge tone={levels.get(openFile) === "understood" ? "good" : levels.get(openFile) === "stale" ? "warn" : "muted"}>{levels.get(openFile)}</Badge>
             )}
+            <Button size="sm" variant="ghost" icon={<Layers className="h-3.5 w-3.5" />} title="Make a review card about this file (click a line first to pin it)" onClick={() => setCarding(true)}>
+              Card
+            </Button>
             <Button size="sm" variant={ticked ? "primary" : "secondary"} icon={ticked ? <CheckSquare className="h-3.5 w-3.5" /> : <Square className="h-3.5 w-3.5" />} onClick={() => toggle(openFile)}>
               {ticked ? "In context" : "Add to context"}
             </Button>
@@ -95,7 +109,9 @@ export function ExplorePage() {
           <div className="min-h-0 flex-1 overflow-auto bg-panel">
             {file.isLoading && <div className="p-6"><Spinner /></div>}
             {file.error && <div className="p-4"><ErrorNote error={(file.error as Error).message} /></div>}
-            {file.data && <CodeView text={file.data.text} lang={file.data.lang} focusLine={focusLine} />}
+            {file.data && (
+              <CodeView text={file.data.text} lang={file.data.lang} focusLine={focusLine} marks={noteMarks} onLineClick={(n) => setOpenFile(openFile, n)} />
+            )}
             {file.data?.truncated && <div className="p-3 text-xs text-warn">File cut at 400 KB.</div>}
           </div>
         </>
@@ -117,6 +133,7 @@ export function ExplorePage() {
         left={left}
         right={<Split id="explore-panel" collapsible side="right" initial={360} min={300} max={560} left={center} right={<ActionPanel files={context} practiceFile={openFile} onSetFiles={setSelected} />} />}
       />
+      {carding && openFile && <CardDialog initial={{ kind: "own", file: openFile, line: focusLine ?? undefined }} onClose={() => setCarding(false)} />}
       {addingCtx && (
         <FolderPicker
           title="Add a context folder"

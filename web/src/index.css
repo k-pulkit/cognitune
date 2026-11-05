@@ -74,6 +74,12 @@ body {
   user-select: none;
 }
 .code-view .line.hl { background: rgb(var(--accent) / 0.12); box-shadow: inset 3px 0 0 rgb(var(--accent)); }
+.code-view .line.note::after { content: "\25CF"; margin-left: 10px; color: rgb(var(--warn)); font-size: 9px; vertical-align: middle; }
+.code-view .line.marked { background: rgb(var(--bad) / 0.12); box-shadow: inset 3px 0 0 rgb(var(--bad)); }
+.code-view .line.bug { background: rgb(var(--bad) / 0.18); box-shadow: inset 3px 0 0 rgb(var(--bad)); }
+.code-view .line.block { background: rgb(var(--accent) / 0.06); }
+.code-view.clickable .line { cursor: pointer; }
+.code-view.clickable .line:hover { background: rgb(var(--raised)); }
 .code-view .line.hole { background: rgb(var(--warn) / 0.12); box-shadow: inset 3px 0 0 rgb(var(--warn)); }
 
 /* ---- markdown ---- */

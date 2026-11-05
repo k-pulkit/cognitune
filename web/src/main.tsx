@@ -16,6 +16,16 @@ import { LensPage } from "./pages/Lens";
 import { QuizPage } from "./pages/Quiz";
 import { ProgressPage } from "./pages/Progress";
 import { SettingsPage } from "./pages/Settings";
+import { TodayPage } from "./pages/Today";
+import { ReviewPage } from "./pages/Review";
+import { TeachPage } from "./pages/Teach";
+import { TutorPage } from "./pages/Tutor";
+import { WalkPage } from "./pages/Walk";
+import { HuntPage } from "./pages/Hunt";
+import { PathPage, PathsPage } from "./pages/Paths";
+
+// The map pulls in d3-force; load it only when opened.
+const MapPage = lazy(() => import("./pages/Map").then((m) => ({ default: m.MapPage })));
 
 // The editor (CodeMirror + languages) is big; load it only on the practice page.
 const PracticePage = lazy(() => import("./pages/Practice").then((m) => ({ default: m.PracticePage })));
@@ -49,8 +59,17 @@ const router = createBrowserRouter([
         path: "/p/:pid",
         element: <ProjectRoute />,
         children: [
-          { index: true, element: <Navigate to="explore" replace /> },
+          { index: true, element: <Navigate to="today" replace /> },
+          { path: "today", element: <TodayPage /> },
           { path: "explore", element: <ExplorePage /> },
+          { path: "review", element: <ReviewPage /> },
+          { path: "map", element: <Suspense fallback={null}><MapPage /></Suspense> },
+          { path: "paths", element: <PathsPage /> },
+          { path: "paths/:id", element: <PathPage /> },
+          { path: "teach/:id", element: <TeachPage /> },
+          { path: "tutor/:id", element: <TutorPage /> },
+          { path: "walk/:id", element: <WalkPage /> },
+          { path: "hunt/:id", element: <HuntPage /> },
           { path: "changes", element: <ChangesPage /> },
           { path: "library", element: <LibraryPage /> },
           { path: "progress", element: <ProgressPage /> },

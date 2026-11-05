@@ -144,8 +144,13 @@ export function createApi(store: Store, opts: { pruneEveryMs?: number } = {}) {
 
   api.get("/projects/:pid/lenses", (c) => c.json(store.list(project(c).id, "lenses")));
   api.get("/projects/:pid/lenses/:id", (c) => {
-    const l = store.get(project(c).id, "lenses", c.req.param("id"));
-    return l ? c.json(l) : fail(c, 404, "lens not found");
+    const p = project(c);
+    const l = store.get(p.id, "lenses", c.req.param("id"));
+    if (!l) return fail(c, 404, "lens not found");
+    // Files that changed since the lens was made, for the "refresh" banner.
+    const ws = new Workspace(p);
+    const changed = l.fileHashes ? l.files.filter((f) => ws.hash(f) !== l.fileHashes![f]) : [];
+    return c.json({ ...l, changed });
   });
   api.post("/projects/:pid/lenses", async (c) => {
     const p = project(c);
