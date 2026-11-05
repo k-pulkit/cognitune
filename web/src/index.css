@@ -1,0 +1,112 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Colour tokens as "r g b" so Tailwind can add alpha (bg-accent/10). */
+:root {
+  --bg: 248 248 251;
+  --panel: 255 255 255;
+  --raised: 243 243 248;
+  --line: 228 228 236;
+  --ink: 24 24 34;
+  --muted: 105 106 122;
+  --accent: 99 84 240;
+  --accent-ink: 255 255 255;
+  --good: 22 155 98;
+  --warn: 196 128 10;
+  --bad: 220 60 72;
+  color-scheme: light;
+}
+.dark {
+  --bg: 13 13 18;
+  --panel: 20 20 27;
+  --raised: 29 29 38;
+  --line: 42 42 54;
+  --ink: 232 232 240;
+  --muted: 145 146 165;
+  --accent: 140 128 255;
+  --accent-ink: 14 12 30;
+  --good: 64 200 140;
+  --warn: 236 178 70;
+  --bad: 248 108 118;
+  color-scheme: dark;
+}
+
+html, body, #root { height: 100%; }
+body {
+  @apply bg-bg text-ink font-sans antialiased;
+  font-feature-settings: "cv11", "ss01";
+}
+
+/* Scrollbars that follow the theme. */
+* { scrollbar-width: thin; scrollbar-color: rgb(var(--line)) transparent; }
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-thumb { background: rgb(var(--line)); border-radius: 8px; border: 2px solid rgb(var(--bg)); }
+*::-webkit-scrollbar-thumb:hover { background: rgb(var(--muted) / 0.6); }
+*::-webkit-scrollbar-track { background: transparent; }
+
+::selection { background: rgb(var(--accent) / 0.25); }
+
+@layer components {
+  .card { @apply rounded-xl border border-line bg-panel shadow-soft; }
+  .input {
+    @apply w-full rounded-lg border border-line bg-panel px-3 py-2 text-sm text-ink outline-none transition
+      placeholder:text-muted/70 focus:border-accent focus:ring-2 focus:ring-accent/20;
+  }
+  .label { @apply mb-1 block text-xs font-medium uppercase tracking-wide text-muted; }
+  .kbd { @apply rounded border border-line bg-raised px-1.5 py-0.5 font-mono text-[11px] text-muted; }
+}
+
+/* ---- code (shiki dual theme) ---- */
+.shiki, .shiki span { color: var(--shiki-light); background-color: transparent !important; }
+.dark .shiki, .dark .shiki span { color: var(--shiki-dark); }
+.code-view pre { margin: 0; padding: 12px 0; font-size: 12.5px; line-height: 1.6; counter-reset: line; }
+.code-view code { display: block; min-width: max-content; }
+.code-view .line { display: inline-block; width: 100%; padding-right: 24px; }
+.code-view .line::before {
+  counter-increment: line;
+  content: counter(line);
+  display: inline-block;
+  width: 3.5em;
+  margin-right: 1.25em;
+  text-align: right;
+  color: rgb(var(--muted) / 0.55);
+  user-select: none;
+}
+.code-view .line.hl { background: rgb(var(--accent) / 0.12); box-shadow: inset 3px 0 0 rgb(var(--accent)); }
+.code-view .line.hole { background: rgb(var(--warn) / 0.12); box-shadow: inset 3px 0 0 rgb(var(--warn)); }
+
+/* ---- markdown ---- */
+.prose-g { @apply text-[14.5px] leading-relaxed text-ink; }
+.prose-g > * + * { @apply mt-3; }
+.prose-g h1, .prose-g h2, .prose-g h3 { @apply font-semibold tracking-tight; }
+.prose-g h1 { @apply text-xl; }
+.prose-g h2 { @apply text-lg; }
+.prose-g h3 { @apply text-base; }
+.prose-g a { @apply text-accent underline-offset-2 hover:underline; }
+.prose-g ul { @apply list-disc pl-5 space-y-1; }
+.prose-g ol { @apply list-decimal pl-5 space-y-1; }
+.prose-g :not(pre) > code { @apply rounded bg-raised px-1.5 py-0.5 font-mono text-[0.85em]; }
+.prose-g pre { @apply overflow-auto rounded-lg border border-line bg-raised p-3 font-mono text-[12.5px] leading-relaxed; }
+.prose-g blockquote { @apply border-l-2 border-accent/50 pl-3 text-muted; }
+.prose-g table { @apply w-full text-sm; }
+.prose-g th, .prose-g td { @apply border-b border-line px-2 py-1 text-left; }
+
+/* ---- diff ---- */
+.diff-add { background: rgb(var(--good) / 0.12); }
+.diff-del { background: rgb(var(--bad) / 0.12); }
+.diff-hunk { background: rgb(var(--accent) / 0.08); color: rgb(var(--muted)); }
+
+/* ---- codemirror fit ---- */
+.cm-theme, .cm-editor { height: 100%; }
+.cm-editor { font-size: 12.5px; }
+.cm-editor .cm-scroller { font-family: "JetBrains Mono Variable", ui-monospace, monospace; }
+.cm-editor.cm-focused { outline: none !important; }
+
+.shimmer { position: relative; overflow: hidden; }
+.shimmer::after {
+  content: ""; position: absolute; inset: 0; transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgb(var(--accent) / 0.08), transparent);
+  animation: shimmer 1.6s infinite;
+}
+@keyframes shimmer { 100% { transform: translateX(100%); } }
