@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { extname, join, relative, resolve, sep, basename } from "node:path";
-import type { DiffFile, DiffSpec, FileContent, Project, TreeNode } from "./types.js";
+import type { DiffFile, DiffSpec, FileContent, GitRepo, Project, TreeNode } from "./types.js";
 
 /** Read-only view of a project's folders: tree, files, git. */
 
@@ -13,6 +13,8 @@ const SKIP_DIRS = new Set([
 const MAX_FILE_BYTES = 400_000;
 /** git's well-known id of the empty tree. */
 const EMPTY_TREE = "4b825dc642cb6eb9a060e54bf8d69288fbee4904";
+/** How deep to look for nested git repos under a folder that is not one. */
+const REPO_SCAN_DEPTH = 4;
 const MAX_TREE_FILES = 20_000;
 
 const LANGS: Record<string, string> = {
@@ -156,13 +158,53 @@ export class Workspace {
 
   // ---- git -------------------------------------------------------------
 
-  get isGit(): boolean {
-    return isGitRepo(this.project.root);
+  /**
+   * Git repos in the project: a folder that is itself in a repo counts as one; otherwise
+   * sub-folders are scanned (up to REPO_SCAN_DEPTH levels, not inside a found repo), so a
+   * workspace folder that holds many repos lists each of them.
+   */
+  repos(): GitRepo[] {
+    const found: string[] = [];
+    const scan = (dir: string, depth: number) => {
+      let entries;
+      try {
+        entries = readdirSync(dir, { withFileTypes: true });
+      } catch {
+        return;
+      }
+      for (const e of entries) {
+        if (!e.isDirectory() || e.name.startsWith(".") || SKIP_DIRS.has(e.name)) continue;
+        const p = join(dir, e.name);
+        if (existsSync(join(p, ".git"))) found.push(p);
+        else if (depth < REPO_SCAN_DEPTH) scan(p, depth + 1);
+      }
+    };
+    for (const r of this.roots) {
+      if (!existsSync(r)) continue;
+      if (isGitRepo(r)) found.push(r);
+      else scan(r, 1);
+    }
+    return found.map((path) => {
+      let branch = "";
+      try {
+        branch = git(path, ["rev-parse", "--abbrev-ref", "HEAD"]).trim();
+      } catch {
+        /* no commits yet */
+      }
+      const name = path === this.project.root ? this.project.name : this.project.contexts.includes(path) ? basename(path) : this.rel(path);
+      return { path, name, branch };
+    });
   }
 
-  refs(): { branches: string[]; commits: { sha: string; subject: string; when: string }[]; current: string } {
-    if (!this.isGit) return { branches: [], commits: [], current: "" };
-    const root = this.project.root;
+  /** The repo folder for a request: the given one (checked), or the project root. */
+  private repo(path?: string): string | null {
+    const dir = path ? this.guard(path) : this.project.root;
+    return isGitRepo(dir) ? dir : null;
+  }
+
+  refs(repoPath?: string): { branches: string[]; commits: { sha: string; subject: string; when: string }[]; current: string } {
+    const root = this.repo(repoPath);
+    if (!root) return { branches: [], commits: [], current: "" };
     let current = "";
     try {
       current = git(root, ["rev-parse", "--abbrev-ref", "HEAD"]).trim();
@@ -188,10 +230,10 @@ export class Workspace {
    * A ref git can diff. HEAD in a repo with no commits becomes the empty tree, so a new repo
    * shows all its files as added.
    */
-  private resolveRef(ref: string): string {
+  private resolveRef(root: string, ref: string): string {
     if (!/^[\w./~^@{}-]+$/.test(ref) || ref.startsWith("-")) throw new Error(`bad ref: ${ref}`);
     try {
-      git(this.project.root, ["rev-parse", "--verify", "--quiet", `${ref}^{commit}`]);
+      git(root, ["rev-parse", "--verify", "--quiet", `${ref}^{commit}`]);
       return ref;
     } catch {
       if (ref === "HEAD") return EMPTY_TREE;
@@ -199,15 +241,18 @@ export class Workspace {
     }
   }
 
-  /** Changed files between `base` and `head` (empty head = working tree, untracked files included). */
+  /**
+   * Changed files between `base` and `head` (empty head = working tree, untracked files included).
+   * `--relative` keeps paths relative to the folder, also when it sits inside a bigger repo.
+   */
   diff(spec: DiffSpec): DiffFile[] {
-    if (!this.isGit) return [];
-    const root = this.project.root;
-    const range = (spec.head ? [spec.base, spec.head] : [spec.base]).map((r) => this.resolveRef(r));
+    const root = this.repo(spec.repo);
+    if (!root) return [];
+    const range = (spec.head ? [spec.base, spec.head] : [spec.base]).map((r) => this.resolveRef(root, r));
     const files: DiffFile[] = [];
-    const numstat = git(root, ["diff", "--numstat", "-M", ...range, "--"]).split("\n").filter(Boolean);
+    const numstat = git(root, ["diff", "--relative", "--numstat", "-M", ...range, "--"]).split("\n").filter(Boolean);
     const status = new Map<string, string>();
-    for (const l of git(root, ["diff", "--name-status", "-M", ...range, "--"]).split("\n").filter(Boolean)) {
+    for (const l of git(root, ["diff", "--relative", "--name-status", "-M", ...range, "--"]).split("\n").filter(Boolean)) {
       const parts = l.split("\t");
       status.set(parts[parts.length - 1], parts[0][0]);
     }
@@ -217,7 +262,7 @@ export class Workspace {
       // numstat writes renames as "dir/{old => new}" or "old => new"
       if (path.includes(" => ")) path = path.replace(/\{[^}]* => ([^}]*)\}/, "$1").replace(/^.* => /, "");
       const s = status.get(path) ?? "M";
-      const patch = git(root, ["diff", "-M", ...range, "--", path]);
+      const patch = git(root, ["diff", "--relative", "-M", ...range, "--", path]);
       files.push({
         path: join(root, path),
         status: s === "A" ? "added" : s === "D" ? "deleted" : s === "R" ? "renamed" : "modified",

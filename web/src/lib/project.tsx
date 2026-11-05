@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { Job, Project } from "@core/types";
 import { get } from "./api";
 
-export type ProjectInfo = Project & { isGit: boolean; running: Job[] };
+export type ProjectInfo = Project & { running: Job[] };
 
 interface Ctx {
   project: ProjectInfo;

@@ -36,7 +36,17 @@ export interface DiffFile {
   patch: string;
 }
 
+export interface GitRepo {
+  /** Absolute path of the repo folder. */
+  path: string;
+  /** Path shown to the user (relative to the project). */
+  name: string;
+  branch: string;
+}
+
 export interface DiffSpec {
+  /** Repo folder; empty or missing means the project root. */
+  repo?: string;
   base: string;
   /** Empty string means the working tree. */
   head: string;
