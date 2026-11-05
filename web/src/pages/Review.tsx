@@ -123,13 +123,13 @@ export function ReviewPage() {
                 )}
                 <div className="mt-4">
                   <div className="label">Answer</div>
-                  <div className="whitespace-pre-wrap rounded-lg border border-good/30 bg-good/5 px-3 py-2 text-sm">{card.back}</div>
+                  <div className="reading whitespace-pre-wrap rounded-lg border border-good/30 bg-good/5 px-4 py-3">{card.back}</div>
                 </div>
                 <div className="mt-5 grid grid-cols-4 gap-2">
                   {RATINGS.map((x) => (
                     <button key={x.r} onClick={() => rate(x.r)} className={clsx("rounded-lg border px-2 py-2 text-center transition", x.cls)}>
                       <div className="text-sm font-semibold">{x.label} <span className="kbd ml-0.5">{x.key}</span></div>
-                      <div className="text-[11px] opacity-80">{untilText(card.next[x.r])}</div>
+                      <div className="text-[12px] opacity-80">{untilText(card.next[x.r])}</div>
                     </button>
                   ))}
                 </div>

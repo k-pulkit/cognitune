@@ -33,9 +33,16 @@
 }
 
 html, body, #root { height: 100%; }
+/* Long-form font: Source Serif 4 (optical sizes) or Inter, picked in Settings. */
+:root { --read-font: 'Source Serif 4 Variable', Georgia, 'Times New Roman', serif; }
+:root[data-read="sans"] { --read-font: 'Inter Variable', system-ui, sans-serif; }
 body {
   @apply bg-bg text-ink font-sans antialiased;
+  /* Inter: single-storey a off, open digits, slashed zero off; tabular numbers where it matters are set per element. */
   font-feature-settings: "cv11", "ss01";
+  font-size: 15px;
+  line-height: 1.55;
+  text-rendering: optimizeLegibility;
 }
 
 /* Scrollbars that follow the theme. */
@@ -60,7 +67,7 @@ body {
 /* ---- code (shiki dual theme) ---- */
 .shiki, .shiki span { color: var(--shiki-light); background-color: transparent !important; }
 .dark .shiki, .dark .shiki span { color: var(--shiki-dark); }
-.code-view pre { margin: 0; padding: 12px 0; font-size: 12.5px; line-height: 1.6; counter-reset: line var(--line-start, 0); }
+.code-view pre { margin: 0; padding: 12px 0; font-size: 13.5px; line-height: 1.65; counter-reset: line var(--line-start, 0); }
 .code-view code { display: block; min-width: max-content; }
 .code-view .line { display: inline-block; width: 100%; padding-right: 24px; }
 .code-view .line::before {
@@ -83,9 +90,18 @@ body {
 .code-view .line.hole { background: rgb(var(--warn) / 0.12); box-shadow: inset 3px 0 0 rgb(var(--warn)); }
 
 /* ---- markdown ---- */
-.prose-g { @apply text-[14.5px] leading-relaxed text-ink; }
-.prose-g > * + * { @apply mt-3; }
-.prose-g h1, .prose-g h2, .prose-g h3 { @apply font-semibold tracking-tight; }
+.prose-g { @apply text-ink; font-family: var(--read-font); font-size: 16.5px; line-height: 1.72; }
+:root[data-read="sans"] .prose-g { font-size: 15.5px; line-height: 1.7; }
+/* Comfortable line length: about 70 characters, wherever prose sits. */
+.prose-g p, .prose-g li, .reading { max-width: 72ch; }
+/* Short reading blocks outside markdown (summaries, feedback, concept text). */
+.reading { font-family: var(--read-font); font-size: 16.5px; line-height: 1.7; }
+:root[data-read="sans"] .reading { font-size: 15.5px; }
+.reading-lg { font-family: var(--read-font); font-size: 21px; line-height: 1.45; }
+:root[data-read="sans"] .reading-lg { font-size: 19px; }
+.prose-g > * + * { @apply mt-4; }
+/* Headings stay in the UI face, so the page keeps one voice for structure and one for reading. */
+.prose-g h1, .prose-g h2, .prose-g h3 { @apply font-sans font-semibold tracking-tight; }
 .prose-g h1 { @apply text-xl; }
 .prose-g h2 { @apply text-lg; }
 .prose-g h3 { @apply text-base; }
@@ -93,7 +109,7 @@ body {
 .prose-g ul { @apply list-disc pl-5 space-y-1; }
 .prose-g ol { @apply list-decimal pl-5 space-y-1; }
 .prose-g :not(pre) > code { @apply rounded bg-raised px-1.5 py-0.5 font-mono text-[0.85em]; }
-.prose-g pre { @apply overflow-auto rounded-lg border border-line bg-raised p-3 font-mono text-[12.5px] leading-relaxed; }
+.prose-g pre { @apply overflow-auto rounded-lg border border-line bg-raised p-3 font-mono text-[13.5px] leading-relaxed; }
 .prose-g blockquote { @apply border-l-2 border-accent/50 pl-3 text-muted; }
 .prose-g table { @apply w-full text-sm; }
 .prose-g th, .prose-g td { @apply border-b border-line px-2 py-1 text-left; }
@@ -121,7 +137,7 @@ body {
    The article is a size container, so the layout follows the pane width (the file pane can be
    open or folded), not the window width. */
 .lens { container-type: inline-size; }
-.lens .prose-g { font-size: 15.5px; line-height: 1.7; }
+
 .lens-concepts { grid-template-columns: 1fr; }
 .lens-step { display: grid; gap: 1rem; grid-template-columns: minmax(0, 1fr); }
 .lens-step.has-code .lens-step-code { order: -1; } /* narrow: code above the text */
@@ -129,7 +145,6 @@ body {
   .lens-concepts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @container (min-width: 960px) {
-  .lens-concepts { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   /* wide: text on the left, its code on the right */
   .lens-step.has-code { grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); align-items: start; }
   .lens-step.has-code .lens-step-code { order: 0; position: sticky; top: 0; }

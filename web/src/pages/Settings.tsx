@@ -5,7 +5,7 @@ import { Check, Cpu, HardDrive, History } from "lucide-react";
 import type { AgentInfo, Job, Settings, StorageUsage } from "@core/types";
 import { get, post, put, relTime } from "@/lib/api";
 import { Button, ErrorNote, Segmented } from "@/components/ui";
-import { useTheme } from "@/lib/theme";
+import { useReadingFont, useTheme } from "@/lib/theme";
 
 interface Resp {
   settings: Settings;
@@ -42,7 +42,7 @@ function StorageCard() {
         <span className="text-sm text-muted">{mb(u.data.totalBytes)}</span>
         <Button size="sm" className="ml-auto shrink-0 whitespace-nowrap" loading={clean.isPending} onClick={() => clean.mutate()}>Clean up now</Button>
       </div>
-      <div className="mt-0.5 break-all font-mono text-[11px] text-muted">{u.data.home}</div>
+      <div className="mt-0.5 break-all font-mono text-[12px] text-muted">{u.data.home}</div>
       <p className="mt-1 text-xs text-muted">
         Plain JSON files, one per item. Archived items and forgotten projects are removed after the keep time below, the reply cache keeps
         to its size, and long lists (quiz attempts, card history, tutor chats, jobs) are capped. Cleanup runs at start and every 6 hours.
@@ -56,7 +56,7 @@ function StorageCard() {
           </div>
         ))}
       </div>
-      <div className="mt-3 text-[11px] text-muted">
+      <div className="mt-3 text-[12px] text-muted">
         {clean.data ? `Removed ${clean.data.removed} item${clean.data.removed === 1 ? "" : "s"}, freed ${mb(clean.data.freedBytes)}.` : u.data.lastPrune ? `Last cleanup ${relTime(u.data.lastPrune.at)}: removed ${u.data.lastPrune.removed}.` : ""}
       </div>
     </div>
@@ -105,6 +105,7 @@ export function SettingsPage() {
   const q = useQuery({ queryKey: ["settings"], queryFn: () => get<Resp>("/settings") });
   const [draft, setDraft] = useState<Settings | null>(null);
   const { pref, setPref } = useTheme();
+  const { font, setFont } = useReadingFont();
   useEffect(() => {
     if (q.data && !draft) setDraft(q.data.settings);
   }, [q.data, draft]);
@@ -143,6 +144,12 @@ export function SettingsPage() {
           <Field label="Theme">
             <Segmented value={pref} onChange={setPref} options={[{ value: "system", label: "System" }, { value: "light", label: "Light" }, { value: "dark", label: "Dark" }]} />
           </Field>
+          <Field label="Reading font" hint="For lessons, feedback and tutor replies. Buttons and labels stay in Inter.">
+            <div className="flex items-center gap-4">
+              <Segmented value={font} onChange={setFont} options={[{ value: "serif", label: "Serif" }, { value: "sans", label: "Sans" }]} />
+              <span className="reading text-muted">Read the code, then explain it.</span>
+            </div>
+          </Field>
           <Field label="Model access" hint="CLIs use their own saved login, so groklab never needs or stores a key. Auto picks the first one found.">
             <div className="grid gap-2 sm:grid-cols-2">
               {PROVIDERS.map((p) => {
@@ -160,7 +167,7 @@ export function SettingsPage() {
                     <div className="flex items-center gap-2 text-sm font-medium">
                       {p.label}
                       {p.id !== "auto" && p.id !== "fake" && (
-                        <span className={clsx("ml-auto shrink-0 whitespace-nowrap rounded-full px-1.5 text-[10px]", found ? "bg-good/12 text-good" : "bg-raised text-muted")}>
+                        <span className={clsx("ml-auto shrink-0 whitespace-nowrap rounded-full px-1.5 text-[11.5px]", found ? "bg-good/12 text-good" : "bg-raised text-muted")}>
                           {found ? "found" : "not found"}
                         </span>
                       )}

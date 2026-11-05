@@ -61,7 +61,7 @@ export function Combobox({
         title={current ? `${current.label}${current.hint ? ` · ${current.hint}` : ""}` : undefined}
       >
         <span className="min-w-0 flex-1 truncate">{current ? current.label : <span className="text-muted">{placeholder}</span>}</span>
-        {current?.hint && <span className="max-w-[40%] shrink-0 truncate text-[11px] text-muted">{current.hint}</span>}
+        {current?.hint && <span className="max-w-[40%] shrink-0 truncate text-[12px] text-muted">{current.hint}</span>}
         <ChevronsUpDown className="h-3.5 w-3.5 shrink-0 text-muted" />
       </button>
       {open && (
@@ -94,7 +94,7 @@ export function Combobox({
             {shown.map((o, i) => (
               <div key={o.value}>
                 {o.group && o.group !== shown[i - 1]?.group && (
-                  <div className="px-3 pb-1 pt-2 text-[10px] font-medium uppercase tracking-wide text-muted">{o.group}</div>
+                  <div className="px-3 pb-1 pt-2 text-[11.5px] font-medium uppercase tracking-wide text-muted">{o.group}</div>
                 )}
                 <button
                   type="button"
@@ -105,7 +105,7 @@ export function Combobox({
                 >
                   <Check className={clsx("h-3.5 w-3.5 shrink-0 text-accent", o.value !== value && "invisible")} />
                   <span className="min-w-0 flex-1 truncate">{o.label}</span>
-                  {o.hint && <span className="max-w-[45%] shrink-0 truncate text-[11px] text-muted">{o.hint}</span>}
+                  {o.hint && <span className="max-w-[45%] shrink-0 truncate text-[12px] text-muted">{o.hint}</span>}
                 </button>
               </div>
             ))}

@@ -132,7 +132,7 @@ export function MapPage() {
     <div className="flex h-full flex-col bg-panel">
       <div className="border-b border-line px-3 py-2.5">
         <div className="text-sm font-semibold">Show only</div>
-        <div className="text-[11px] text-muted">{picked.size ? `${picked.size} file${picked.size === 1 ? "" : "s"} ticked` : "Tick folders or files; none ticked shows all."}</div>
+        <div className="text-[12px] text-muted">{picked.size ? `${picked.size} file${picked.size === 1 ? "" : "s"} ticked` : "Tick folders or files; none ticked shows all."}</div>
         <div className="mt-2 flex items-center gap-3 text-xs">
           <label className="flex cursor-pointer items-center gap-1.5">
             <input type="checkbox" className="accent-[rgb(var(--accent))]" checked={neighbours} onChange={(e) => setNeighbours(e.target.checked)} />
@@ -216,7 +216,7 @@ export function MapPage() {
             );
           })}
         </svg>
-        <div className="pointer-events-none absolute bottom-3 left-3 flex flex-wrap gap-2 text-[11px] text-muted">
+        <div className="pointer-events-none absolute bottom-3 left-3 flex flex-wrap gap-2 text-[12px] text-muted">
           {(["new", "seen", "understood", "fading", "stale"] as FileLevel[]).map((l) => (
             <span key={l} className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full" style={{ background: FILL[l] }} />{l}</span>
           ))}
@@ -236,7 +236,7 @@ export function MapPage() {
             <li key={n.id}>
               <button className="flex w-full items-center gap-2 rounded-md px-2 py-1 text-left hover:bg-raised" onMouseEnter={() => setHover(n.id)} onMouseLeave={() => setHover(null)} onClick={() => open(n.id)}>
                 <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: FILL[levels.get(n.id) ?? "new"] }} />
-                <span className="min-w-0 flex-1 truncate font-mono text-[12px]" title={rel(n.id)}>{shortPath(rel(n.id), 30)}</span>
+                <span className="min-w-0 flex-1 truncate font-mono text-[13px]" title={rel(n.id)}>{shortPath(rel(n.id), 30)}</span>
                 <Badge>{n.fanIn}</Badge>
               </button>
             </li>

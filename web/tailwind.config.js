@@ -16,6 +16,14 @@ export default {
       fontFamily: {
         sans: ["'Inter Variable'", "system-ui", "sans-serif"],
         mono: ["'JetBrains Mono Variable'", "ui-monospace", "monospace"],
+        // Long-form text (lessons, feedback, tutor replies); serif or sans is a reader's choice.
+        read: ["var(--read-font)"],
+      },
+      // One step up from Tailwind's defaults: this is a reading tool, often used for an hour at a time.
+      fontSize: {
+        xs: ["12.5px", { lineHeight: "1.55" }],
+        sm: ["14px", { lineHeight: "1.6" }],
+        base: ["16px", { lineHeight: "1.65" }],
       },
       // Steps used across the app that Tailwind's default opacity scale lacks (bg-accent/12 etc.).
       opacity: { 8: "0.08", 12: "0.12", 35: "0.35", 45: "0.45", 55: "0.55", 85: "0.85" },

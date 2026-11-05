@@ -96,16 +96,16 @@ export function Palette({ pid, root, onClose, openFile }: { pid?: string; root?:
           const head = n === 0 || shown[n - 1].group !== i.group;
           return (
             <div key={i.id}>
-              {head && <div className="px-2 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wide text-muted">{i.group}</div>}
+              {head && <div className="px-2 pb-1 pt-2 text-[11.5px] font-semibold uppercase tracking-wide text-muted">{i.group}</div>}
               <button
                 data-i={n}
                 onMouseMove={() => setAt(n)}
                 onClick={() => pick(i)}
-                className={clsx("flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px]", n === at ? "bg-accent/12 text-ink" : "text-ink/85")}
+                className={clsx("flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[14px]", n === at ? "bg-accent/12 text-ink" : "text-ink/85")}
               >
                 <Icon className="h-3.5 w-3.5 shrink-0 text-muted" />
-                <span className={clsx("min-w-0 flex-1 truncate", i.group === "Files" && "font-mono text-[12px]")}>{i.label}</span>
-                {i.hint && <span className="truncate text-[11px] text-muted">{i.hint}</span>}
+                <span className={clsx("min-w-0 flex-1 truncate", i.group === "Files" && "font-mono text-[13px]")}>{i.label}</span>
+                {i.hint && <span className="truncate text-[12px] text-muted">{i.hint}</span>}
                 {n === at && <CornerDownLeft className="h-3.5 w-3.5 text-muted" />}
               </button>
             </div>

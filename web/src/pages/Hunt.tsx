@@ -98,7 +98,7 @@ export function HuntPage() {
                 />
               </div>
             ))}
-            {!list.length && <p className="rounded-lg border border-dashed border-line p-3 text-[13px] text-muted">No marks yet. Click a line in the code.</p>}
+            {!list.length && <p className="rounded-lg border border-dashed border-line p-3 text-[14px] text-muted">No marks yet. Click a line in the code.</p>}
             <Button
               variant="primary"
               className="mt-2"
@@ -133,7 +133,7 @@ export function HuntPage() {
               <section className="mt-6">
                 <h2 className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-warn"><CircleAlert className="h-4 w-4" /> False alarms</h2>
                 {g.falseAlarms.map((f) => (
-                  <div key={f.line} className="card mb-2 p-3 text-[13.5px]">
+                  <div key={f.line} className="card mb-2 p-3 text-[14.5px]">
                     <button className="font-mono text-xs text-accent hover:underline" onClick={() => setFocus(f.line)}>line {f.line}</button>
                     <div className="mt-1">{f.feedback || "This line is fine."}</div>
                   </div>
@@ -156,10 +156,10 @@ export function HuntPage() {
 function BugCard({ h, line, what, feedback, onShow }: { h: Hunt; line: number; what: string; feedback?: string; onShow: (n: number) => void }) {
   const b = h.planted.find((x) => x?.line === line);
   return (
-    <div className="card mb-2 p-3 text-[13.5px]">
+    <div className="card mb-2 p-3 text-[14.5px]">
       <button className="font-mono text-xs text-accent hover:underline" onClick={() => onShow(line)}>line {line}</button>
       {b && (
-        <div className="mt-2 overflow-x-auto rounded-md bg-raised font-mono text-[12px]">
+        <div className="mt-2 overflow-x-auto rounded-md bg-raised font-mono text-[13px]">
           <div className="whitespace-pre px-2 py-1 text-bad">bug  {b.buggy.trim()}</div>
           <div className="whitespace-pre px-2 py-1 text-good">real {b.original.trim()}</div>
         </div>

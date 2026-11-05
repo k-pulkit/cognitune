@@ -109,9 +109,9 @@ export function PathPage() {
                     <button className="rounded p-1 text-muted hover:bg-raised hover:text-bad" onClick={() => save.mutate(p.stops.filter((_, j) => j !== i))} aria-label="Remove stop"><X className="h-3.5 w-3.5" /></button>
                   </div>
                 </div>
-                <p className="mt-1 text-[13.5px] text-muted">{st.why}</p>
+                <p className="mt-1 text-[14.5px] text-muted">{st.why}</p>
                 <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                  {st.files.map((f) => <span key={f} className="rounded bg-raised px-1.5 py-0.5 font-mono text-[11px]">{rel(f)}</span>)}
+                  {st.files.map((f) => <span key={f} className="rounded bg-raised px-1.5 py-0.5 font-mono text-[12px]">{rel(f)}</span>)}
                   <Button size="sm" variant={i === firstOpen ? "primary" : "secondary"} className="ml-auto" onClick={() => doStop(st)}>
                     {p.done[i] ? "Again" : "Do this stop"}
                   </Button>

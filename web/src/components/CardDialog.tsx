@@ -38,7 +38,7 @@ export function CardDialog({
         </>
       }
     >
-      {initial.file && <div className="mb-3 font-mono text-[11px] text-muted">{rel(initial.file)}{initial.line ? `:${initial.line}` : ""}</div>}
+      {initial.file && <div className="mb-3 font-mono text-[12px] text-muted">{rel(initial.file)}{initial.line ? `:${initial.line}` : ""}</div>}
       <label className="label">Question (front)</label>
       <textarea className="input min-h-[72px]" value={front} onChange={(e) => setFront(e.target.value)} placeholder="What should you be able to recall?" autoFocus />
       <label className="label mt-3">Answer (back)</label>

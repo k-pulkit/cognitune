@@ -34,11 +34,11 @@ export function Tracer({ trace, onStep }: { trace: Trace; onStep: (file?: string
         <button className="rounded-md border border-line p-1 hover:bg-raised disabled:opacity-40" disabled={i === trace.steps.length - 1} onClick={() => setI(i + 1)} aria-label="Next step"><ChevronRight className="h-4 w-4" /></button>
         <span className="w-16 text-right font-mono text-xs text-muted">{i + 1}/{trace.steps.length}</span>
       </div>
-      <div className="px-4 pb-1 text-[13.5px]">
-        {step.file && <span className="mr-2 font-mono text-[11px] text-accent">{rel(step.file)}{step.line ? `:${step.line}` : ""}</span>}
+      <div className="px-4 pb-1 text-[14.5px]">
+        {step.file && <span className="mr-2 font-mono text-[12px] text-accent">{rel(step.file)}{step.line ? `:${step.line}` : ""}</span>}
         {step.note}
       </div>
-      <table className="m-4 mt-2 w-[calc(100%-2rem)] text-[12.5px]">
+      <table className="m-4 mt-2 w-[calc(100%-2rem)] text-[13.5px]">
         <tbody>
           {vars.map((v) => {
             const was = prev[v];
@@ -49,14 +49,14 @@ export function Tracer({ trace, onStep }: { trace: Trace; onStep: (file?: string
                 <td className="py-1 pr-3 font-mono text-muted">{v}</td>
                 <td className={clsx("py-1 font-mono", changed && i > 0 && "text-accent")}>
                   {now ?? <span className="text-muted line-through">{was}</span>}
-                  {changed && i > 0 && was !== undefined && now !== undefined && <span className="ml-2 text-[11px] text-muted">was {was}</span>}
+                  {changed && i > 0 && was !== undefined && now !== undefined && <span className="ml-2 text-[12px] text-muted">was {was}</span>}
                 </td>
               </tr>
             );
           })}
         </tbody>
       </table>
-      <div className="border-t border-line px-4 py-1.5 text-[11px] text-muted">Arrow keys step when this box has focus. Changed values are coloured.</div>
+      <div className="border-t border-line px-4 py-1.5 text-[12px] text-muted">Arrow keys step when this box has focus. Changed values are coloured.</div>
     </div>
   );
 }

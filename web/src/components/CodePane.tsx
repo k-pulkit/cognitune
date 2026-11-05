@@ -31,7 +31,7 @@ export function CodePane({
     <div className="flex h-full flex-col bg-panel">
       {file ? (
         <>
-          <div className="flex items-center gap-2 border-b border-line px-4 py-2 font-mono text-[12px] text-muted">
+          <div className="flex items-center gap-2 border-b border-line px-4 py-2 font-mono text-[13px] text-muted">
             <span className="min-w-0 flex-1 truncate">{title ?? rel(file)}{line ? `:${line}` : ""}</span>
             {onClose && <button className="text-xs hover:text-ink" onClick={onClose}>close</button>}
           </div>

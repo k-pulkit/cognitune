@@ -126,7 +126,7 @@ export function ActionPanel({
             onClick={() => setTab(a.id)}
             title={a.hint}
             className={clsx(
-              "flex flex-col items-center gap-0.5 rounded-lg px-1 py-1.5 text-[11px] font-medium transition",
+              "flex flex-col items-center gap-0.5 rounded-lg px-1 py-1.5 text-[12px] font-medium transition",
               tab === a.id ? "bg-accent/12 text-accent" : "text-muted hover:bg-raised hover:text-ink",
             )}
           >
@@ -152,13 +152,13 @@ export function ActionPanel({
               </button>
             </div>
             {noFiles ? (
-              <p className="rounded-lg border border-dashed border-line p-3 text-[13px] text-muted">
+              <p className="rounded-lg border border-dashed border-line p-3 text-[14px] text-muted">
                 Tick files in the tree, open one, or use Add. The model reads only what you pick.
               </p>
             ) : (
               <div className="flex flex-wrap gap-1.5">
                 {(showAll ? files : files.slice(0, FEW)).map((f) => (
-                  <span key={f} className="group inline-flex max-w-full items-center gap-1 rounded-md bg-raised px-2 py-1 font-mono text-[11px]" title={f}>
+                  <span key={f} className="group inline-flex max-w-full items-center gap-1 rounded-md bg-raised px-2 py-1 font-mono text-[12px]" title={f}>
                     <span className="truncate">{shortPath(rel(f))}</span>
                     <button className="text-muted hover:text-bad" onClick={() => remove(f)} aria-label="Remove">
                       <X className="h-3 w-3" />
@@ -166,14 +166,14 @@ export function ActionPanel({
                   </span>
                 ))}
                 {files.length > FEW && (
-                  <button className="rounded-md px-2 py-1 text-[11px] font-medium text-accent hover:bg-accent/10" onClick={() => setShowAll((v) => !v)}>
+                  <button className="rounded-md px-2 py-1 text-[12px] font-medium text-accent hover:bg-accent/10" onClick={() => setShowAll((v) => !v)}>
                     {showAll ? "show less" : `+${files.length - FEW} more`}
                   </button>
                 )}
               </div>
             )}
             {est.data && (
-              <div className={clsx("mt-1.5 text-[11px]", est.data.cut ? "text-warn" : "text-muted")}>
+              <div className={clsx("mt-1.5 text-[12px]", est.data.cut ? "text-warn" : "text-muted")}>
                 ~{est.data.tokens.toLocaleString()} tokens{est.data.cut && " · some files do not fit and will be left out"}
               </div>
             )}
@@ -186,7 +186,7 @@ export function ActionPanel({
             {practiceFile ? (
               <div className="truncate rounded-md bg-raised px-2 py-1.5 font-mono text-xs" title={practiceFile}>{rel(practiceFile)}</div>
             ) : (
-              <p className="rounded-lg border border-dashed border-line p-3 text-[13px] text-muted">Open a file first.</p>
+              <p className="rounded-lg border border-dashed border-line p-3 text-[14px] text-muted">Open a file first.</p>
             )}
           </section>
         )}
@@ -208,7 +208,7 @@ export function ActionPanel({
                       kind === k.id && !question.trim() ? "border-accent/60 bg-accent/8 ring-1 ring-accent/30" : "border-line hover:border-accent/30 hover:bg-raised",
                     )}
                   >
-                    <div className="text-[13px] font-medium">{k.label}</div>
+                    <div className="text-[14px] font-medium">{k.label}</div>
                     <div className="text-xs text-muted">{k.blurb}</div>
                   </button>
                 ))}
@@ -242,7 +242,7 @@ export function ActionPanel({
               />
             </section>
             <section className="rounded-lg border border-line p-3">
-              <label className="flex cursor-pointer items-center gap-2 text-[13px] font-medium">
+              <label className="flex cursor-pointer items-center gap-2 text-[14px] font-medium">
                 <input type="checkbox" className="accent-[rgb(var(--accent))]" checked={sketchFirst} onChange={(e) => setSketchFirst(e.target.checked)} />
                 <PenLine className="h-3.5 w-3.5 text-accent" />
                 {diff ? "Predict first" : "My take first"}
@@ -255,7 +255,7 @@ export function ActionPanel({
                     value={sketch}
                     onChange={(e) => setSketch(e.target.value)}
                   />
-                  <p className="mt-1 text-[11px] text-muted">The lens opens with where your take differs. That gap is where the learning is.</p>
+                  <p className="mt-1 text-[12px] text-muted">The lens opens with where your take differs. That gap is where the learning is.</p>
                 </>
               )}
             </section>
@@ -286,7 +286,7 @@ export function ActionPanel({
               Quiz me on {files.length || ""} file{files.length === 1 ? "" : "s"}
             </Button>
             <div className="rounded-lg border border-line p-3">
-              <div className="flex items-center gap-2 text-[13px] font-medium"><Target className="h-3.5 w-3.5 text-bad" /> Weak spots · {openWeak}</div>
+              <div className="flex items-center gap-2 text-[14px] font-medium"><Target className="h-3.5 w-3.5 text-bad" /> Weak spots · {openWeak}</div>
               <p className="mt-1 text-xs text-muted">New questions aimed at what you got wrong before, from any file. A right answer clears the weak spot.</p>
               <Button className="mt-2 w-full" size="sm" disabled={!openWeak || job.busy} onClick={() => makeQuiz(true)}>Quiz my weak spots</Button>
             </div>
@@ -398,12 +398,12 @@ function NotesPanel({ file, line }: { file: string; line: number | null }) {
       </section>
       <section className="space-y-2">
         {list.map((n) => (
-          <div key={n.id} className="group rounded-lg border border-line p-2.5 text-[13px]">
+          <div key={n.id} className="group rounded-lg border border-line p-2.5 text-[14px]">
             <div className="flex items-center gap-2">
               {n.line ? (
-                <button className="font-mono text-[11px] text-accent hover:underline" onClick={() => setOpenFile(file, n.line)}>line {n.line}</button>
+                <button className="font-mono text-[12px] text-accent hover:underline" onClick={() => setOpenFile(file, n.line)}>line {n.line}</button>
               ) : (
-                <span className="text-[11px] text-muted">file</span>
+                <span className="text-[12px] text-muted">file</span>
               )}
               <button
                 className="ml-auto text-muted opacity-0 transition hover:text-bad group-hover:opacity-100"

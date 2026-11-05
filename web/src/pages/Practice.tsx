@@ -91,7 +91,7 @@ export function PracticePage() {
           <Badge tone="accent">practice · level {p.level}</Badge>
           <span className="text-xs text-muted">{relTime(p.createdAt)}</span>
         </div>
-        <div className="mt-1.5 truncate font-mono text-[13px]" title={p.file}>{rel(p.file)}</div>
+        <div className="mt-1.5 truncate font-mono text-[14px]" title={p.file}>{rel(p.file)}</div>
         <p className="mt-2 text-xs text-muted">
           Find each <span className="font-mono">HOLE</span> line in the editor and write the code it needs. Pseudo-code is fine if the logic is right.
         </p>
@@ -104,13 +104,13 @@ export function PracticePage() {
           return (
             <div key={h.id} className={clsx("card p-3", r && (r.verdict === "right" ? "border-good/30" : r.verdict === "partial" ? "border-warn/30" : "border-bad/30"))}>
               <div className="flex items-center gap-2">
-                <span className="rounded-md bg-warn/15 px-1.5 py-0.5 font-mono text-[11px] font-semibold text-warn">HOLE {h.id}</span>
-                <span className="text-[11px] text-muted">{h.endLine - h.startLine + 1} line{h.endLine > h.startLine ? "s" : ""} cut</span>
+                <span className="rounded-md bg-warn/15 px-1.5 py-0.5 font-mono text-[12px] font-semibold text-warn">HOLE {h.id}</span>
+                <span className="text-[12px] text-muted">{h.endLine - h.startLine + 1} line{h.endLine > h.startLine ? "s" : ""} cut</span>
                 {r && <span className="ml-auto"><VerdictBadge v={r.verdict} /></span>}
               </div>
               <p className="mt-2 text-sm">{h.intent}</p>
               {h.hints.slice(0, n).map((hint, i) => (
-                <div key={i} className="mt-2 flex gap-2 rounded-md bg-raised px-2.5 py-1.5 text-[13px]">
+                <div key={i} className="mt-2 flex gap-2 rounded-md bg-raised px-2.5 py-1.5 text-[14px]">
                   <Lightbulb className="mt-0.5 h-3.5 w-3.5 shrink-0 text-warn" /> {hint}
                 </div>
               ))}
@@ -119,7 +119,7 @@ export function PracticePage() {
                   {n === 0 ? "Show a hint" : "Another hint"} ({n}/{h.hints.length})
                 </button>
               )}
-              {r?.feedback && <p className="mt-2 border-t border-line pt-2 text-[13px] text-muted">{r.feedback}</p>}
+              {r?.feedback && <p className="mt-2 border-t border-line pt-2 text-[14px] text-muted">{r.feedback}</p>}
             </div>
           );
         })}
