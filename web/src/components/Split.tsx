@@ -27,7 +27,12 @@ function keep(key: string, v: string) {
  */
 export function Split({
   id, left, right, initial = 280, min = 180, max = 640, side = "left", className, collapsible = false,
+  startCollapsed = false, openSignal,
 }: {
+  /** Folded on first visit (before the user has chosen). */
+  startCollapsed?: boolean;
+  /** Change this value to unfold the pane (e.g. when the page wants to show something in it). */
+  openSignal?: unknown;
   id: string;
   left: ReactNode;
   right: ReactNode;
@@ -40,7 +45,15 @@ export function Split({
 }) {
   const key = `groklab.split.${id}`;
   const [size, setSize] = useState(() => stored(key, initial, Number) || initial);
-  const [collapsed, setCollapsed] = useState(() => collapsible && stored(`${key}.collapsed`, false, (v) => v === "1"));
+  const [collapsed, setCollapsed] = useState(() => collapsible && stored(`${key}.collapsed`, startCollapsed, (v) => v === "1"));
+  const firstSignal = useRef(true);
+  useEffect(() => {
+    if (firstSignal.current) {
+      firstSignal.current = false;
+      return;
+    }
+    if (openSignal !== undefined && openSignal !== null) setCollapsed(false);
+  }, [openSignal]);
   const [peek, setPeek] = useState(false);
   const drag = useRef<{ x: number; size: number } | null>(null);
   const leaveTimer = useRef<ReturnType<typeof setTimeout>>();

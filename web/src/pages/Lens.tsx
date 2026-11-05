@@ -72,7 +72,7 @@ export function LensPage() {
 
   const doc = (
     <div className="h-full overflow-auto">
-      <article className="mx-auto max-w-3xl px-8 py-8">
+      <article className="lens mx-auto max-w-[1400px] px-10 py-8">
         <Link to={`/p/${project.id}/library`} className="inline-flex items-center gap-1 text-xs text-muted hover:text-ink">
           <ArrowLeft className="h-3.5 w-3.5" /> Library
         </Link>
@@ -134,7 +134,7 @@ export function LensPage() {
         {l.concepts.length > 0 && (
           <section className="mt-8">
             <h2 className={h2}><BookOpen className="h-4 w-4" /> Words you need first</h2>
-            <div className="grid gap-2 sm:grid-cols-2">
+            <div className="lens-concepts grid gap-2">
               {l.concepts.map((c) => (
                 <div key={c.term} className="card group p-3">
                   <div className="flex items-center gap-2">
@@ -263,7 +263,7 @@ export function LensPage() {
   );
 
   return (
-    <Split id="lens-code" collapsible side="right" initial={480} min={320} max={900} className="h-full" left={doc}
+    <Split id="lens-file" collapsible startCollapsed openSignal={view} side="right" initial={520} min={320} max={900} className="h-full" left={doc}
       right={<CodePane file={view?.file} line={view?.line} empty="Click a file, a step or a line link to see the whole file here." />} />
   );
 }
@@ -298,25 +298,27 @@ function Step({ d, n, text, rel, onShow }: {
           )}
         </div>
       </div>
-      {snippet && (
-        <div className="mx-5 mt-3 max-h-[340px] overflow-auto rounded-lg border border-line bg-panel">
-          <CodeView text={snippet.body} lang={text!.lang} firstLine={snippet.first} marks={keyMark} onLineClick={(line) => onShow(d.file, line)} />
+      <div className={clsx("lens-step px-5 pb-4 pt-3", snippet && "has-code")}>
+        <div className="lens-step-text min-w-0">
+          <Markdown>{d.body}</Markdown>
+          {d.pitfall && (
+            <div className="mt-3 flex gap-2 rounded-lg border border-warn/30 bg-warn/8 px-3 py-2 text-[13.5px]">
+              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-warn" />
+              <span><span className="font-medium">Pitfall: </span>{d.pitfall}</span>
+            </div>
+          )}
         </div>
-      )}
-      <div className="px-5 py-3">
-        <Markdown>{d.body}</Markdown>
-        {d.pitfall && (
-          <div className="mt-3 flex gap-2 rounded-lg border border-warn/30 bg-warn/8 px-3 py-2 text-[13px]">
-            <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-warn" />
-            <span><span className="font-medium">Pitfall: </span>{d.pitfall}</span>
+        {snippet && (
+          <div className="lens-step-code min-w-0 max-h-[420px] overflow-auto rounded-lg border border-line bg-panel">
+            <CodeView text={snippet.body} lang={text!.lang} firstLine={snippet.first} marks={keyMark} onLineClick={(line) => onShow(d.file, line)} />
           </div>
         )}
       </div>
       {d.check && (
         <div className="border-t border-line bg-raised/40 px-5 py-3">
-          <div className="text-[13px]"><span className="font-semibold text-accent">Check yourself: </span>{d.check.q}</div>
+          <div className="text-[14px]"><span className="font-semibold text-accent">Check yourself: </span>{d.check.q}</div>
           {answer ? (
-            <div className="mt-1.5 text-[13px] text-ink/85">{d.check.a}</div>
+            <div className="mt-1.5 text-[14px] text-ink/85">{d.check.a}</div>
           ) : (
             <button className="mt-1.5 inline-flex items-center gap-1 text-xs text-muted hover:text-ink" onClick={() => setAnswer(true)}>
               <Eye className="h-3.5 w-3.5" /> Think first, then show the answer
