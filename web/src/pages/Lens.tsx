@@ -3,7 +3,7 @@ import clsx from "clsx";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import {
   AlertTriangle, ArrowLeft, ArrowRight, BookOpen, ChevronLeft, ChevronRight, Download, Eye, FileCode2, GitCompareArrows, Layers,
-  Lightbulb, ListChecks, PenLine, RefreshCw, Sparkles, Trash2, TriangleAlert,
+  Lightbulb, ListChecks, Maximize2, PenLine, RefreshCw, Sparkles, Trash2, TriangleAlert,
 } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import type { Card, DeepDive, FileContent, Lens } from "@core/types";
@@ -16,7 +16,7 @@ import { CodeView } from "@/components/CodeView";
 import { Inline, Markdown } from "@/components/Markdown";
 import { Split } from "@/components/Split";
 import { Tracer } from "@/components/Tracer";
-import { Badge, Button, Empty, ErrorNote, JobProgress, Segmented, Spinner } from "@/components/ui";
+import { Badge, Button, Empty, ErrorNote, JobProgress, Modal, Segmented, Spinner } from "@/components/ui";
 
 type LensView = Lens & { changed: string[] };
 
@@ -148,30 +148,12 @@ export function LensPage() {
             <H2 icon={<BookOpen className="h-5 w-5" />}>Words you need first</H2>
             <div className="wide lens-concepts grid gap-5">
               {l.concepts.map((c) => (
-                <div key={c.term} className="card group flex flex-col p-5">
-                  <div className="flex items-baseline gap-2">
-                    <div className="flex-1 text-[17px] font-semibold tracking-tight">{c.term}</div>
-                    {c.file && (
-                      <button className="rounded bg-raised px-1.5 py-0.5 font-mono text-[11.5px] text-muted hover:text-accent" onClick={() => show(c.file, c.line)} title="Show in the code">
-                        {c.line ? `line ${c.line}` : "code"}
-                      </button>
-                    )}
-                    <button
-                      className="self-center text-muted opacity-0 transition hover:text-accent group-hover:opacity-100"
-                      title="Make a review card"
-                      onClick={() => setCard({ kind: "concept", front: `What is "${c.term}" in this code, and why does it matter?`, back: c.explain, file: c.file ?? l.files[0], source: { lensId: l.id } })}
-                    >
-                      <Layers className="h-4 w-4" />
-                    </button>
-                  </div>
-                  <p className="read-sm mt-2"><Inline>{c.explain}</Inline></p>
-                  {c.example && (
-                    <div className="read-sm mt-3 rounded-lg bg-raised/70 px-3.5 py-2.5 text-muted">
-                      <div className="mb-1 text-[11.5px] font-semibold uppercase tracking-[0.08em] text-ink/70">Example</div>
-                      <Example text={c.example} />
-                    </div>
-                  )}
-                </div>
+                <ConceptCard
+                  key={c.term}
+                  c={c}
+                  onShow={() => show(c.file, c.line)}
+                  onCard={() => setCard({ kind: "concept", front: `What is "${c.term}" in this code, and why does it matter?`, back: c.explain, file: c.file ?? l.files[0], source: { lensId: l.id } })}
+                />
               ))}
             </div>
           </>
@@ -288,6 +270,65 @@ export function LensPage() {
 
 /** Last two path parts ("lineage/events.py"): says more than initials. */
 /** A concept example: short `code` stays inline; a long `code` span becomes its own wrapped block. */
+type Concept = Lens["concepts"][number];
+
+/** A concept card. It lifts on hover; a long one is clipped, and the expand button (or a click on the text) pops it out to read. */
+function ConceptCard({ c, onShow, onCard }: { c: Concept; onShow: () => void; onCard: () => void }) {
+  const [open, setOpen] = useState(false);
+  const long = c.explain.length + (c.example?.length ?? 0) > 340;
+  const body = (clip: boolean) => (
+    <>
+      <p className={clsx("read-sm mt-2", clip && "line-clamp-5")}><Inline>{c.explain}</Inline></p>
+      {c.example && (
+        <div className={clsx("read-sm mt-3 rounded-lg bg-raised/70 px-3.5 py-2.5 text-muted", clip && "max-h-[9.5rem] overflow-hidden")}>
+          <div className="mb-1 text-[11.5px] font-semibold uppercase tracking-[0.08em] text-ink/70">Example</div>
+          <Example text={c.example} />
+        </div>
+      )}
+    </>
+  );
+  return (
+    <>
+      <div className="card group flex flex-col p-5 transition duration-150 hover:-translate-y-0.5 hover:border-accent/40 hover:shadow-soft">
+        <div className="flex items-baseline gap-2">
+          <div className="flex-1 text-[16px] font-semibold tracking-tight">{c.term}</div>
+          {c.file && (
+            <button className="rounded bg-raised px-1.5 py-0.5 font-mono text-[11.5px] text-muted hover:text-accent" onClick={onShow} title="Show in the code">
+              {c.line ? `line ${c.line}` : "code"}
+            </button>
+          )}
+          <button className="self-center text-muted opacity-0 transition hover:text-accent group-hover:opacity-100" title="Make a review card" onClick={onCard}>
+            <Layers className="h-4 w-4" />
+          </button>
+          <button
+            className={clsx("self-center text-muted transition hover:text-accent", long ? "opacity-100" : "opacity-0 group-hover:opacity-100")}
+            title="Open to read" aria-label="Open to read" onClick={() => setOpen(true)}
+          >
+            <Maximize2 className="h-4 w-4" />
+          </button>
+        </div>
+        {body(long)}
+        {long && (
+          <button className="mt-2 self-start text-[12.5px] text-accent hover:underline" onClick={() => setOpen(true)}>Read all</button>
+        )}
+      </div>
+      {open && (
+        <Modal
+          wide
+          title={c.term}
+          onClose={() => setOpen(false)}
+          footer={<>
+            {c.file && <Button size="sm" variant="ghost" onClick={() => { setOpen(false); onShow(); }}>Show in the code</Button>}
+            <Button size="sm" onClick={() => { setOpen(false); onCard(); }}>Make a review card</Button>
+          </>}
+        >
+          <div className="[&_.read-sm]:!text-[16px] [&_.read-sm]:!leading-[1.65]">{body(false)}</div>
+        </Modal>
+      )}
+    </>
+  );
+}
+
 function Example({ text }: { text: string }) {
   const parts = text.split(/(`[^`]{36,}`)/g).filter((x) => x.replace(/[\s.,;:]+/g, ""));
   return (
