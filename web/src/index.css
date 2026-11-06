@@ -35,7 +35,7 @@
 html, body, #root { height: 100%; }
 /* Long-form font: Source Serif 4 (optical sizes) or Inter, picked in Settings. */
 :root { --read-font: 'Inter Variable', system-ui, sans-serif; }
-:root[data-read="serif"] { --read-font: 'Source Serif 4 Variable', Georgia, 'Times New Roman', serif; }
+:root[data-read="serif"] { --read-font: Charter, 'Bitstream Charter', 'Source Serif 4 Variable', Georgia, serif; }
 body {
   @apply bg-bg text-ink font-sans antialiased;
   /* Inter: single-storey a off, open digits, slashed zero off; tabular numbers where it matters are set per element. */
@@ -93,17 +93,17 @@ body {
 
 /* ---- markdown ---- */
 /* Long-form text, sized like a good engineering blog: 17px, airy line height, full-strength ink. */
-.prose-g { @apply text-ink; font-family: var(--read-font); font-size: 17px; line-height: 1.65; letter-spacing: -0.003em; }
-:root[data-read="serif"] .prose-g { font-size: 18px; line-height: 1.7; letter-spacing: 0; }
-.read { font-family: var(--read-font); font-size: 17px; line-height: 1.65; letter-spacing: -0.003em; }
+.prose-g { @apply text-ink; font-family: var(--read-font); font-size: 16px; line-height: 1.65; letter-spacing: -0.003em; }
+:root[data-read="serif"] .prose-g { font-size: 17px; line-height: 1.7; letter-spacing: 0; }
+.read { font-family: var(--read-font); font-size: 16px; line-height: 1.65; letter-spacing: -0.003em; }
 /* Text inside cards and callouts: a notch smaller than the article body. */
-.read-sm { font-family: var(--read-font); font-size: 15.5px; line-height: 1.6; }
-:root[data-read="serif"] .read { font-size: 18px; letter-spacing: 0; }
-.read-lead { font-family: var(--read-font); font-size: 21px; line-height: 1.45; font-weight: 500; letter-spacing: -0.012em; }
-:root[data-read="serif"] .read-lead { font-size: 22px; font-weight: 400; }
+.read-sm { font-family: var(--read-font); font-size: 14.5px; line-height: 1.6; }
+:root[data-read="serif"] .read { font-size: 17px; letter-spacing: 0; }
+.read-lead { font-family: var(--read-font); font-size: 18px; line-height: 1.45; font-weight: 500; letter-spacing: -0.012em; }
+:root[data-read="serif"] .read-lead { font-size: 18.5px; font-weight: 400; }
 /* Older class names, kept so every page shares the same reading style. */
-.reading { font-family: var(--read-font); font-size: 16px; line-height: 1.7; }
-.reading-lg { font-family: var(--read-font); font-size: 21px; line-height: 1.45; }
+.reading { font-family: var(--read-font); font-size: 15.5px; line-height: 1.7; }
+.reading-lg { font-family: var(--read-font); font-size: 19px; line-height: 1.45; }
 /* Inline code in text: a light tint only (no border), so a sentence full of identifiers still reads as a sentence. */
 .prose-g :not(pre) > code, .md-inline code, .read code, .read-sm code {
   font-family: 'JetBrains Mono Variable', ui-monospace, monospace;
@@ -157,6 +157,10 @@ body {
   animation: shimmer 1.6s infinite;
 }
 @keyframes shimmer { 100% { transform: translateX(100%); } }
+
+/* Text inside cards is a step smaller than the page text. */
+.card .read-sm, .lens-concepts .read-sm, .lens-step .read-sm { font-size: 14px; line-height: 1.55; }
+:root[data-read="serif"] .card .read-sm, :root[data-read="serif"] .lens-concepts .read-sm { font-size: 14.5px; }
 
 /* One reading width for every page that opens from the Library, the same as the lens column. */
 .page { @apply mx-auto w-full max-w-[54rem] px-8 py-8; }
