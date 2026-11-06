@@ -40,7 +40,7 @@ export function TodayPage() {
 
         {t.suggestion && (
           <div className="card mt-6 flex items-center gap-4 border-accent/30 bg-accent/5 p-5">
-            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-accent/15 text-accent"><Sparkles className="h-5 w-5" /></div>
+            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-accent/15 text-accent"><Sparkles className="h-5 w-5" /></div>
             <div className="min-w-0 flex-1">
               <div className="text-xs font-medium uppercase tracking-wide text-accent">Suggested next, about 10 minutes</div>
               <div className="mt-0.5 text-[16px]">{t.suggestion.text}</div>

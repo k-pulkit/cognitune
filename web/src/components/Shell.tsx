@@ -14,35 +14,31 @@ import { Palette, ShortcutHelp } from "./Palette";
 export function Logo({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 32 32" className={className} aria-hidden>
-      <defs>
-        <linearGradient id="gl-g" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="rgb(var(--accent))" />
-          <stop offset="1" stopColor="#c056f5" />
-        </linearGradient>
-      </defs>
-      <rect width="32" height="32" rx="9" fill="url(#gl-g)" />
+      <rect width="32" height="32" rx="6" fill="rgb(var(--accent))" />
       <circle cx="14" cy="14" r="6.5" fill="none" stroke="white" strokeWidth="2.8" />
       <path d="M19 19l6 6" stroke="white" strokeWidth="2.8" strokeLinecap="round" />
     </svg>
   );
 }
 
+/** Activity-bar button: icon only, name in the tooltip, 2px bar on the left when active. */
 function NavItem({ to, icon, label, end, badge }: { to: string; icon: React.ReactNode; label: string; end?: boolean; badge?: number }) {
   return (
     <NavLink
       to={to}
       end={end}
+      title={label}
+      aria-label={label}
       className={({ isActive }) =>
         clsx(
-          "group relative flex flex-col items-center gap-1 rounded-xl px-1.5 py-2 text-[11px] font-medium leading-tight transition",
-          isActive ? "bg-accent/12 text-accent" : "text-muted hover:bg-raised hover:text-ink",
+          "relative grid h-12 w-12 shrink-0 place-items-center transition-colors",
+          isActive ? "text-ink before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-accent" : "text-muted hover:text-ink",
         )
       }
     >
       {icon}
-      <span>{label}</span>
       {!!badge && (
-        <span className="absolute right-1.5 top-1 min-w-[16px] rounded-full bg-accent px-1 text-center text-[11px] font-semibold leading-4 text-accent-ink">{badge > 99 ? "99+" : badge}</span>
+        <span className="absolute bottom-2 right-1.5 min-w-[16px] rounded-full bg-accent px-1 text-center text-[10px] font-semibold leading-4 text-accent-ink">{badge > 99 ? "99+" : badge}</span>
       )}
     </NavLink>
   );
@@ -84,58 +80,55 @@ export function Shell() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  const modelText = ready === undefined ? "checking model" : ready ? "model ready" : "model off";
   return (
-    <div className="flex h-full">
-      <aside className="flex w-[80px] shrink-0 flex-col items-stretch gap-1 overflow-y-auto border-r border-line bg-panel px-3 py-3">
-        <NavLink to="/" className="mb-3 flex justify-center" title="groklab: projects">
-          <Logo className="h-9 w-9" />
+    <div className="flex h-full flex-col">
+      <div className="flex min-h-0 flex-1">
+        <aside className="flex w-12 shrink-0 flex-col items-stretch overflow-y-auto bg-rail">
+          <NavLink to="/" className="grid h-12 place-items-center" title="groklab: projects" aria-label="groklab: projects">
+            <Logo className="h-6 w-6" />
+          </NavLink>
+          {pid ? (
+            <>
+              <NavItem to={`/p/${pid}/today`} icon={<Sunrise className="h-6 w-6" strokeWidth={1.5} />} label="Today" />
+              <NavItem to={`/p/${pid}/explore`} icon={<Compass className="h-6 w-6" strokeWidth={1.5} />} label="Explore" />
+              <NavItem to={`/p/${pid}/changes`} icon={<GitCompare className="h-6 w-6" strokeWidth={1.5} />} label="Changes" />
+              <NavItem to={`/p/${pid}/review`} icon={<Layers className="h-6 w-6" strokeWidth={1.5} />} label="Review" badge={due.data?.length} />
+              <NavItem to={`/p/${pid}/map`} icon={<MapIcon className="h-6 w-6" strokeWidth={1.5} />} label="Map" />
+              <NavItem to={`/p/${pid}/paths`} icon={<Route className="h-6 w-6" strokeWidth={1.5} />} label="Paths" />
+              <NavItem to={`/p/${pid}/library`} icon={<BookOpen className="h-6 w-6" strokeWidth={1.5} />} label="Library" />
+              <NavItem to={`/p/${pid}/progress`} icon={<BarChart3 className="h-6 w-6" strokeWidth={1.5} />} label="Progress" />
+            </>
+          ) : (
+            <NavItem to="/" end icon={<Home className="h-6 w-6" strokeWidth={1.5} />} label="Projects" />
+          )}
+          <div className="flex-1" />
+          {pid && <NavItem to="/" end icon={<FolderGit2 className="h-6 w-6" strokeWidth={1.5} />} label="Projects" />}
+          <NavItem to="/help" icon={<HelpCircle className="h-6 w-6" strokeWidth={1.5} />} label="Help" />
+          <NavItem to="/settings" icon={<Settings className="h-6 w-6" strokeWidth={1.5} />} label="Settings" />
+        </aside>
+        <main className="min-w-0 flex-1">
+          <Outlet />
+        </main>
+      </div>
+      <footer className="flex h-[22px] shrink-0 items-center gap-1 border-t border-line bg-status px-2 text-[12px] text-muted">
+        {root && <span className="px-1.5" title={root}>{root.split("/").filter(Boolean).pop()}</span>}
+        <NavLink to="/settings" title={health.data?.agent.detail ?? "checking the model"} className="flex items-center gap-1.5 px-1.5 hover:bg-raised">
+          <span className={clsx("h-2 w-2 rounded-full", ready === undefined ? "bg-line" : ready ? "bg-good" : "bg-bad")} />
+          {modelText}
         </NavLink>
-        {pid ? (
-          <>
-            <NavItem to={`/p/${pid}/today`} icon={<Sunrise className="h-5 w-5" />} label="Today" />
-            <NavItem to={`/p/${pid}/explore`} icon={<Compass className="h-5 w-5" />} label="Explore" />
-            <NavItem to={`/p/${pid}/changes`} icon={<GitCompare className="h-5 w-5" />} label="Changes" />
-            <NavItem to={`/p/${pid}/review`} icon={<Layers className="h-5 w-5" />} label="Review" badge={due.data?.length} />
-            <NavItem to={`/p/${pid}/map`} icon={<MapIcon className="h-5 w-5" />} label="Map" />
-            <NavItem to={`/p/${pid}/paths`} icon={<Route className="h-5 w-5" />} label="Paths" />
-            <NavItem to={`/p/${pid}/library`} icon={<BookOpen className="h-5 w-5" />} label="Library" />
-            <NavItem to={`/p/${pid}/progress`} icon={<BarChart3 className="h-5 w-5" />} label="Progress" />
-          </>
-        ) : (
-          <NavItem to="/" end icon={<Home className="h-5 w-5" />} label="Projects" />
-        )}
         <div className="flex-1" />
         <button
           onClick={() => setPalette(true)}
           title="Go to or do (Ctrl/Cmd+K). Press ? for all shortcuts."
-          className="flex flex-col items-center gap-1 rounded-xl px-1.5 py-2 text-[11px] font-medium leading-tight text-muted transition hover:bg-raised hover:text-ink"
+          className="flex items-center gap-1 px-1.5 hover:bg-raised"
         >
-          <Command className="h-5 w-5" />
-          <span>Ctrl K</span>
+          <Command className="h-3 w-3" /> Ctrl K
         </button>
-        {pid && <NavItem to="/" end icon={<FolderGit2 className="h-5 w-5" />} label="Projects" />}
-        <NavItem to="/help" icon={<HelpCircle className="h-5 w-5" />} label="Help" />
-        <NavItem to="/settings" icon={<Settings className="h-5 w-5" />} label="Settings" />
-        <button
-          onClick={() => setPref(NEXT[pref])}
-          title={`Theme: ${pref} (click to change)`}
-          className="flex flex-col items-center gap-1 rounded-xl px-1.5 py-2 text-[11px] font-medium leading-tight text-muted transition hover:bg-raised hover:text-ink"
-        >
-          <ThemeIcon className="h-5 w-5" />
-          <span className="capitalize">{pref}</span>
+        <button onClick={() => setPref(NEXT[pref])} title={`Theme: ${pref} (click to change)`} className="flex items-center gap-1 px-1.5 hover:bg-raised">
+          <ThemeIcon className="h-3 w-3" /> <span className="capitalize">{pref}</span>
         </button>
-        <NavLink
-          to="/settings"
-          title={health.data?.agent.detail ?? "checking the model"}
-          className="mt-1 flex items-center justify-center gap-1.5 text-[11px] text-muted"
-        >
-          <span className={clsx("h-2 w-2 rounded-full", ready === undefined ? "bg-line" : ready ? "bg-good" : "bg-bad")} />
-          model
-        </NavLink>
-      </aside>
-      <main className="min-w-0 flex-1">
-        <Outlet />
-      </main>
+      </footer>
       {palette && (
         <Palette
           pid={pid}

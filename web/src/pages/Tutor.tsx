@@ -58,7 +58,7 @@ export function TutorPage() {
       <div className="min-h-0 flex-1 space-y-4 overflow-auto px-6 py-5">
         {t.messages.map((m, i) => (
           <div key={i} className={clsx("flex", m.role === "user" ? "justify-end" : "justify-start")}>
-            <div className={clsx("max-w-[85%] rounded-2xl px-4 py-3", m.role === "user" ? "bg-accent text-accent-ink" : "card")}>
+            <div className={clsx("max-w-[85%] rounded-md px-4 py-3", m.role === "user" ? "bg-accent text-accent-ink" : "card")}>
               {m.role === "tutor" && m.hintLevel && (
                 <Badge tone={m.hintLevel >= 4 ? "warn" : "accent"} className="mb-1.5"><Lightbulb className="h-3 w-3" /> {LEVEL[m.hintLevel]}</Badge>
               )}

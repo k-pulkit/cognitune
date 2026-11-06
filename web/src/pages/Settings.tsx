@@ -222,7 +222,7 @@ export function SettingsPage() {
           <Field label="Theme">
             <Segmented value={pref} onChange={setPref} options={[{ value: "system", label: "System" }, { value: "light", label: "Light" }, { value: "dark", label: "Dark" }]} />
           </Field>
-          <Field label="Reading font" hint="For lessons, feedback and tutor replies. Buttons and labels stay in Inter.">
+          <Field label="Reading font" hint="For lessons, feedback and tutor replies. Buttons and labels stay in the system UI font.">
             <div className="flex items-center gap-4">
               <Segmented value={font} onChange={setFont} options={[{ value: "sans", label: "Sans" }, { value: "serif", label: "Serif" }]} />
               <span className="reading text-muted">Read the code, then explain it.</span>

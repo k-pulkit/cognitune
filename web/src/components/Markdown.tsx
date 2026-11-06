@@ -5,14 +5,14 @@ import { useIsDark } from "@/lib/theme";
 
 /** Mermaid colours from the app tokens (index.css), so diagrams match the page in both themes. */
 const LIGHT_VARS = {
-  background: "#ffffff", mainBkg: "#eeedfd", primaryColor: "#eeedfd", primaryTextColor: "#181822", primaryBorderColor: "#6354f0",
-  nodeBorder: "#6354f0", lineColor: "#696a7a", secondaryColor: "#f3f3f8", tertiaryColor: "#f3f3f8", textColor: "#181822",
-  edgeLabelBackground: "#ffffff", clusterBkg: "#f3f3f8", clusterBorder: "#e4e4ec", fontSize: "14px",
+  background: "#fdf6e3", mainBkg: "#eee8d5", primaryColor: "#eee8d5", primaryTextColor: "#586e75", primaryBorderColor: "#268bd2",
+  nodeBorder: "#268bd2", lineColor: "#839496", secondaryColor: "#eee8d5", tertiaryColor: "#eee8d5", textColor: "#586e75",
+  edgeLabelBackground: "#fdf6e3", clusterBkg: "#eee8d5", clusterBorder: "#ddd6c1", fontSize: "14px",
 };
 const DARK_VARS = {
-  background: "#14141b", mainBkg: "#232040", primaryColor: "#232040", primaryTextColor: "#e8e8f0", primaryBorderColor: "#8c80ff",
-  nodeBorder: "#8c80ff", lineColor: "#9192a5", secondaryColor: "#1d1d26", tertiaryColor: "#1d1d26", textColor: "#e8e8f0",
-  edgeLabelBackground: "#14141b", clusterBkg: "#1d1d26", clusterBorder: "#2a2a36", fontSize: "14px",
+  background: "#1f1f1f", mainBkg: "#2a2d2e", primaryColor: "#2a2d2e", primaryTextColor: "#cccccc", primaryBorderColor: "#3794ff",
+  nodeBorder: "#3794ff", lineColor: "#9d9d9d", secondaryColor: "#2a2d2e", tertiaryColor: "#2a2d2e", textColor: "#cccccc",
+  edgeLabelBackground: "#1f1f1f", clusterBkg: "#2a2d2e", clusterBorder: "#2b2b2b", fontSize: "14px",
 };
 
 let mermaidPromise: Promise<typeof import("mermaid").default> | null = null;
@@ -31,7 +31,7 @@ export function Mermaid({ code }: { code: string }) {
         startOnLoad: false,
         theme: "base",
         securityLevel: "strict",
-        fontFamily: "Inter Variable, system-ui, sans-serif",
+        fontFamily: "system-ui, -apple-system, Segoe UI, Ubuntu, sans-serif",
         themeVariables: dark ? DARK_VARS : LIGHT_VARS,
         flowchart: { useMaxWidth: true, curve: "basis", nodeSpacing: 30, rankSpacing: 40, padding: 8, htmlLabels: true },
       });
@@ -61,7 +61,7 @@ export function Mermaid({ code }: { code: string }) {
     <>
       <div className="relative my-6">
         <div
-          className="md-figure flex cursor-zoom-in justify-center rounded-xl border border-line bg-panel p-4"
+          className="md-figure flex cursor-zoom-in justify-center rounded-md border border-line bg-panel p-4"
           title="Click to enlarge"
           onClick={() => setBig(true)}
           dangerouslySetInnerHTML={{ __html: svg }}
@@ -70,7 +70,7 @@ export function Mermaid({ code }: { code: string }) {
       </div>
       {big && (
         <div className="fixed inset-0 z-50 grid cursor-zoom-out place-items-center bg-ink/40 p-6 backdrop-blur-sm" onClick={() => setBig(false)}>
-          <div className="md-figure-big max-h-full max-w-full overflow-auto rounded-xl border border-line bg-panel p-6 shadow-soft" onClick={(e) => e.stopPropagation()} dangerouslySetInnerHTML={{ __html: svg }} />
+          <div className="md-figure-big max-h-full max-w-full overflow-auto rounded-md border border-line bg-panel p-6" onClick={(e) => e.stopPropagation()} dangerouslySetInnerHTML={{ __html: svg }} />
         </div>
       )}
     </>

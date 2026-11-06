@@ -60,7 +60,7 @@ export function CodeView({
         const language = (ALIAS[lang] ?? lang) as BundledLanguage;
         const out = await s.codeToHtml(text, {
           lang: language in s.bundledLanguages ? language : "text",
-          themes: { light: "github-light", dark: "github-dark" },
+          themes: { light: "solarized-light", dark: "dark-plus" },
           defaultColor: false,
           transformers: [{ line(node, n) { node.properties["data-line"] = n; const c = mark(n); if (c) this.addClassToHast(node, c); } }],
         });
