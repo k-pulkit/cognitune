@@ -49,8 +49,32 @@ export function Mermaid({ code }: { code: string }) {
       live = false;
     };
   }, [code, dark, id]);
+  const [big, setBig] = useState(false);
+  useEffect(() => {
+    if (!big) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setBig(false); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [big]);
   if (bad) return <pre>{code}</pre>;
-  return <div className="md-figure my-6 flex justify-center overflow-x-auto rounded-xl border border-line bg-panel p-5" dangerouslySetInnerHTML={{ __html: svg }} />;
+  return (
+    <>
+      <div className="relative my-6">
+        <div
+          className="md-figure flex cursor-zoom-in justify-center rounded-xl border border-line bg-panel p-4"
+          title="Click to enlarge"
+          onClick={() => setBig(true)}
+          dangerouslySetInnerHTML={{ __html: svg }}
+        />
+        <span className="pointer-events-none absolute right-3 top-2 text-[11px] text-muted">click to enlarge</span>
+      </div>
+      {big && (
+        <div className="fixed inset-0 z-50 grid cursor-zoom-out place-items-center bg-ink/40 p-6 backdrop-blur-sm" onClick={() => setBig(false)}>
+          <div className="md-figure-big max-h-full max-w-full overflow-auto rounded-xl border border-line bg-panel p-6 shadow-soft" onClick={(e) => e.stopPropagation()} dangerouslySetInnerHTML={{ __html: svg }} />
+        </div>
+      )}
+    </>
+  );
 }
 
 /** " -> " in prose becomes " → ", but not inside `code` or fenced blocks. */

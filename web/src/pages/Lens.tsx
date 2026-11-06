@@ -166,10 +166,10 @@ export function LensPage() {
                   </div>
                   <p className="read-sm mt-2"><Inline>{c.explain}</Inline></p>
                   {c.example && (
-                    <p className="read-sm mt-3 rounded-lg bg-raised/70 px-3.5 py-2.5 text-muted">
-                      <span className="mr-1.5 text-[11.5px] font-semibold uppercase tracking-[0.08em] text-ink/70">Example</span>
-                      <Inline>{c.example}</Inline>
-                    </p>
+                    <div className="read-sm mt-3 rounded-lg bg-raised/70 px-3.5 py-2.5 text-muted">
+                      <div className="mb-1 text-[11.5px] font-semibold uppercase tracking-[0.08em] text-ink/70">Example</div>
+                      <Example text={c.example} />
+                    </div>
                   )}
                 </div>
               ))}
@@ -287,6 +287,24 @@ export function LensPage() {
 }
 
 /** Last two path parts ("lineage/events.py"): says more than initials. */
+/** A concept example: short `code` stays inline; a long `code` span becomes its own wrapped block. */
+function Example({ text }: { text: string }) {
+  const parts = text.split(/(`[^`]{36,}`)/g).filter((x) => x.replace(/[\s.,;:]+/g, ""));
+  return (
+    <>
+      {parts.map((x, i) =>
+        /^`[^`]{36,}`$/.test(x) ? (
+          <pre key={i} className="my-2 whitespace-pre-wrap break-words rounded-md border border-line/70 bg-panel px-3 py-2 font-mono text-[12.5px] leading-[1.6] text-ink">
+            {x.slice(1, -1)}
+          </pre>
+        ) : (
+          <p key={i}><Inline>{x}</Inline></p>
+        ),
+      )}
+    </>
+  );
+}
+
 function tail(path: string): string {
   return path.split("/").slice(-2).join("/");
 }

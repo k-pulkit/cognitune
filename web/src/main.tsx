@@ -7,6 +7,7 @@ import "./index.css";
 import { lazy, StrictMode, Suspense } from "react";
 import { createRoot } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { HelpPage } from "@/pages/Help";
 import { createBrowserRouter, Navigate, Outlet, RouterProvider, useParams } from "react-router-dom";
 import { Shell } from "./components/Shell";
 import { Empty, Button } from "./components/ui";
@@ -60,6 +61,7 @@ const router = createBrowserRouter([
     children: [
       { path: "/", element: <ProjectsPage /> },
       { path: "/settings", element: <SettingsPage /> },
+      { path: "/help", element: <HelpPage /> },
       {
         path: "/p/:pid",
         element: <ProjectRoute />,

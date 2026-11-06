@@ -49,6 +49,62 @@ export class FakeAgent implements Agent {
           ],
         };
       }
+      case "walkPlan":
+        return { blocks: [1, 2].map((i) => ({ startLine: i, endLine: i + 2, title: `Block ${i} does one thing`, covers: ["a fact"], example: "n = 3", question: "what happens for n = 3?" })) };
+      case "walkBlocks": {
+        const m = /WRITE BLOCKS (\d+)-(\d+)/.exec(prompt);
+        const [a, b] = m ? [Number(m[1]), Number(m[2])] : [0, 0];
+        return {
+          blocks: Array.from({ length: b - a + 1 }, (_, k) => ({
+            index: a + k, why: `Block ${a + k} follows the last one.`, explain: `Fake explanation for block ${a + k}.`,
+            example: "With `n = 3`:\n\n```\nresult = f(3)  # 6\n```", question: `Fake question ${a + k}: what does f(3) give?`,
+          })),
+        };
+      }
+      case "plan":
+        return { outline: "1. Start with the entry point.\n2. Cover the main branch.\n3. End with the error path." };
+      case "lensPlan":
+        return {
+          title: `How ${file} works`,
+          tldr: `The one idea: ${file} turns input into output in a single pass.`,
+          whyItMatters: "Without this model you will change the wrong line.",
+          concepts: [{ term: "Entry point", note: "Where the work starts.", file, line: 1 }],
+          intuition: { example: "n = 3", diagram: "input to output" },
+          steps: [1, 2, 3, 4].map((i) => ({
+            title: `Step ${i} is one idea about ${file}`, file, startLine: i, endLine: i + 3, line: i,
+            covers: [`Fact ${i}`], example: "n = 3", edge: "", why: "It keeps the output stable.", pitfall: "", check: "what if empty?",
+          })),
+          gotchas: ["Line 3 runs even when the input is empty."],
+          nextSteps: [{ file, why: "Read it again with the steps in mind." }],
+        };
+      case "lensIntro": {
+        const sketch = /SKETCH/.test(prompt) ? { differences: ["Your sketch is close; you missed the error path at line 3."] } : {};
+        const traceInput = /TRACE INPUT: (.*)/.exec(prompt)?.[1];
+        const trace = /"trace":/.test(system)
+          ? { trace: { input: traceInput && !traceInput.startsWith("(") ? traceInput : "n = 3", steps: [1, 2, 3].map((i) => ({ file, line: i, state: { n: String(i) }, note: `Step ${i}: line ${i} runs.` })) } }
+          : {};
+        return {
+          ...sketch, ...trace,
+          summary: `This is a fake lesson about ${file}. It shows the shape of a real one.`,
+          concepts: [
+            { term: "Entry point", explain: "Where the work starts.", example: "Like the front door of a house.", file, line: 1 },
+            { term: "Side effect", explain: "A change outside the function, like a file write." },
+          ],
+          intuition: "Input flows to output:\n\n```mermaid\nflowchart LR\n  A[input] --> B[transform] --> C[output]\n```",
+          gotchas: ["Line 3 runs even when the input is empty."],
+          nextSteps: [{ file, why: "Read it again with the steps in mind." }],
+        };
+      }
+      case "lensSteps": {
+        const m = /WRITE STEPS (\d+)-(\d+)/.exec(prompt);
+        const [a, b] = m ? [Number(m[1]), Number(m[2])] : [0, 0];
+        return {
+          steps: Array.from({ length: b - a + 1 }, (_, k) => ({
+            index: a + k, body: `Fake body for step ${a + k}. It explains the idea with real values.`,
+            pitfall: "Changing the order here breaks the output.", check: { q: `What does step ${a + k} do?`, a: "It does the thing." },
+          })),
+        };
+      }
       case "quiz": {
         const n = Number(/exactly (\d+) items/.exec(system)?.[1] ?? 3);
         const weak = [...prompt.matchAll(/^\[(\w+)\] /gm)].map((m) => m[1]);

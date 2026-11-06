@@ -1,13 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import clsx from "clsx";
 import { useQuery } from "@tanstack/react-query";
+import { Lightbulb } from "lucide-react";
 import { ArrowRight, Check, Footprints, Trash2 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
-import type { Walk } from "@core/types";
+import type { FileContent, Walk } from "@core/types";
 import { get, relTime, useJob } from "@/lib/api";
 import { useProject } from "@/lib/project";
 import { BackLink, useArchive } from "@/components/BackLink";
 import { CodePane } from "@/components/CodePane";
+import { CodeView } from "@/components/CodeView";
+import { Markdown } from "@/components/Markdown";
 import { Split } from "@/components/Split";
 import { Badge, Button, Empty, ErrorNote, JobProgress, PageHead, Spinner, VerdictBadge } from "@/components/ui";
 
@@ -20,6 +23,11 @@ export function WalkPage() {
   const archive = useArchive(`walks/${id}`);
   const q = useQuery({ queryKey: ["walk", project.id, id], queryFn: () => get<Walk>(`/projects/${project.id}/walks/${id}`) });
   const w = q.data;
+  const file = useQuery({
+    queryKey: ["file", project.id, w?.file],
+    enabled: !!w,
+    queryFn: () => get<FileContent>(`/projects/${project.id}/file?path=${encodeURIComponent(w!.file)}`),
+  });
   const firstOpen = w ? Math.max(0, w.blocks.findIndex((b) => !b.verdict)) : 0;
   const [at, setAt] = useState<number | null>(null);
   const i = at ?? firstOpen;
@@ -27,6 +35,14 @@ export function WalkPage() {
   useEffect(() => {
     setAnswer("");
   }, [i]);
+  const block = useMemo(() => {
+    const cur = w?.blocks[i];
+    if (!cur || !file.data) return null;
+    const lines = file.data.text.split("\n");
+    const part = lines.slice(cur.startLine - 1, Math.min(cur.endLine, lines.length));
+    const pad = Math.min(...part.filter((l) => l.trim()).map((l) => /^\s*/.exec(l)?.[0].length ?? 0));
+    return part.map((l) => l.slice(Number.isFinite(pad) ? pad : 0)).join("\n");
+  }, [w, i, file.data]);
   const marks = useMemo(() => (w ? [{ from: w.blocks[i].startLine, to: w.blocks[i].endLine, cls: "block" }] : []), [w, i]);
   if (q.isLoading) return <div className="p-8"><Spinner /></div>;
   if (!w) return <Empty title="Walkthrough not found" />;
@@ -36,7 +52,7 @@ export function WalkPage() {
 
   const doc = (
     <div className="h-full overflow-auto">
-      <div className="mx-auto max-w-2xl px-8 py-8">
+      <div className="page">
         <PageHead
           back={<BackLink />}
           badges={<><Badge tone="accent">walkthrough</Badge><span className="text-xs text-muted">{done}/{w.blocks.length} checked · {relTime(w.createdAt)}</span></>}
@@ -65,6 +81,19 @@ export function WalkPage() {
           </div>
           <h2 className="mt-1 text-lg font-semibold">{b.title || `Block ${i + 1}`}</h2>
           <p className="reading mt-1 text-muted">{b.why}</p>
+          {block !== null && (
+            <div className="mt-5 min-w-0 overflow-hidden rounded-xl border border-line bg-panel">
+              <div className="border-b border-line bg-raised/60 px-3 py-1.5 font-mono text-[12px] text-muted">{rel(w.file).split("/").slice(-2).join("/")}:{b.startLine}–{b.endLine}</div>
+              <div className="lens-step-code"><CodeView text={block} lang={file.data!.lang} firstLine={b.startLine} /></div>
+            </div>
+          )}
+          {b.explain && <div className="mt-5"><Markdown>{b.explain}</Markdown></div>}
+          {b.example && (
+            <div className="mt-5 rounded-r-lg border-l-[3px] border-good bg-good/5 px-4 py-3">
+              <div className="mb-1 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-good"><Lightbulb className="h-3.5 w-3.5" /> Try it with real values</div>
+              <Markdown>{b.example}</Markdown>
+            </div>
+          )}
           <div className="mt-5 rounded-lg border border-accent/25 bg-accent/5 p-3 text-[15.5px] font-medium">{b.question}</div>
           {b.verdict ? (
             <div className="mt-4 space-y-2">

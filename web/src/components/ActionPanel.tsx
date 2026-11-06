@@ -226,9 +226,9 @@ export function ActionPanel({
                 value={depth}
                 onChange={setDepth}
                 options={[
-                  { value: "overview", label: "Overview", title: "3-4 steps: the big picture in a few minutes" },
-                  { value: "standard", label: "Standard", title: "4-7 steps: enough to change it safely" },
-                  { value: "deep", label: "Deep", title: "6-10 steps: edge cases, ordering, failure paths" },
+                  { value: "overview", label: "Overview", title: "About 1.5 screens: the big picture, 3-4 steps" },
+                  { value: "standard", label: "Standard", title: "At least 3 screens: enough to change it safely, 6-9 steps" },
+                  { value: "deep", label: "Deep", title: "5-6 screens, a long blog post: every branch and failure path, 11-15 steps" },
                 ]}
               />
             </section>

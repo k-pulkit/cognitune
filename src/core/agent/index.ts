@@ -11,6 +11,8 @@ export interface AgentRequest {
   prompt: string;
   /** Folder the agent may read (claude CLI only; the SDK gets file text in the prompt). */
   cwd: string;
+  /** "plan" = outline the work (a stronger model if one is set); default = write. */
+  role?: "plan" | "write";
 }
 
 /** One model call, text in, text out. Adapters hide how the model is reached. */
@@ -37,7 +39,7 @@ function providers(s: Settings, timeoutMs: number) {
       id: "claude" as Provider,
       label: "Claude Code CLI",
       available: () => hasCommand(s["agent.claudeCommand"]),
-      make: () => new ClaudeCliAgent(s["agent.claudeCommand"], s["agent.model"], timeoutMs),
+      make: () => new ClaudeCliAgent(s["agent.claudeCommand"], s["agent.model"], timeoutMs, s["agent.planModel"]),
       detail: `${s["agent.claudeCommand"]} -p, model ${s["agent.model"] || "CLI default"}, read-only tools, your Claude Code login`,
       missing: `"${s["agent.claudeCommand"]}" not found. Install Claude Code and run it once to log in.`,
     },
@@ -61,7 +63,7 @@ function providers(s: Settings, timeoutMs: number) {
       id: "sdk" as Provider,
       label: "Anthropic API",
       available: () => !!process.env.ANTHROPIC_API_KEY,
-      make: () => new SdkAgent(s["agent.model"], timeoutMs),
+      make: () => new SdkAgent(s["agent.model"], timeoutMs, s["agent.planModel"]),
       detail: `model ${s["agent.model"]}, key from the ANTHROPIC_API_KEY environment variable`,
       missing: "Set ANTHROPIC_API_KEY in the environment, then restart groklab.",
     },

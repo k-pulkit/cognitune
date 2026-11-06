@@ -68,10 +68,30 @@ Return ONLY one JSON object inside a single \`\`\`json fence. No text outside th
 
 export type LensDepth = "overview" | "standard" | "deep";
 
-const DEPTH: Record<LensDepth, { steps: string; words: number; note: string }> = {
-  overview: { steps: "3-4", words: 50, note: "The reader wants the big picture in 3 minutes. Skip details that do not change the mental model." },
-  standard: { steps: "4-7", words: 80, note: "The reader wants to be able to change this code safely after reading." },
-  deep: { steps: "6-10", words: 120, note: "The reader will own this code. Cover edge cases, ordering, failure paths and the reasons behind odd choices." },
+const DEPTH: Record<LensDepth, { steps: string; words: number; note: string; concepts: string; gotchas: string }> = {
+  overview: {
+    steps: "3-4", words: 60, concepts: "2-4", gotchas: "0-3",
+    note: "The reader wants the big picture in 3 minutes. Skip details that do not change the mental model.",
+  },
+  standard: {
+    steps: "5-8", words: 120, concepts: "3-6", gotchas: "2-5",
+    note: "The reader wants to be able to change this code safely after reading. Give one concrete example with real values in the steps that carry logic.",
+  },
+  deep: {
+    steps: "9-14", words: 260, concepts: "5-9", gotchas: "5-8",
+    note: `The reader will own this code and debug it at 2am. This is a long, thorough lesson, not a summary:
+- Every step is 2-4 paragraphs: (1) what it does and why it exists, (2) a worked example with concrete values
+  from a small input ("if \`rows\` is [3, 0], then ..."), (3) the edge cases, ordering rules or failure path that
+  touch this part, (4) why it was built this way instead of the obvious way, and what a change would break.
+- Cover EVERY branch, early return, try/except, fallback and default in the files, not only the happy path. If the
+  code has an "if this fails, do that" path, it gets its own step.
+- Every step has a "pitfall" (a real mistake or a change that would break it) and a "check" question that needs
+  reasoning, not recall ("what happens if X is empty?"), never "what does line 12 do?".
+- "intuition" has BOTH a worked example with toy data walked through as numbered steps AND a mermaid diagram.
+- "gotchas" lists real traps (ordering, mutation, silent fallbacks, error swallowing). "nextSteps" is required
+  (2-3 real files that callers, types or tests live in) so the reader knows where to go after this.
+- Prefer more steps over longer steps when an idea has two halves. Do not pad: every sentence must teach.`,
+  },
 };
 
 function lensSystem0(depth: LensDepth = "standard"): string {
@@ -109,18 +129,154 @@ JSON shape:
   "tldr": "ONE sentence: the mental model that answers the question",
   "whyItMatters": "1-2 sentences: what goes wrong for someone who does not know this",
   "summary": "markdown, at most 3 short sentences: the answer in plain words, expanding the tldr. If there is more to say, it belongs in the steps",
-  "concepts": [{"term": "name", "explain": "1-2 plain sentences", "example": "a tiny concrete example or analogy", "file": "relative/path", "line": 12}],  // 2-6 items, only terms the reader needs first
+  "concepts": [{"term": "name", "explain": "1-2 plain sentences", "example": "a tiny concrete example or analogy", "file": "relative/path", "line": 12}],  // ${d.concepts} items, only terms the reader needs first
   "intuition": "markdown: the core idea with toy data walked through as numbered steps, and/or a small mermaid diagram (\`\`\`mermaid fenced, max 12 nodes, flowchart or sequenceDiagram, short sentence-case labels, never ALL CAPS; prefer flowchart TD when it has more than 5 nodes)",
   "deepDives": [{
     "title": "the idea of this step as a claim",
     "file": "relative/path", "startLine": 10, "endLine": 24, "line": 12,   // line = the single key line
-    "body": "markdown, at most ${d.words} words: why this part exists and how it works; connect to the previous step",
+    "body": "markdown, up to ${d.words} words, in short paragraphs: why this part exists and how it works; connect to the previous step",
     "pitfall": "optional: a mistake people make here, or what breaks if you change it",
     "check": {"q": "a short question the reader should now be able to answer", "a": "the answer, 1-2 sentences"}
   }],  // ${d.steps} items, in teaching order
-  "gotchas": ["surprising behaviour, edge cases or traps, 1 sentence each, with the line"],   // 0-5 items
+  "gotchas": ["surprising behaviour, edge cases or traps, 1 sentence each, with the line"],   // ${d.gotchas} items
   "nextSteps": [{"file": "relative/path", "why": "what reading it next will teach"}]       // 1-3 items, files that exist
 }`;
+}
+
+// ---- staged lens: a planner outlines, a writer fills in the parts -----------------------------
+// Size is set in SCREENS of the finished page, not in words. One screen is about 30 lines of
+// prose; a step with its code card, pitfall and check is roughly a third to half a screen.
+
+export const SCREENS: Record<LensDepth, { size: string; steps: string; paras: string; concepts: string; gotchas: string }> = {
+  overview: { size: "about 1.5 screens", steps: "3-4", paras: "1-2 short paragraphs", concepts: "2-4", gotchas: "1-3" },
+  standard: { size: "at least 3 screens", steps: "6-9", paras: "2-3 paragraphs", concepts: "4-6", gotchas: "3-5" },
+  deep: { size: "5 to 6 screens, a long blog post", steps: "11-15", paras: "3-5 paragraphs", concepts: "5-9", gotchas: "5-8" },
+};
+
+const TEACH = `How to teach (this matters more than coverage):
+- Lead with the mental model. Answer the question directly; no hedging.
+- Explain WHY, not WHAT. The reader can read the code; tell them what it is for, what would break without it,
+  and why it is done this way rather than the obvious way. Never paraphrase a line ("line 12 sets x to y").
+- Concrete over abstract: real values, a small example input, "if you change A, B happens".
+- Define every term at first use, in plain words. Short sentences. No filler.
+- Write like a good engineering blog post: second person ("you"), short paragraphs of 2-3 sentences with a blank
+  line between them, a bullet list when there are 3+ parallel items. Never one long block of text.
+- Every field is markdown. Put identifiers, file names, functions, fields and values in \`backticks\`.
+  Use **bold** at most once per field.
+- Name real files and line numbers from the input (the numbers before "|"). Never invent code.`;
+
+export function lensPlanSystem(x: { depth?: LensDepth; trace?: boolean } = {}): string {
+  const d = SCREENS[x.depth ?? "standard"];
+  return `TASK: lensPlan
+You are the PLANNER of a "lens": a lesson that teaches code through ONE question. A second writer model will
+write the prose from your plan, so the plan decides how good the lesson is. You do not write the prose.
+Read all the code first. If you have file tools, open callers, the types it uses and its tests so the plan
+covers how this code is really used.
+
+Target size of the finished page: ${d.size}. Choose the number of steps for that size (${d.steps} steps).
+Do not cut short: for a longer page, cover every branch, early return, fallback, error path and default, not only
+the happy path, and give each its own step. Teach in the order that builds understanding (entry point and data
+shapes first), not file order. Each step is ONE idea, titled as a CLAIM the reader learns ("Layer 1 only sees
+manifests, so code edits never bust it"), not a label.
+
+${TEACH}
+${STYLE}
+
+JSON shape:
+{
+  "title": "short title, max 8 words",
+  "tldr": "ONE sentence: the mental model that answers the question",
+  "whyItMatters": "1-2 sentences: what goes wrong for someone who does not know this",
+  "reader": "who this is for and what they can do after reading, 1 sentence",
+  "concepts": [{"term": "name", "note": "what to explain and the line it shows up at", "file": "relative/path", "line": 12}],  // ${d.concepts} terms the reader needs first
+  "intuition": {"example": "a toy input with real values to walk through, and the numbered stages it goes through", "diagram": "what a mermaid diagram should show (flowchart TD or sequenceDiagram, max 12 nodes), or empty"},
+  "steps": [{
+    "title": "the idea as a claim",
+    "file": "relative/path", "startLine": 10, "endLine": 24, "line": 12,   // a SHORT range (3-25 lines) that shows the idea
+    "covers": ["each concrete fact, branch or rule this step must explain, in order"],
+    "example": "concrete values to use in this step, or empty",
+    "edge": "the edge case, ordering rule or failure path that touches this part, or empty",
+    "why": "why it is built this way and what a change would break",
+    "pitfall": "a real mistake or breaking change to warn about, or empty",
+    "check": "an idea for a question that needs reasoning, not recall"
+  }],
+  "gotchas": ["a trap, 1 sentence, with the line"],   // ${d.gotchas}
+  "nextSteps": [{"file": "relative/path", "why": "what reading it next will teach"}]   // 2-3 real files
+}`;
+}
+
+export function lensIntroSystem(x: { depth?: LensDepth; sketch?: boolean; trace?: boolean } = {}): string {
+  const d = SCREENS[x.depth ?? "standard"];
+  const extra = [
+    x.sketch ? `  "differences": ["where the learner's take (SKETCH) is wrong, missing something, or right for the wrong reason; 1-2 sentences each, name the line"],  // 1-6 items` : "",
+    x.trace ? `  "trace": {"input": "the toy input used, one line", "steps": [{"file": "relative/path", "line": 12, "state": {"var": "value as short text"}, "note": "what happens, 1 sentence"}]},  // 5-40 steps in run order` : "",
+  ].filter(Boolean).join("\n");
+  return `TASK: lensIntro
+You are the WRITER of the opening of a lens (a lesson on code). A planner already decided what the lesson says;
+follow its PLAN and write the opening parts well. The steps are written separately, so do not write them.
+The whole page will be ${d.size}; the opening sets it up, it does not try to say everything.
+
+${TEACH}
+${STYLE}
+
+JSON shape:
+{
+${extra ? extra + "\n" : ""}  "summary": "markdown, at most 3 short sentences: the answer in plain words, expanding the tldr",
+  "concepts": [{"term": "name", "explain": "1-2 plain sentences", "example": "a tiny concrete example or analogy", "file": "relative/path", "line": 12}],  // the planner's terms, ${d.concepts} items
+  "intuition": "markdown: the core idea walked through with the planner's toy input as numbered stages${x.depth === "overview" ? "" : ", AND a mermaid diagram (```mermaid fenced, max 12 nodes, short sentence-case labels, flowchart TD when more than 5 nodes)"}",
+  "gotchas": ["surprising behaviour or trap, 1 sentence each, with the line"],   // ${d.gotchas} items, from the plan
+  "nextSteps": [{"file": "relative/path", "why": "what reading it next will teach"}]   // the planner's files that exist
+}`;
+}
+
+export function lensStepsSystem(x: { depth?: LensDepth } = {}): string {
+  const d = SCREENS[x.depth ?? "standard"];
+  return `TASK: lensSteps
+You are the WRITER of some steps of a lens (a lesson on code). A planner outlined every step; you write only the
+steps you are asked for, in full, following the plan for each one: its "covers" list, "example", "edge" and "why".
+Write each step's "body" as ${d.paras}. Take the space the idea needs; do not compress, and do not pad.
+Use the example's real values, walk the edge case, and say why it is built this way. Connect each step to the one
+before it (the earlier titles are given). The page shows the cited code lines next to your text, so do not repeat
+the code; explain it.
+"pitfall": one real mistake or breaking change, 1-3 sentences (omit if the plan has none).
+"check": a short question that needs reasoning (what happens if X is empty? what breaks first if Y?), and "a", the
+answer in 1-2 sentences.
+
+${TEACH}
+${STYLE}
+
+JSON shape:
+{ "steps": [{"index": 3, "body": "markdown", "pitfall": "...", "check": {"q": "...", "a": "..."}}] }   // one item per requested step, same "index" as in the plan (0-based)`;
+}
+
+export function lensWritePrompt(question: string, plan: unknown, files: string, x: { steps?: [number, number]; titles?: string[]; extras?: LensExtras } = {}): string {
+  const e = x.extras;
+  return `QUESTION: ${question}
+
+${e?.sketch ? `SKETCH (the learner's own take, written before the lesson):\n${e.sketch}\n\n` : ""}${
+    e?.traceInput !== undefined ? `TRACE INPUT: ${e.traceInput || "(pick a small, typical input that exercises the main path)"}\n\n` : ""
+  }PLAN (from the planner; follow it):
+${JSON.stringify(plan, null, 1)}
+
+${x.steps ? `WRITE STEPS ${x.steps[0]}-${x.steps[1]} (0-based, both included).${x.titles?.length ? `\nEarlier steps, for continuity:\n${x.titles.map((t) => `- ${t}`).join("\n")}` : ""}\n\n` : ""}CODE:
+${files}`;
+}
+
+/** Generic planner for the short generators (quiz, walk, practice, hunt, path). */
+export function planSystem(writerSystem: string): string {
+  const task = writerSystem.split("JSON shape:")[0].trim();
+  return `TASK: plan
+You are the PLANNER. A second model will do the task below and follows your outline, so make it specific.
+Read the code (open related files if you can). Decide what the output must cover and in what order, which files
+and line ranges matter, the common traps to include, and what to leave out. Do not write the final output.
+
+THE TASK THE WRITER WILL DO:
+${task}
+
+${STYLE}
+
+JSON shape:
+{ "outline": "markdown, 6-20 lines: the plan, with real files and line numbers" }`;
 }
 
 export interface LensExtras {
@@ -308,6 +464,58 @@ ${STYLE}
 
 JSON shape:
 { "blocks": [{"startLine": 10, "endLine": 30, "title": "short", "why": "...", "question": "..."}] }`;
+}
+
+export function walkPlanSystem(): string {
+  return `TASK: walkPlan
+You are the PLANNER of a guided walkthrough of one file. A second writer model writes each block from your plan.
+Read the whole file (and, if you have file tools, its callers and tests) and split it into 5-12 blocks in READING
+order: entry point and data shapes first, helpers when they are first needed, not file order. A block is a range
+of whole lines (1-based, inclusive, from the numbers before "|"), usually 5-30 lines, that holds ONE idea. Skip
+boilerplate (imports, logging) unless it matters. Cover every branch, fallback and error path that matters.
+For each block decide what the writer must teach and which concrete example will make it click: a call with real
+values ("push(3) on an empty queue"), a small usage snippet, or a before/after. Plan a question that asks the
+learner to PREDICT or REASON about a concrete case ("what does it return for ...? why?"), never one that asks
+them to paraphrase the code.
+${STYLE}
+
+JSON shape:
+{ "blocks": [{
+  "startLine": 10, "endLine": 30, "title": "the idea as a short claim",
+  "covers": ["each fact, branch or rule the block must explain, in order"],
+  "example": "the concrete input and the result to walk through, or a small usage snippet to show",
+  "question": "the question idea, about a concrete case"
+}] }`;
+}
+
+export function walkBlocksSystem(): string {
+  return `TASK: walkBlocks
+You are the WRITER of some blocks of a guided code walkthrough. A planner outlined every block; write only the
+blocks you are asked for, following the plan for each one. The page shows the block's own code above your text, so
+do not repeat the code; explain it.
+For each block write:
+- "why": 1-2 sentences: why this block matters and how it connects to the previous one.
+- "explain": markdown, 2-4 short paragraphs for a capable engineer who is new to this code: what it does, why it
+  exists, why it is done this way, and what to notice. Identifiers in \`backticks\`. Second person.
+- "example": markdown. A worked example with real values: the call or input, what happens step by step through the
+  block, and the result. Include at least one fenced code block (a small usage snippet, a tiny table of values, or
+  before/after). The snippet may be illustrative calling code, but it must match the real names and signatures.
+- "question": one check question about a concrete case the learner must predict or reason about, answerable in 1-3
+  sentences from the block and your text. Do not put the answer in the question.
+${STYLE}
+
+JSON shape:
+{ "blocks": [{"index": 0, "why": "...", "explain": "...", "example": "...", "question": "..."}] }   // one item per requested block, same "index" as in the plan (0-based)`;
+}
+
+export function walkWritePrompt(plan: unknown, range: [number, number], titles: string[], files: string): string {
+  return `PLAN (from the planner; follow it):
+${JSON.stringify(plan, null, 1)}
+
+WRITE BLOCKS ${range[0]}-${range[1]} (0-based, both included).${titles.length ? `\nEarlier blocks, for continuity:\n${titles.map((t) => `- ${t}`).join("\n")}` : ""}
+
+CODE:
+${files}`;
 }
 
 export function walkcheckSystem(): string {

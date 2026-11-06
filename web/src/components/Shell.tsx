@@ -2,9 +2,10 @@ import clsx from "clsx";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import {
-  BarChart3, BookOpen, Command, Compass, FolderGit2, GitCompare, Home, Layers, Map as MapIcon, Monitor, Moon, Route, Settings, Sun, Sunrise,
+  BarChart3, BookOpen, HelpCircle, Command, Compass, FolderGit2, GitCompare, Home, Layers, Map as MapIcon, Monitor, Moon, Route, Settings, Sun, Sunrise,
 } from "lucide-react";
 import { NavLink, Outlet, useNavigate, useParams } from "react-router-dom";
+import { sectionFor } from "@/pages/Help";
 import type { AgentInfo, Card, Project } from "@core/types";
 import { get } from "@/lib/api";
 import { useTheme, type ThemePref } from "@/lib/theme";
@@ -70,6 +71,12 @@ export function Shell() {
         setPalette((v) => !v);
         return;
       }
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "h") {
+        e.preventDefault();
+        const s = sectionFor(window.location.pathname);
+        nav(s ? `/help?s=${s}` : "/help");
+        return;
+      }
       const typing = (e.target as HTMLElement).closest("input, textarea, [contenteditable], .cm-editor");
       if (!typing && e.key === "?") setHelp(true);
     };
@@ -107,6 +114,7 @@ export function Shell() {
           <span>Ctrl K</span>
         </button>
         {pid && <NavItem to="/" end icon={<FolderGit2 className="h-5 w-5" />} label="Projects" />}
+        <NavItem to="/help" icon={<HelpCircle className="h-5 w-5" />} label="Help" />
         <NavItem to="/settings" icon={<Settings className="h-5 w-5" />} label="Settings" />
         <button
           onClick={() => setPref(NEXT[pref])}

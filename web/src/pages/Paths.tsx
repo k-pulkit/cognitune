@@ -22,7 +22,7 @@ export function PathsPage() {
   const list = useQuery({ queryKey: ["paths", project.id], queryFn: () => get<PathView[]>(`/projects/${project.id}/paths`) });
   return (
     <div className="h-full overflow-auto">
-      <div className="mx-auto max-w-3xl px-8 py-8">
+      <div className="page">
         <h1 className="text-xl font-semibold tracking-tight">Learning paths</h1>
         <p className="text-sm text-muted">An ordered tour of the repo: where to start, what next, and how to check each stop. Stops tick off as you do them.</p>
         <div className="card mt-6 p-5">
@@ -84,7 +84,7 @@ export function PathPage() {
   };
   return (
     <div className="h-full overflow-auto">
-      <div className="mx-auto max-w-3xl px-8 py-8">
+      <div className="page">
         <PageHead
           back={<BackLink to="paths" label="Paths" />}
           badges={<><Badge tone="good">path</Badge><span className="text-xs text-muted">{p.done.filter(Boolean).length}/{p.stops.length} done · {relTime(p.createdAt)}</span></>}

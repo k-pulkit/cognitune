@@ -82,7 +82,7 @@ export function QuizPage() {
 
   const doc = (
     <div className="h-full overflow-auto">
-      <div className="mx-auto max-w-3xl px-8 py-8">
+      <div className="page">
         <Link to={`/p/${project.id}/library`} className="inline-flex items-center gap-1 text-xs text-muted hover:text-ink">
           <ArrowLeft className="h-3.5 w-3.5" /> Library
         </Link>

@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { importGraph } from "../src/core/graph.js";
 import { progress, rateCard, makeCard, streak } from "../src/core/insights.js";
 import { Jobs } from "../src/core/jobs.js";
+import { FakeAgent } from "../src/core/agent/fake.js";
 import { Learn, matchMarks, plantBugs } from "../src/core/services.js";
 import { prune, ReplyCache, usage } from "../src/core/storage.js";
 import { Store } from "../src/core/store.js";
@@ -127,7 +128,47 @@ describe("learning features", () => {
     expect((await get(`/lenses/${j.resultId}`)).kind).toBe("history");
   });
 
+  it("builds a lens in parts: planner outlines, writer fills the opening and the steps", async () => {
+    const seen: { task: string; role?: string; prompt: string }[] = [];
+    const fake = new FakeAgent();
+    const learn = new Learn(store, { name: "spy", complete: async (r) => (seen.push({ task: /^TASK: (\w+)/m.exec(r.system)![1], role: r.role, prompt: r.prompt }), fake.complete(r)) });
+    const l = await learn.lens(store.project(pid)!, { files: [add()], kind: "explain", depth: "deep" });
+    const tasks = seen.map((x) => x.task);
+    expect(tasks[0]).toBe("lensPlan");
+    expect(seen[0].role).toBe("plan");
+    expect(tasks).toContain("lensIntro");
+    expect(tasks.filter((t) => t === "lensSteps")).toHaveLength(2); // 4 planned steps, 3 per call
+    expect(seen.find((x) => x.task === "lensSteps")!.prompt).toContain("PLAN (from the planner");
+    expect(l.deepDives).toHaveLength(4);
+    expect(l.deepDives[3].body).toContain("Fake body for step 3");
+    expect(l.deepDives[0].check?.q).toBeTruthy();
+    expect(l.summary).toContain("fake lesson");
+  });
+
+  it("the short generators get a plan first when the setting is on", async () => {
+    const roles: (string | undefined)[] = [];
+    const tasks: string[] = [];
+    const fake = new FakeAgent();
+    const spy = { name: "spy", complete: async (r: Parameters<FakeAgent["complete"]>[0]) => (tasks.push(/^TASK: (\w+)/m.exec(r.system)![1]), roles.push(r.role), fake.complete(r)) };
+    await new Learn(store, spy).quiz(store.project(pid)!, { files: [add()] });
+    expect(tasks).toEqual(["plan", "quiz"]);
+    expect(roles[0]).toBe("plan");
+    store.saveSettings({ "generate.plan": false });
+    tasks.length = 0;
+    await new Learn(store, spy).quiz(store.project(pid)!, { files: [add()] });
+    expect(tasks).toEqual(["quiz"]);
+  });
+
+  it("walk blocks come with an explanation and a worked example", async () => {
+    const j = await job("/walks", { file: add() });
+    const w = await get(`/walks/${j.resultId}`);
+    expect(w.blocks[0].explain).toContain("Fake explanation");
+    expect(w.blocks[0].example).toContain("```");
+    expect(w.blocks[0].question).toContain("Fake question");
+  });
+
   it("caches a lens reply: the same lens twice is one model call", async () => {
+    store.saveSettings({ "generate.plan": false });
     let calls = 0;
     const learn = new Learn(store, { name: "count", complete: async () => (calls++, '```json\n{"title":"t","tldr":"the one idea here","summary":"s","deepDives":[{"title":"a","body":"b","line":2}]}\n```') });
     const p = store.project(pid)!;
@@ -137,6 +178,7 @@ describe("learning features", () => {
   });
 
   it("retries once when the reply has the wrong shape", async () => {
+    store.saveSettings({ "generate.plan": false });
     const replies = ['```json\n{"title":"t"}\n```', '```json\n{"title":"t","tldr":"the one idea here","summary":"s","deepDives":[{"title":"a","body":"b","line":2}]}\n```'];
     const prompts: string[] = [];
     const learn = new Learn(store, { name: "retry", complete: async (r) => (prompts.push(r.prompt), replies.shift()!) });

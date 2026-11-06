@@ -59,6 +59,7 @@ export function LibraryPage() {
   return (
     <div className="flex h-full flex-col">
       <div className="border-b border-line bg-panel px-8 pt-6">
+        <div className="mx-auto max-w-[72rem]">
         <div className="flex items-center gap-3">
           <div className="flex-1">
             <h1 className="text-xl font-semibold tracking-tight">Library</h1>
@@ -89,9 +90,11 @@ export function LibraryPage() {
             { value: "notes", label: "Notes", icon: <StickyNote className="h-4 w-4" />, count: notes.data?.length },
           ]}
         />
+        </div>
       </div>
       <div className="min-h-0 flex-1 overflow-auto p-8">
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <div className="mx-auto max-w-[72rem]">
+        <div className="grid gap-3 md:grid-cols-2">
           {tab === "lenses" && lenses.data?.filter((l) => match(l.title, l.summary, l.kind, ...l.files)).map((l) => (
             <Link key={l.id} to={`${p}/lens/${l.id}`} className={tile}>
               <div className="flex items-center gap-2">
@@ -205,7 +208,7 @@ export function LibraryPage() {
         </div>
 
         {tab === "glossary" && (
-          <div className="mx-auto max-w-3xl divide-y divide-line">
+          <div className="divide-y divide-line">
             {glossary.data?.filter((t) => match(t.term, ...t.explains.map((e) => e.text))).map((t) => (
               <div key={t.term} className="group py-3">
                 <div className="flex items-center gap-2">
@@ -236,6 +239,7 @@ export function LibraryPage() {
         {tab === "threads" && threads.data?.length === 0 && empty(<MessageCircleQuestion className="h-6 w-6" />, "No tutor chats yet", "Ask the tutor from Explore or from a missed quiz question.")}
         {tab === "cards" && cards.data?.length === 0 && empty(<Layers className="h-6 w-6" />, "No cards yet", "Quiz misses become cards on their own. You can also make one from a lens concept or a code line.")}
         {tab === "notes" && notes.data?.length === 0 && empty(<StickyNote className="h-6 w-6" />, "No notes yet", "In Explore, click a line and add a note from the Notes tab.")}
+        </div>
       </div>
       {card && <CardDialog initial={card} onClose={() => setCard(null)} />}
     </div>

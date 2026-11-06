@@ -241,6 +241,10 @@ export interface FileProgress {
 export interface Settings {
   "agent.mode": "auto" | "claude" | "codex" | "copilot" | "sdk" | "fake";
   "agent.model": string;
+  /** Model that plans content before "agent.model" writes it (Claude CLI and API key only). Empty = same as the writer. */
+  "agent.planModel": string;
+  /** Plan first, then write in parts, instead of one model call. */
+  "generate.plan": boolean;
   "agent.claudeCommand": string;
   "agent.codexCommand": string;
   /** Empty = the CLI's own default model. */
@@ -357,6 +361,10 @@ export interface WalkBlock {
   endLine: number;
   title: string;
   why: string;
+  /** Markdown teaching text for this block (walks made before 0.3 only have "why"). */
+  explain?: string;
+  /** Markdown: a worked example with real values and a small code sample. */
+  example?: string;
   question: string;
   answer?: string;
   verdict?: Verdict;
@@ -460,6 +468,15 @@ export interface Today {
   nextStop: { pathId: string; title: string; index: number; stop: PathStop } | null;
   streak: number;
   suggestion: { text: string; files: string[]; activity: string } | null;
+}
+
+export interface StorageItem {
+  id: string;
+  group: string;
+  project?: string;
+  label: string;
+  bytes: number;
+  at: string;
 }
 
 export interface StorageUsage {
