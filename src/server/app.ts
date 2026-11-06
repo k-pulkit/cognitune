@@ -215,7 +215,7 @@ export function createApi(store: Store, opts: { pruneEveryMs?: number } = {}) {
   });
   api.post("/projects/:pid/practice", async (c) => {
     const p = project(c);
-    const req = await body<{ file: string; level: number }>(c);
+    const req = await body<{ file: string; level: number; files?: string[] }>(c);
     return startJob(c, "practice", p, (l) => l.practice(p, req));
   });
   api.put("/projects/:pid/practice/:id/attempt", async (c) => {

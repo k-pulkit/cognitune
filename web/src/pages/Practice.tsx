@@ -166,8 +166,10 @@ export function PracticePage() {
         <span className="flex items-center gap-1">{saved ? <><Check className="h-3.5 w-3.5 text-good" /> saved</> : "saving..."}</span>
         <span className="ml-auto">Stored in groklab, not in your folder</span>
       </div>
-      <div className="min-h-0 flex-1 overflow-hidden bg-panel">
-        <CodeMirror value={text ?? ""} onChange={onChange} theme={dark ? oneDark : "light"} extensions={extensions} height="100%" />
+      <div className="relative min-h-0 flex-1 bg-panel">
+        <div className="absolute inset-0">
+          <CodeMirror value={text ?? ""} onChange={onChange} theme={dark ? oneDark : "light"} extensions={extensions} height="100%" />
+        </div>
       </div>
     </div>
   );

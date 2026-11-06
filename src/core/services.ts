@@ -348,14 +348,22 @@ export class Learn {
 
   // ---- practice --------------------------------------------------------
 
-  async practice(project: Project, req: { file: string; level: number }): Promise<Practice> {
+  async practice(project: Project, req: { file: string; level: number; files?: string[] }): Promise<Practice> {
     const ws = new Workspace(project);
     const file = ws.guard(req.file);
     const level = (Math.min(Math.max(Math.round(req.level || 2), 1), 4)) as Practice["level"];
+    if (/\.(json|ya?ml|toml|ini|cfg|lock|csv|tsv|md|txt|svg|xml|html?|css)$/i.test(file)) {
+      throw new Error("practice needs a file with logic (code). This one is data, config or text; open a source file instead.");
+    }
     const original = ws.read(file).text;
-    const raw = await this.ask<{ holes?: unknown[] }>(ws, ["practice"], P.practiceSystem(level), `CODE:\n${this.bundle(ws, [file])}`, { plan: true });
-    const holes = cleanHoles(arr(raw.holes), original.split("\n").length);
-    if (!holes.length) throw new Error("the model found no lines to turn into holes");
+    // The other picked files are read-only context: they show how the target is used, but holes never come from them.
+    const ctx = [...new Set((req.files ?? []).map((f) => ws.guard(f)))].filter((f) => f !== file);
+    const prompt =
+      `TARGET FILE (cut holes only from this one):\n${this.bundle(ws, [file])}` +
+      (ctx.length ? `\n\nCONTEXT FILES (read only; use them to see how the target is called, tested and what it must satisfy):\n${this.bundle(ws, ctx)}` : "");
+    const raw = await this.ask<{ holes?: unknown[] }>(ws, ["practice"], P.practiceSystem(level), prompt, { plan: true });
+    const holes = cleanHoles(arr(raw.holes), original.split("\n").length, original.split("\n"));
+    if (!holes.length) throw new Error("the model found no lines with real logic to turn into holes; try another file or a higher level");
     const holed = applyHoles(original, holes, langOf(file));
     const p: Practice = {
       id: newId(), projectId: project.id, createdAt: now(),
@@ -675,7 +683,10 @@ export function scoreOf(grades: Grade[]): number {
 }
 
 /** Keep holes that are inside the file and do not overlap; number them in file order. */
-export function cleanHoles(raw: unknown[], lineCount: number): Hole[] {
+/** A line that carries no logic: blank, a comment, a bracket, an import or a decorator. */
+const TRIVIAL = /^\s*(?:$|\/\/|#|\*|\/\*|\*\/|[{}()\[\];,]+\s*$|import\b|from\s+\S+\s+import\b|export\s*\{|@\w+|"""|'\'\'\')/;
+
+export function cleanHoles(raw: unknown[], lineCount: number, lines?: string[]): Hole[] {
   const holes = raw
     .map((h) => h as Record<string, unknown>)
     .map((o) => ({
@@ -685,6 +696,8 @@ export function cleanHoles(raw: unknown[], lineCount: number): Hole[] {
       hints: arr(o.hints).map((x) => str(x, 500)).filter(Boolean).slice(0, 3),
     }))
     .filter((h) => h.startLine >= 1 && h.endLine >= h.startLine && h.endLine <= lineCount)
+    // A hole must hold at least two lines of real logic; a cut of braces and comments teaches nothing.
+    .filter((h) => !lines || lines.slice(h.startLine - 1, h.endLine).filter((l) => !TRIVIAL.test(l)).length >= Math.min(2, h.endLine - h.startLine + 1))
     .sort((a, b) => a.startLine - b.startLine);
   const out: Hole[] = [];
   for (const h of holes) {

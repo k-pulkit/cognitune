@@ -138,7 +138,7 @@ export function ActionPanel({
       <div className="min-h-0 flex-1 space-y-4 overflow-auto p-4">
         <p className="-mb-1 text-xs text-muted">{tile.hint}.</p>
 
-        {!oneFile && (
+        {(!oneFile || tab === "practice") && (
           <section>
             <div className="label flex items-center gap-1">
               <span>Context · {files.length}</span>
@@ -343,9 +343,9 @@ export function ActionPanel({
             <section>
               <div className="label">Difficulty</div>
               <Segmented value={level} onChange={setLevel} options={PRACTICE_LEVELS.map((l) => ({ ...l }))} />
-              <p className="mt-2 text-xs text-muted">{PRACTICE_LEVELS.find((l) => l.value === level)?.title}. The key lines are cut out of a copy; you write them back here, with hints if you need them. Your folder is not touched.</p>
+              <p className="mt-2 text-xs text-muted">{PRACTICE_LEVELS.find((l) => l.value === level)?.title}. The key lines are cut out of a copy; you write them back here, with hints if you need them. Context files above are read by the model to make the exercise fit; your folder is not touched.</p>
             </section>
-            <Button variant="primary" className="w-full" icon={<Hammer className="h-4 w-4" />} disabled={!practiceFile || job.busy} onClick={() => one("practice", { file: practiceFile, level }, "practice")}>
+            <Button variant="primary" className="w-full" icon={<Hammer className="h-4 w-4" />} disabled={!practiceFile || job.busy} onClick={() => one("practice", { file: practiceFile, level, files: files.filter((f) => f !== practiceFile) }, "practice")}>
               Make the practice
             </Button>
           </>

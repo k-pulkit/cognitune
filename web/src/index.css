@@ -152,6 +152,7 @@ body {
 /* ---- codemirror fit ---- */
 .cm-theme, .cm-editor { height: 100%; }
 .cm-editor { font-size: 13px; }
+.cm-editor .cm-scroller { overflow: auto; }
 .cm-editor .cm-scroller { font-family: theme(fontFamily.mono); }
 .cm-editor.cm-focused { outline: none !important; }
 
