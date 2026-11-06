@@ -50,9 +50,9 @@ export type ReadingFont = "serif" | "sans";
 
 function readFont(): ReadingFont {
   try {
-    return localStorage.getItem("groklab.readingFont") === "serif" ? "serif" : "sans";
+    return localStorage.getItem("groklab.readingFont2") === "sans" ? "sans" : "serif";
   } catch {
-    return "sans";
+    return "serif";
   }
 }
 
@@ -66,7 +66,7 @@ export function useReadingFont() {
   const [font, setFont] = useState<ReadingFont>(readFont);
   useEffect(() => {
     try {
-      localStorage.setItem("groklab.readingFont", font);
+      localStorage.setItem("groklab.readingFont2", font);
     } catch {
       /* ignore */
     }

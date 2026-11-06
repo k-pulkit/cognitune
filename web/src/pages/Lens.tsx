@@ -72,7 +72,7 @@ export function LensPage() {
   /** A section heading, like a blog post's h2. */
   const H2 = ({ icon, children, aside }: { icon?: React.ReactNode; children: React.ReactNode; aside?: React.ReactNode }) => (
     <div className="mb-5 mt-16 flex items-center gap-3">
-      <h2 className="flex items-center gap-2 text-[24px] font-semibold tracking-[-0.015em]">
+      <h2 className="flex items-center gap-2 text-[22px] font-semibold tracking-[-0.015em]">
         {icon && <span className="text-muted [&>svg]:h-[18px] [&>svg]:w-[18px]">{icon}</span>}
         {children}
       </h2>
@@ -98,7 +98,7 @@ export function LensPage() {
           </a>
         </div>
         <h1 className="mt-4 text-[36px] font-bold leading-[1.1] tracking-[-0.02em]">{l.title}</h1>
-        <p className="mt-3 text-[18px] leading-relaxed text-muted">{l.question}</p>
+        <p className="mt-3 text-[16.5px] leading-relaxed text-muted">{l.question}</p>
         <div className="mt-4 flex flex-wrap gap-2">
           {l.files.slice(0, 6).map((f) => (
             <button key={f} onClick={() => show(f)} title={rel(f)} className="inline-flex max-w-full items-center gap-1 rounded-md bg-ink/5 px-2 py-1 font-mono text-[12px] text-muted hover:text-accent">
@@ -352,7 +352,7 @@ function Step({ d, n, text, rel, onShow }: {
       <div className="min-w-0">
         <div className="flex items-baseline gap-3">
           <span className="font-mono text-[13px] font-semibold tabular-nums text-accent/80">{String(n).padStart(2, "0")}</span>
-          <h3 className="text-[19px] font-semibold leading-[1.3] tracking-tight">{d.title}</h3>
+          <h3 className="text-[18px] font-semibold leading-[1.3] tracking-tight">{d.title}</h3>
         </div>
         <div className="mt-3"><Markdown>{d.body}</Markdown></div>
       </div>
