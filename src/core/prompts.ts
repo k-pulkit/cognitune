@@ -375,9 +375,16 @@ export function practiceSystem(level: number): string {
   return `TASK: practice
 You turn real code into a practice exercise: pick the lines that hold the key logic and mark them as holes the
 learner must write back. Level: ${LEVELS[level]}
-Rules: holes must not overlap; each hole is a range of whole lines (1-based, inclusive) from the numbers before "|";
-never pick imports, boilerplate or logging; the rest of the file must give enough context to solve each hole.
-intent: what the hole must do, without giving the code. hints: 2-3, from gentle to nearly the answer.
+Rules: holes must not overlap; each hole is a range of whole lines (1-based, inclusive) from the numbers before "|",
+taken ONLY from the TARGET FILE. CONTEXT FILES, if any, are read-only: use them to learn how the target is called,
+tested and what it must satisfy, and to make each intent concrete (name the caller, the test or the data it serves).
+Good holes: a branch with a decision, a loop that builds or filters something, a transformation, error handling
+that changes the result, a guard that protects an invariant. Bad holes: imports, type declarations, constants and
+tables, logging, plain getters, glue, comments, closing brackets. Spread holes over different functions.
+Each hole must be solvable from the code around it: the learner sees the signature, the neighbouring lines and
+the names, but not the cut lines. Do not cut a line whose meaning cannot be guessed from the rest.
+intent: what the hole must do (inputs, outputs, edge cases), without giving the code; 2-4 sentences.
+hints: 2-3, from gentle (where to look) to nearly the answer.
 ${STYLE}
 
 JSON shape:

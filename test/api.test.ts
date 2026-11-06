@@ -179,6 +179,19 @@ describe("helpers", () => {
     expect(holes.map((h) => [h.id, h.intent])).toEqual([[1, "a"], [2, "b"]]);
   });
 
+  it("cleanHoles drops holes made of braces, comments and imports", () => {
+    const lines = ["import x from 'y';", "// note", "}", "if (a) {", "  return b + 1;", "}"];
+    const holes = cleanHoles(
+      [
+        { startLine: 1, endLine: 3, intent: "trivial" },
+        { startLine: 4, endLine: 5, intent: "real" },
+      ],
+      lines.length,
+      lines,
+    );
+    expect(holes.map((h) => h.intent)).toEqual(["real"]);
+  });
+
   it("applyHoles keeps indent and uses the language's comment", () => {
     const out = applyHoles("a\n  b\n  c\nd", [{ id: 1, startLine: 2, endLine: 3, intent: "x", hints: [] }], "typescript");
     expect(out).toBe("a\n  // HOLE 1: x\nd");
