@@ -48,6 +48,7 @@ export function Palette({ pid, root, onClose, openFile }: { pid?: string; root?:
         for (const f of flat(tree.data, root)) out.push({ id: `f-${f.path}`, label: f.rel, group: "Files", run: () => openFile?.(f.path) });
       }
     }
+    out.push({ id: "go-help", label: "Help (Ctrl H)", group: "Go to", run: go("/help") });
     out.push({ id: "go-settings", label: "Settings", group: "Go to", run: go("/settings") });
     for (const pr of projects.data ?? []) out.push({ id: `p-${pr.id}`, label: pr.name, hint: pr.root, group: "Projects", run: go(`/p/${pr.id}/today`) });
     return out;
@@ -119,6 +120,7 @@ export function Palette({ pid, root, onClose, openFile }: { pid?: string; root?:
 
 export const SHORTCUTS: [string, string][] = [
   ["Ctrl/Cmd + K", "Go to a page, file or project; start an activity"],
+  ["Ctrl/Cmd + H", "Help, opened at the part for this page"],
   ["?", "This list"],
   ["[ and ]", "Fold or show the left and right panes"],
   ["Space", "Review: reveal the answer"],

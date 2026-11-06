@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import clsx from "clsx";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, Cpu, HardDrive, History } from "lucide-react";
-import type { AgentInfo, Job, Settings, StorageUsage } from "@core/types";
+import type { AgentInfo, Job, Settings, StorageItem, StorageUsage } from "@core/types";
 import { get, post, put, relTime } from "@/lib/api";
 import { Button, ErrorNote, Segmented } from "@/components/ui";
 import { useReadingFont, useTheme } from "@/lib/theme";
@@ -59,6 +59,84 @@ function StorageCard() {
       <div className="mt-3 text-[12px] text-muted">
         {clean.data ? `Removed ${clean.data.removed} item${clean.data.removed === 1 ? "" : "s"}, freed ${mb(clean.data.freedBytes)}.` : u.data.lastPrune ? `Last cleanup ${relTime(u.data.lastPrune.at)}: removed ${u.data.lastPrune.removed}.` : ""}
       </div>
+      <StorageItems />
+    </div>
+  );
+}
+
+/** Tick single items (a lens, a quiz, one cached reply, a forgotten project) and remove only those. */
+function StorageItems() {
+  const qc = useQueryClient();
+  const list = useQuery({ queryKey: ["storage-items"], queryFn: () => get<StorageItem[]>("/storage/items") });
+  const [open, setOpen] = useState(false);
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [group, setGroup] = useState("all");
+  const [confirm, setConfirm] = useState(false);
+  const gone = useMutation({
+    mutationFn: () => post<{ removed: number; freedBytes: number; usage: StorageUsage }>("/storage/remove", { ids: [...picked] }),
+    onSuccess: (r) => {
+      qc.setQueryData(["storage"], r.usage);
+      qc.invalidateQueries({ queryKey: ["storage-items"] });
+      qc.invalidateQueries();
+      setPicked(new Set());
+      setConfirm(false);
+    },
+  });
+  const all = list.data ?? [];
+  const groups = [...new Set(all.map((x) => x.group))].sort();
+  const shown = group === "all" ? all : all.filter((x) => x.group === group);
+  const pickedBytes = all.filter((x) => picked.has(x.id)).reduce((n, x) => n + x.bytes, 0);
+  const allShown = shown.length > 0 && shown.every((x) => picked.has(x.id));
+  const toggle = (id: string) => setPicked((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const toggleShown = () => setPicked((s) => {
+    const n = new Set(s);
+    for (const x of shown) allShown ? n.delete(x.id) : n.add(x.id);
+    return n;
+  });
+  return (
+    <div className="mt-4 border-t border-line pt-4">
+      <button className="text-sm font-medium text-accent hover:underline" onClick={() => setOpen(!open)}>
+        {open ? "Hide the list" : `Choose what to remove (${all.length} items)`}
+      </button>
+      {open && (
+        <div className="mt-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <select className="input h-8 w-auto py-0 text-xs" value={group} onChange={(e) => setGroup(e.target.value)}>
+              <option value="all">All kinds</option>
+              {groups.map((g) => <option key={g} value={g}>{g}</option>)}
+            </select>
+            <label className="flex items-center gap-1.5 text-xs text-muted">
+              <input type="checkbox" checked={allShown} onChange={toggleShown} /> Select all shown
+            </label>
+            <span className="ml-auto text-xs text-muted">{picked.size} selected · {mb(pickedBytes)}</span>
+            {confirm ? (
+              <>
+                <span className="text-xs text-bad">This cannot be undone.</span>
+                <Button size="sm" onClick={() => setConfirm(false)}>Cancel</Button>
+                <Button size="sm" variant="danger" loading={gone.isPending} onClick={() => gone.mutate()}>Remove {picked.size}</Button>
+              </>
+            ) : (
+              <Button size="sm" variant="danger" disabled={!picked.size} onClick={() => setConfirm(true)}>Remove selected</Button>
+            )}
+          </div>
+          <ul className="mt-3 max-h-[26rem] divide-y divide-line/60 overflow-auto rounded-lg border border-line">
+            {shown.map((x) => (
+              <li key={x.id}>
+                <label className="flex cursor-pointer items-start gap-3 px-3 py-2 text-sm hover:bg-raised">
+                  <input type="checkbox" className="mt-1" checked={picked.has(x.id)} onChange={() => toggle(x.id)} />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate">{x.label}</span>
+                    <span className="block text-[12px] text-muted">{x.group}{x.project ? ` · ${x.project}` : ""} · {relTime(x.at)}</span>
+                  </span>
+                  <span className="shrink-0 text-xs tabular-nums text-muted">{mb(x.bytes)}</span>
+                </label>
+              </li>
+            ))}
+            {!shown.length && <li className="px-3 py-6 text-center text-sm text-muted">Nothing here.</li>}
+          </ul>
+          {gone.error && <ErrorNote error={(gone.error as Error).message} />}
+        </div>
+      )}
     </div>
   );
 }
@@ -124,7 +202,7 @@ export function SettingsPage() {
 
   return (
     <div className="h-full overflow-auto">
-      <div className="mx-auto max-w-3xl px-6 py-10">
+      <div className="mx-auto max-w-5xl px-8 py-10">
         <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
         <p className="mt-1 text-sm text-muted">
           Saved in <span className="font-mono">{q.data.home}/settings.json</span>
@@ -183,6 +261,12 @@ export function SettingsPage() {
               <input className="input w-36 font-mono" value={draft["agent.claudeCommand"]} onChange={(e) => set("agent.claudeCommand", e.target.value)} />
               <input className="input font-mono" placeholder="CLI default" value={draft["agent.model"]} onChange={(e) => set("agent.model", e.target.value)} />
             </div>
+          </Field>
+          <Field label="Planning model" hint="Plans every lens, quiz, walk, practice, bug hunt and path first (outline, steps, what each must cover). The model above then writes from that plan, in parts. Works with the Claude CLI and the API key; empty = the writer plans too.">
+            <input className="input font-mono" placeholder="same as the writer" value={draft["agent.planModel"]} onChange={(e) => set("agent.planModel", e.target.value)} />
+          </Field>
+          <Field label="Plan first" hint="On: plan, then write in parts (slower, much better). Off: one model call per item.">
+            <Segmented value={draft["generate.plan"] ? "on" : "off"} onChange={(v) => set("generate.plan", v === "on")} options={[{ value: "on", label: "On" }, { value: "off", label: "Off" }]} />
           </Field>
           <Field label="Codex" hint="Command and model for the OpenAI Codex CLI. Empty model = its default.">
             <div className="flex gap-2">

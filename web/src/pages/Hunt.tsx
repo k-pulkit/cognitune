@@ -56,7 +56,7 @@ export function HuntPage() {
 
   const doc = (
     <div className="h-full overflow-auto">
-      <div className="mx-auto max-w-2xl px-8 py-8">
+      <div className="page">
         <PageHead
           back={<BackLink />}
           badges={<><Badge tone="bad"><Bug className="h-3 w-3" /> bug hunt · {LEVEL[h.level]}</Badge><span className="text-xs text-muted">{bugCount} bug{bugCount === 1 ? "" : "s"} planted · {relTime(h.createdAt)}</span></>}

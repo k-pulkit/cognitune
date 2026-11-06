@@ -27,6 +27,8 @@ import type {
 export const DEFAULT_SETTINGS: Settings = {
   "agent.mode": "auto",
   "agent.model": "claude-sonnet-5-5",
+  "agent.planModel": "claude-opus-5-5",
+  "generate.plan": true,
   "agent.claudeCommand": "claude",
   "agent.codexCommand": "codex",
   "agent.codexModel": "",

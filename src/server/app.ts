@@ -8,7 +8,7 @@ import {
 import { Jobs } from "../core/jobs.js";
 import { LENS_KINDS } from "../core/prompts.js";
 import { Learn } from "../core/services.js";
-import { prune, usage } from "../core/storage.js";
+import { items, prune, remove, usage } from "../core/storage.js";
 import { newId, type Collection, type Store } from "../core/store.js";
 import type {
   AgentInfo, Answer, Card, DiffSpec, Graph, Hunt, JobKind, LearningPath, Note, PathStop, Project, Rating, Settings,
@@ -97,6 +97,12 @@ export function createApi(store: Store, opts: { pruneEveryMs?: number } = {}) {
 
   api.get("/jobs", (c) => c.json(jobs.history()));
   api.get("/storage", (c) => c.json(usage(store)));
+  api.get("/storage/items", (c) => c.json(items(store)));
+  api.post("/storage/remove", async (c) => {
+    const body = await c.req.json<{ ids?: string[] }>().catch(() => ({ ids: [] as string[] }));
+    const ids = Array.isArray(body.ids) ? body.ids.filter((x) => typeof x === "string") : [];
+    return c.json({ ...remove(store, ids), usage: usage(store) });
+  });
   api.post("/storage/prune", (c) => c.json({ ...prune(store), usage: usage(store) }));
 
   api.get("/jobs/:id", (c) => {

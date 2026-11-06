@@ -9,13 +9,14 @@ export class SdkAgent implements Agent {
   constructor(
     private readonly model: string,
     timeoutMs: number,
+    private readonly planModel = "",
   ) {
     this.client = new Anthropic({ timeout: timeoutMs });
   }
 
   async complete(req: AgentRequest): Promise<string> {
     const msg = await this.client.messages.create({
-      model: this.model,
+      model: req.role === "plan" && this.planModel ? this.planModel : this.model,
       max_tokens: 16_000,
       system: req.system,
       messages: [{ role: "user", content: req.prompt }],

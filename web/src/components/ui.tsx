@@ -145,13 +145,13 @@ export function Tabs<T extends string>({
   value, onChange, tabs, className,
 }: { value: T; onChange: (v: T) => void; tabs: { value: T; label: ReactNode; icon?: ReactNode; count?: number }[]; className?: string }) {
   return (
-    <div className={clsx("flex gap-1 border-b border-line px-2", className)}>
+    <div className={clsx("flex gap-1 overflow-x-auto border-b border-line px-2", className)}>
       {tabs.map((t) => (
         <button
           key={t.value}
           onClick={() => onChange(t.value)}
           className={clsx(
-            "relative flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium transition",
+            "relative flex shrink-0 items-center gap-1.5 whitespace-nowrap px-3 py-2.5 text-sm font-medium transition",
             t.value === value ? "text-ink" : "text-muted hover:text-ink",
           )}
         >

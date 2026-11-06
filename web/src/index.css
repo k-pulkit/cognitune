@@ -65,7 +65,9 @@ body {
 }
 
 /* ---- code (shiki dual theme) ---- */
-.shiki, .shiki span { color: var(--shiki-light); background-color: transparent !important; }
+.shiki, .shiki span { color: var(--shiki-light); }
+/* Tokens stay transparent; the line span must keep its own background (key line, bug, hole, marks). */
+.shiki span:not(.line) { background-color: transparent !important; }
 .dark .shiki, .dark .shiki span { color: var(--shiki-dark); }
 .code-view pre { margin: 0; padding: 12px 0; font-size: 13.5px; line-height: 1.65; counter-reset: line var(--line-start, 0); }
 .code-view code { display: block; min-width: max-content; }
@@ -80,7 +82,7 @@ body {
   color: rgb(var(--muted) / 0.55);
   user-select: none;
 }
-.code-view .line.hl { background: rgb(var(--accent) / 0.12); box-shadow: inset 3px 0 0 rgb(var(--accent)); }
+.code-view .line.hl { background: rgb(var(--accent) / 0.16); box-shadow: inset 3px 0 0 rgb(var(--accent)); }
 .code-view .line.note::after { content: "\25CF"; margin-left: 10px; color: rgb(var(--warn)); font-size: 9px; vertical-align: middle; }
 .code-view .line.marked { background: rgb(var(--bad) / 0.12); box-shadow: inset 3px 0 0 rgb(var(--bad)); }
 .code-view .line.bug { background: rgb(var(--bad) / 0.18); box-shadow: inset 3px 0 0 rgb(var(--bad)); }
@@ -127,8 +129,10 @@ body {
 .prose-g ul { @apply list-disc pl-7 space-y-1.5; }
 .prose-g ol { @apply list-decimal pl-7 space-y-1.5; }
 .prose-g li::marker { color: rgb(var(--muted)); font-variant-numeric: tabular-nums; }
-/* Diagrams: rounded nodes; a wide diagram scrolls instead of shrinking its text. */
-.md-figure svg { max-width: none !important; height: auto; }
+/* Diagrams fit the column and are capped in height; click one to see it full size. */
+.md-figure svg { max-width: 100% !important; max-height: 620px; width: auto; height: auto; }
+.md-figure .label, .md-figure-big .label { text-transform: none; letter-spacing: normal; margin: 0; display: inline; font-size: inherit; font-weight: inherit; color: inherit; }
+.md-figure-big svg { max-width: none !important; max-height: none; width: auto; height: auto; }
 .md-figure .node rect, .md-figure .node polygon { rx: 6; ry: 6; }
 .prose-g pre { @apply overflow-auto rounded-lg border border-line bg-raised p-3 font-mono text-[13.5px] leading-relaxed; }
 .prose-g blockquote { @apply border-l-2 border-accent/50 pl-3 text-muted; }
@@ -154,6 +158,9 @@ body {
 }
 @keyframes shimmer { 100% { transform: translateX(100%); } }
 
+/* One reading width for every page that opens from the Library, the same as the lens column. */
+.page { @apply mx-auto w-full max-w-[54rem] px-8 py-8; }
+
 /* ---- lens page: a blog layout ----
    Text sits in one centred reading column (about 68 characters). Cards, figures and the
    walkthrough break out into a wider track. The article is a size container, so the steps
@@ -163,9 +170,9 @@ body {
   display: grid;
   grid-template-columns:
     [full-start] minmax(1.5rem, 1fr)
-    [wide-start] minmax(0, 13rem)
-    [content-start] min(42rem, calc(100% - 3rem))
-    [content-end] minmax(0, 13rem)
+    [wide-start] 0
+    [content-start] min(54rem, calc(100% - 3rem))
+    [content-end] 0
     [wide-end] minmax(1.5rem, 1fr)
     [full-end];
 }
@@ -179,7 +186,7 @@ body {
 }
 @container (min-width: 1100px) {
   /* A diagram may break out past the text column. */
-  .lens .prose-g .md-figure { margin-inline: -8rem; }
+  .lens .prose-g .md-figure { margin-inline: 0; }
 }
 /* Snippet cards: soft-wrap long lines with a hanging indent instead of a sideways scroll. */
 .lens-step-code .code-view code { min-width: 0; }

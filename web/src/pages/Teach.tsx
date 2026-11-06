@@ -39,7 +39,7 @@ export function TeachPage() {
 
   const doc = (
     <div className="h-full overflow-auto">
-      <div className="mx-auto max-w-3xl px-8 py-8">
+      <div className="page">
         <PageHead
           back={<BackLink />}
           badges={<><Badge tone="accent">teach-back</Badge><span className="text-xs text-muted">{relTime(t.createdAt)}</span></>}

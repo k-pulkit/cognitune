@@ -74,7 +74,7 @@ export function ReviewPage() {
 
   const doc = (
     <div className="h-full overflow-auto">
-      <div className="mx-auto max-w-2xl px-8 py-8">
+      <div className="page">
         <div className="flex items-center gap-3">
           <h1 className="text-xl font-semibold tracking-tight">Review</h1>
           <Badge tone="accent">{due.data?.length ?? 0} due</Badge>

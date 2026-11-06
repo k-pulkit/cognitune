@@ -9,11 +9,13 @@ export class ClaudeCliAgent implements Agent {
     private readonly command: string,
     private readonly model: string,
     private readonly timeoutMs: number,
+    private readonly planModel = "",
   ) {}
 
   complete(req: AgentRequest): Promise<string> {
     const args = ["-p", "--output-format", "text", "--tools", "Read", "Grep", "Glob", "--append-system-prompt", req.system];
-    if (this.model) args.push("--model", this.model);
+    const model = req.role === "plan" && this.planModel ? this.planModel : this.model;
+    if (model) args.push("--model", model);
     return runCli(this.command, args, { cwd: req.cwd, stdin: req.prompt, timeoutMs: this.timeoutMs });
   }
 }

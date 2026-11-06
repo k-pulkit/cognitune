@@ -47,8 +47,16 @@ export class Learn {
    * One model call, parsed and checked. `cache` reuses an earlier reply to the exact same prompt
    * (a lens on an unchanged file is free the second time).
    */
-  private async ask<T>(ws: Workspace, tasks: TaskName[], system: string, prompt: string, opts: { cache?: boolean } = {}): Promise<T> {
-    const key = opts.cache ? this.cache.key(this.agent.name, system, prompt) : "";
+  private async ask<T>(
+    ws: Workspace, tasks: TaskName[], system: string, prompt0: string, opts: { cache?: boolean; plan?: boolean; role?: "plan" | "write" } = {},
+  ): Promise<T> {
+    const key = opts.cache ? this.cache.key(this.agent.name, system, prompt0) : "";
+    let prompt = prompt0;
+    if (opts.plan && this.settings()["generate.plan"]) {
+      // Plan first, then write: the planner (a stronger model when one is set) outlines, the writer follows.
+      const o = await this.ask<{ outline: string }>(ws, ["plan"], P.planSystem(system), prompt0, { role: "plan" });
+      prompt = `${prompt0}\n\nPLAN (from the planner; follow it):\n${o.outline}`;
+    }
     const hit = key ? this.cache.get(key) : undefined;
     if (hit) {
       try {
@@ -58,7 +66,7 @@ export class Learn {
         /* bad entry: ask again */
       }
     }
-    let text = await this.agent.complete({ system, prompt, cwd: ws.project.root });
+    let text = await this.agent.complete({ system, prompt, cwd: ws.project.root, role: opts.role });
     let value: T | undefined;
     let issue: string | null = null;
     try {
@@ -69,7 +77,7 @@ export class Learn {
     }
     if (issue) {
       const retry = `${prompt}\n\nYOUR LAST REPLY COULD NOT BE USED: ${issue}\nReply again with the full JSON object in the required shape.`;
-      text = await this.agent.complete({ system, prompt: retry, cwd: ws.project.root });
+      text = await this.agent.complete({ system, prompt: retry, cwd: ws.project.root, role: opts.role });
       value = P.parseJson<T>(text);
       const again = tasks.map((t) => problems(t, value)).find(Boolean);
       if (again) throw new Error(`the model reply did not have the expected shape: ${again}`);
@@ -144,10 +152,12 @@ export class Learn {
       notes: this.notes(ws, files),
     };
     const tasks: TaskName[] = ["lens", ...(sketch ? ["lensSketch" as const] : []), ...(trace ? ["lensTrace" as const] : [])];
-    const raw = await this.ask<Record<string, unknown>>(
-      ws, tasks, P.lensSystem({ sketch: !!sketch, trace, depth }), P.lensPrompt(question, this.bundle(ws, files), extras),
-      { cache: !old && !sketch },
-    );
+    const cache = !old && !sketch;
+    const raw = this.settings()["generate.plan"]
+      ? await this.lensStaged(ws, { question, files, depth, extras, sketch: !!sketch, trace, cache })
+      : await this.ask<Record<string, unknown>>(
+          ws, tasks, P.lensSystem({ sketch: !!sketch, trace, depth }), P.lensPrompt(question, this.bundle(ws, files), extras), { cache },
+        );
     const lens: Lens = {
       id: newId(),
       projectId: project.id,
@@ -169,7 +179,7 @@ export class Learn {
       deepDives: arr(raw.deepDives).map((d) => cleanDive(d as Record<string, unknown>, ws)).filter((d) => d.title || d.body),
       tldr: str(raw.tldr, 400) || undefined,
       whyItMatters: str(raw.whyItMatters, 800) || undefined,
-      gotchas: strs(raw.gotchas, 400, 6),
+      gotchas: strs(raw.gotchas, 400, 8),
       nextSteps: arr(raw.nextSteps).map((n) => {
         const o = n as Record<string, unknown>;
         return { file: ws.absFromRel(str(o.file, 500)) ?? "", why: str(o.why, 400) };
@@ -186,6 +196,64 @@ export class Learn {
     return lens;
   }
 
+  /**
+   * A lens in parts instead of one call: the planner outlines (title, tldr, every step with its lines and
+   * what it must cover), then the writer fills in the opening and the steps, a few steps per call, side by
+   * side. The result has the same shape as the one-shot reply, so the caller does not care which ran.
+   */
+  private async lensStaged(
+    ws: Workspace,
+    x: { question: string; files: string[]; depth: P.LensDepth; extras: P.LensExtras; sketch: boolean; trace: boolean; cache: boolean },
+  ): Promise<Record<string, unknown>> {
+    const code = this.bundle(ws, x.files);
+    const plan = await this.ask<Record<string, unknown>>(
+      ws, ["lensPlan"], P.lensPlanSystem({ depth: x.depth, trace: x.trace }), P.lensPrompt(x.question, code, x.extras),
+      { cache: x.cache, role: "plan" },
+    );
+    const planned = arr(plan.steps).map((st) => st as Record<string, unknown>);
+    const introTasks: TaskName[] = ["lensIntro", ...(x.sketch ? ["lensSketch" as const] : []), ...(x.trace ? ["lensTrace" as const] : [])];
+    const chunk = x.depth === "overview" ? 4 : 3;
+    const ranges: [number, number][] = [];
+    for (let i = 0; i < planned.length; i += chunk) ranges.push([i, Math.min(planned.length, i + chunk) - 1]);
+
+    const jobs: (() => Promise<unknown>)[] = [
+      () => this.ask<Record<string, unknown>>(
+        ws, introTasks, P.lensIntroSystem({ depth: x.depth, sketch: x.sketch, trace: x.trace }),
+        P.lensWritePrompt(x.question, plan, code, { extras: x.extras }), { cache: x.cache },
+      ),
+      ...ranges.map((r) => () => this.ask<{ steps: Record<string, unknown>[] }>(
+        ws, ["lensSteps"], P.lensStepsSystem({ depth: x.depth }),
+        P.lensWritePrompt(x.question, plan, code, { steps: r, titles: planned.slice(0, r[0]).map((st) => str(st.title, 200)) }), { cache: x.cache },
+      )),
+    ];
+    const [intro, ...written] = (await inParallel(jobs, 3)) as [Record<string, unknown>, ...{ steps: Record<string, unknown>[] }[]];
+
+    const bodies = new Map<number, Record<string, unknown>>();
+    written.forEach((w, n) => arr(w.steps).forEach((st, k) => {
+      const o = st as Record<string, unknown>;
+      bodies.set(num(o.index) ?? ranges[n][0] + k, o);
+    }));
+    const deepDives = planned.map((st, i) => {
+      const w = bodies.get(i) ?? {};
+      const covers = strs(st.covers, 400, 12);
+      return {
+        title: st.title, file: st.file, line: st.line, startLine: st.startLine, endLine: st.endLine,
+        // If a part never came back, fall back to the plan's own notes so the step is not empty.
+        body: str(w.body, 12_000) || covers.map((c) => `- ${c}`).join("\n") || str(st.why, 800),
+        pitfall: w.pitfall ?? (str(st.pitfall, 800) || undefined),
+        check: w.check,
+      };
+    });
+    return {
+      ...intro,
+      title: plan.title, tldr: plan.tldr, whyItMatters: plan.whyItMatters,
+      concepts: arr(intro.concepts).length ? intro.concepts : arr(plan.concepts).map((c) => ({ ...(c as object), explain: str((c as Record<string, unknown>).note) })),
+      gotchas: arr(intro.gotchas).length ? intro.gotchas : plan.gotchas,
+      nextSteps: arr(intro.nextSteps).length ? intro.nextSteps : plan.nextSteps,
+      deepDives,
+    };
+  }
+
   // ---- quiz ------------------------------------------------------------
 
   async quiz(project: Project, req: { files: string[]; diff?: DiffSpec; lensId?: string; count?: number; weak?: boolean }): Promise<Quiz> {
@@ -200,6 +268,7 @@ export class Learn {
     const raw = await this.ask<Record<string, unknown>>(
       ws, ["quiz"], P.quizSystem(n),
       P.quizPrompt(this.bundle(ws, files), this.diffText(ws, req.diff ?? lens?.diff, files), lens?.summary, weak.map((m) => ({ id: m.id, text: m.text }))),
+      { plan: true },
     );
     const weakIds = new Set(weak.map((m) => m.id));
     const questions = arr(raw.questions).slice(0, n).map((q, i) => {
@@ -284,7 +353,7 @@ export class Learn {
     const file = ws.guard(req.file);
     const level = (Math.min(Math.max(Math.round(req.level || 2), 1), 4)) as Practice["level"];
     const original = ws.read(file).text;
-    const raw = await this.ask<{ holes?: unknown[] }>(ws, ["practice"], P.practiceSystem(level), `CODE:\n${this.bundle(ws, [file])}`);
+    const raw = await this.ask<{ holes?: unknown[] }>(ws, ["practice"], P.practiceSystem(level), `CODE:\n${this.bundle(ws, [file])}`, { plan: true });
     const holes = cleanHoles(arr(raw.holes), original.split("\n").length);
     if (!holes.length) throw new Error("the model found no lines to turn into holes");
     const holed = applyHoles(original, holes, langOf(file));
@@ -377,11 +446,37 @@ export class Learn {
     const file = ws.guard(req.file);
     const content = ws.read(file);
     const lines = content.text.split("\n").length;
-    const raw = await this.ask<{ blocks?: unknown[] }>(ws, ["walk"], P.walkSystem(), `CODE:\n${this.bundle(ws, [file])}`, { cache: true });
-    const blocks = arr(raw.blocks).map((b) => {
+    const code = this.bundle(ws, [file]);
+    let rawBlocks: unknown[];
+    if (this.settings()["generate.plan"]) {
+      // Planner picks the blocks and the examples; the writer teaches a few blocks per call, side by side.
+      const plan = await this.ask<{ blocks: Record<string, unknown>[] }>(ws, ["walkPlan"], P.walkPlanSystem(), `CODE:\n${code}`, { cache: true, role: "plan" });
+      const planned = arr(plan.blocks).slice(0, 14).map((b) => b as Record<string, unknown>);
+      const ranges: [number, number][] = [];
+      for (let i = 0; i < planned.length; i += 3) ranges.push([i, Math.min(planned.length, i + 3) - 1]);
+      const written = await inParallel(
+        ranges.map((r) => () => this.ask<{ blocks: Record<string, unknown>[] }>(
+          ws, ["walkBlocks"], P.walkBlocksSystem(),
+          P.walkWritePrompt({ blocks: planned }, r, planned.slice(0, r[0]).map((b) => str(b.title, 160)), code), { cache: true },
+        )),
+        3,
+      );
+      const byIndex = new Map<number, Record<string, unknown>>();
+      written.forEach((w, n) => arr(w.blocks).forEach((b, k) => {
+        const o = b as Record<string, unknown>;
+        byIndex.set(num(o.index) ?? ranges[n][0] + k, o);
+      }));
+      rawBlocks = planned.map((b, i) => ({ ...b, ...(byIndex.get(i) ?? {}), question: str(byIndex.get(i)?.question, 800) || str(b.question, 800) }));
+    } else {
+      rawBlocks = (await this.ask<{ blocks?: unknown[] }>(ws, ["walk"], P.walkSystem(), `CODE:\n${code}`, { cache: true })).blocks ?? [];
+    }
+    const blocks = arr(rawBlocks).map((b) => {
       const o = b as Record<string, unknown>;
       const startLine = num(o.startLine) ?? 0;
-      return { startLine, endLine: Math.min(lines, num(o.endLine) ?? startLine), title: str(o.title, 120), why: str(o.why, 800), question: str(o.question, 800) };
+      return {
+        startLine, endLine: Math.min(lines, num(o.endLine) ?? startLine), title: str(o.title, 120), why: str(o.why, 800),
+        explain: str(o.explain, 6000) || undefined, example: str(o.example, 6000) || undefined, question: str(o.question, 800),
+      };
     }).filter((b) => b.startLine >= 1 && b.endLine >= b.startLine && b.question).slice(0, 12);
     if (blocks.length < 2) throw new Error("the model could not split this file into blocks");
     return this.store.put(project.id, "walks", { id: newId(), projectId: project.id, createdAt: now(), file, fileHash: content.hash, blocks });
@@ -413,7 +508,7 @@ export class Learn {
     const file = ws.guard(req.file);
     const content = ws.read(file);
     const level = Math.min(3, Math.max(1, Math.round(req.level || 1))) as Hunt["level"];
-    const raw = await this.ask<{ bugs?: unknown[] }>(ws, ["hunt"], P.huntSystem(level), `CODE:\n${this.bundle(ws, [file])}`);
+    const raw = await this.ask<{ bugs?: unknown[] }>(ws, ["hunt"], P.huntSystem(level), `CODE:\n${this.bundle(ws, [file])}`, { plan: true });
     const { text, planted } = plantBugs(content.text, arr(raw.bugs));
     if (!planted.length) throw new Error("the model's bugs did not match the file; try again");
     return this.store.put(project.id, "hunts", {
@@ -471,7 +566,7 @@ export class Learn {
     const docText = docs.length ? ws.bundle(docs, 24_000) : "";
     const raw = await this.ask<Record<string, unknown>>(
       ws, ["path"], P.pathSystem(), P.pathPrompt(rels, req.hubs.slice(0, 20).map((f) => ws.rel(f)), docText, req.goal?.trim()),
-      { cache: true },
+      { cache: true, plan: true },
     );
     const stops = arr(raw.stops).map((s) => {
       const o = s as Record<string, unknown>;
@@ -491,6 +586,20 @@ export class Learn {
 }
 
 /** A step of the walkthrough; a bad or missing range becomes a small window around the key line. */
+/** Run the jobs with at most `limit` in flight; results keep the jobs' order. */
+async function inParallel<T>(jobs: (() => Promise<T>)[], limit: number): Promise<T[]> {
+  const out: T[] = new Array(jobs.length);
+  let next = 0;
+  const worker = async () => {
+    while (next < jobs.length) {
+      const i = next++;
+      out[i] = await jobs[i]();
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, jobs.length) }, worker));
+  return out;
+}
+
 function cleanDive(o: Record<string, unknown>, ws: Workspace) {
   const file = ws.absFromRel(str(o.file, 500));
   const line = num(o.line);
@@ -505,7 +614,7 @@ function cleanDive(o: Record<string, unknown>, ws: Workspace) {
   const q = str(chk.q, 600);
   const a = str(chk.a, 1000);
   return {
-    title: str(o.title, 200), file, line: line ?? startLine, startLine, endLine, body: str(o.body, 8000),
+    title: str(o.title, 200), file, line: line ?? startLine, startLine, endLine, body: str(o.body, 12_000),
     pitfall: str(o.pitfall, 800) || undefined,
     check: q && a ? { q, a } : undefined,
   };

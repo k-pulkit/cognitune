@@ -1,8 +1,8 @@
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readdirSync, rmSync, statSync, utimesSync } from "node:fs";
-import { join } from "node:path";
+import { join, sep } from "node:path";
 import { COLLECTIONS, type Store } from "./store.js";
-import type { StorageUsage } from "./types.js";
+import type { StorageItem, StorageUsage } from "./types.js";
 
 /**
  * Keeps ~/.groklab bounded. Everything that can grow without limit has a cap:
@@ -160,4 +160,74 @@ export class ReplyCache {
     mkdirSync(this.dir, { recursive: true });
     this.store.write(join(this.dir, `${key}.json`), { text, at: new Date().toISOString() });
   }
+}
+
+// ---- pick and remove -------------------------------------------------------
+// Settings > Storage lists single items so the user can tick some and remove only those.
+// Ids are paths under the groklab home. remove() accepts only the shapes items() produces,
+// so a crafted id can never reach anything else.
+
+const SHAPES = [
+  new RegExp(`^projects/[a-z0-9-]+/(archive/)?(${COLLECTIONS.join("|")})/[A-Za-z0-9_.-]+\\.json$`),
+  /^cache\/[a-f0-9]+\.json$/,
+  /^archive\/projects\/[A-Za-z0-9_.-]+$/,
+];
+
+function labelOf(v: unknown, fallback: string): string {
+  const o = (v ?? {}) as Record<string, unknown>;
+  for (const k of ["title", "question", "text", "front", "term", "name", "file"]) {
+    if (typeof o[k] === "string" && o[k]) return (o[k] as string).replace(/\s+/g, " ").slice(0, 100);
+  }
+  return fallback;
+}
+
+export function items(store: Store): StorageItem[] {
+  const out: StorageItem[] = [];
+  const home = store.home;
+  const projects = new Map(store.projects().map((p) => [p.id, p.name]));
+  const addDir = (dir: string, group: string, project?: string) => {
+    if (!existsSync(dir)) return;
+    for (const f of readdirSync(dir)) {
+      if (!f.endsWith(".json")) continue;
+      const p = join(dir, f);
+      const st = statSync(p);
+      const rel = p.slice(home.length + 1).split(sep).join("/");
+      out.push({ id: rel, group, project, label: labelOf(store.read(p, null), f), bytes: st.size, at: st.mtime.toISOString() });
+    }
+  };
+  const root = join(home, "projects");
+  if (existsSync(root)) {
+    for (const pid of readdirSync(root)) {
+      const name = projects.get(pid) ?? pid;
+      for (const c of COLLECTIONS) {
+        addDir(join(root, pid, c), c, name);
+        addDir(join(root, pid, "archive", c), `archived ${c}`, name);
+      }
+    }
+  }
+  addDir(join(home, "cache"), "reply cache");
+  const forgotten = join(home, "archive", "projects");
+  if (existsSync(forgotten)) {
+    for (const f of readdirSync(forgotten)) {
+      const p = join(forgotten, f);
+      const st = statSync(p);
+      out.push({ id: `archive/projects/${f}`, group: "forgotten projects", label: f, bytes: walk(p).bytes, at: st.mtime.toISOString() });
+    }
+  }
+  return out.sort((a, b) => b.at.localeCompare(a.at));
+}
+
+export function remove(store: Store, ids: string[]): { removed: number; freedBytes: number } {
+  let removed = 0;
+  let freedBytes = 0;
+  for (const id of ids) {
+    if (id.includes("..") || !SHAPES.some((r) => r.test(id))) continue;
+    const p = join(store.home, ...id.split("/"));
+    if (!existsSync(p)) continue;
+    const st = statSync(p);
+    freedBytes += st.isDirectory() ? walk(p).bytes : st.size;
+    rmSync(p, { recursive: st.isDirectory(), force: true });
+    removed++;
+  }
+  return { removed, freedBytes };
 }

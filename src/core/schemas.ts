@@ -19,6 +19,14 @@ export const SCHEMAS = {
     intuition: text.optional(),
     deepDives: z.array(z.object({ title: text, body: text })).min(1),
   }),
+  lensPlan: z.object({
+    title: text,
+    tldr: text.min(10),
+    steps: z.array(z.object({ title: text })).min(1),
+  }),
+  lensIntro: z.object({ summary: text, intuition: text.optional() }),
+  lensSteps: z.object({ steps: z.array(z.object({ body: text })).min(1) }),
+  plan: z.object({ outline: text.min(10) }),
   lensSketch: z.object({ differences: z.array(text).min(1) }),
   lensTrace: z.object({
     trace: z.object({ input: text, steps: z.array(z.object({ note: text, state: z.record(z.unknown()).optional() })).min(1) }),
@@ -30,6 +38,8 @@ export const SCHEMAS = {
   teachback: z.object({ score: z.coerce.number().min(1).max(5), right: z.array(text), missing: z.array(text), wrong: z.array(text) }),
   tutor: z.object({ reply: text.min(1) }),
   walk: z.object({ blocks: z.array(z.object({ startLine: line, endLine: line, question: text })).min(2) }),
+  walkPlan: z.object({ blocks: z.array(z.object({ startLine: line, endLine: line, title: text })).min(2) }),
+  walkBlocks: z.object({ blocks: z.array(z.object({ question: text })).min(1) }),
   walkcheck: z.object({ verdict, feedback: text }),
   hunt: z.object({ bugs: z.array(z.object({ line, original: text, buggy: text, what: text })).min(1) }),
   huntgrade: z.object({ found: z.array(z.object({ line })), falseAlarms: z.array(z.object({ line })) }),
