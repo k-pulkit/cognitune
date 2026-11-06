@@ -73,7 +73,7 @@ export function TeachPage() {
         {g && list("Missing", g.missing, <CircleDashed className="h-4 w-4" />, "text-warn")}
         {g && list("Right", g.right, <CheckCircle2 className="h-4 w-4" />, "text-good")}
 
-        <section className="mt-10 rounded-xl border border-line bg-raised/50 p-5">
+        <section className="mt-10 rounded-md border border-line bg-raised/50 p-5">
           <div className="text-sm font-semibold">Explain it again</div>
           <p className="mt-0.5 text-sm text-muted">Close this page in your head: write it fresh, without copying the feedback.</p>
           {again === null ? (

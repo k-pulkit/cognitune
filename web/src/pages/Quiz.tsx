@@ -95,7 +95,7 @@ export function QuizPage() {
           </a>
           <span className="text-xs text-muted">{q.questions.length} questions · {relTime(q.createdAt)}</span>
         </div>
-        <h1 className="mt-2 text-[26px] font-semibold leading-tight tracking-tight">{q.title}</h1>
+        <h1 className="mt-2 text-[20px] font-semibold leading-tight tracking-tight">{q.title}</h1>
         <div className="mt-3 flex flex-wrap gap-1.5">
           {q.files.map((f) => (
             <button key={f} onClick={() => setPeek({ file: f })} className="inline-flex items-center gap-1 rounded-md bg-raised px-2 py-1 font-mono text-[12px] hover:text-accent">

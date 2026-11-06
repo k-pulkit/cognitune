@@ -109,7 +109,7 @@ export function LensPage() {
         </div>
 
         {l.changed.length > 0 && (
-          <div className="mt-6 flex items-center gap-3 rounded-xl border border-warn/40 bg-warn/8 px-4 py-3 text-[14px]">
+          <div className="mt-6 flex items-center gap-3 rounded-md border border-warn/40 bg-warn/8 px-4 py-3 text-[14px]">
             <GitCompareArrows className="h-4 w-4 shrink-0 text-warn" />
             <div className="min-w-0 flex-1">The code changed since this lens was made ({l.changed.map((f) => rel(f)).join(", ")}). It may be out of date.</div>
             <Button size="sm" icon={<RefreshCw className="h-3.5 w-3.5" />} disabled={refresh.busy}
@@ -132,7 +132,7 @@ export function LensPage() {
         {l.tldr && l.summary && <div className="mt-5"><Markdown>{l.summary}</Markdown></div>}
 
         {l.sketch && (
-          <div className="mt-8 rounded-2xl bg-raised/70 p-6">
+          <div className="mt-8 rounded-md bg-raised/70 p-6">
             <div className="flex items-center gap-2 text-[15px] font-semibold"><PenLine className="h-4 w-4 text-accent" /> {l.diff ? "Your prediction" : "Your take"}, and where it differs</div>
             <p className="read mt-3 italic text-muted">“{l.sketch}”</p>
             {l.differences && l.differences.length > 0 && (
@@ -231,7 +231,7 @@ export function LensPage() {
           </>
         )}
 
-        <section className="mt-16 rounded-2xl border border-line bg-raised/40 p-6">
+        <section className="mt-16 rounded-md border border-line bg-raised/40 p-6">
           <div className="text-[17px] font-semibold">Did it land?</div>
           <p className="read mt-1 text-muted">Reading feels like understanding. A quiz on the same files tells you if it is.</p>
           <div className="mt-4 flex flex-wrap gap-2">
@@ -398,7 +398,7 @@ function Step({ d, n, text, rel, onShow }: {
         <div className="mt-3"><Markdown>{d.body}</Markdown></div>
       </div>
       {snippet && d.file && (
-        <div className="min-w-0 overflow-hidden rounded-xl border border-line bg-panel">
+        <div className="min-w-0 overflow-hidden rounded-md border border-line bg-panel">
           <div className="flex items-center justify-between gap-3 border-b border-line bg-raised/60 px-3 py-1.5 font-mono text-[12px] text-muted">
             <span className="truncate" title={rel(d.file)}>{tail(rel(d.file))}:{snippet.first}–{snippet.last}</span>
             <button className="shrink-0 font-sans hover:text-accent" onClick={() => onShow(d.file, d.line)}>open file</button>

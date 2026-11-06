@@ -79,7 +79,7 @@ export function ProjectsPage() {
               onKeyDown={(e) => e.key === "Enter" && open.mutate(p.root)}
               className="card group flex cursor-pointer items-center gap-4 p-4 transition hover:-translate-y-0.5 hover:border-accent/40"
             >
-              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-accent/20 to-fuchsia-500/20 text-sm font-bold uppercase text-accent">
+              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-gradient-to-br from-accent/20 to-fuchsia-500/20 text-sm font-bold uppercase text-accent">
                 {p.name.slice(0, 2)}
               </div>
               <div className="min-w-0 flex-1">

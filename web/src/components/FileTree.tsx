@@ -69,10 +69,10 @@ export function FileTree({
       <div key={n.path}>
         <div
           className={clsx(
-            "group flex h-[30px] cursor-pointer items-center gap-1.5 rounded-md pr-2 text-[13.5px] transition",
-            openFile === n.path ? "bg-accent/12 text-ink" : "text-ink/85 hover:bg-raised",
+            "group flex h-[22px] cursor-pointer items-center gap-1 pr-2 text-[13px]",
+            openFile === n.path ? "bg-sel text-ink dark:text-white" : "hover:bg-raised",
           )}
-          style={{ paddingLeft: depth * 14 + 6 }}
+          style={{ paddingLeft: depth * 12 + 8 }}
           onClick={() => {
             if (n.kind === "dir") setToggled((s) => {
               const next = new Set(s);
@@ -94,7 +94,7 @@ export function FileTree({
             onChange={() => onToggle(files, !all)}
             title={n.kind === "dir" ? `Tick all ${files.length} files` : "Use as context"}
           />
-          <Icon className={clsx("h-4 w-4 shrink-0", n.kind === "dir" ? "text-accent/80" : "text-muted")} />
+          <Icon className={clsx("h-4 w-4 shrink-0", "text-muted")} />
           <span className="truncate">{n.name}</span>
           {level && level !== "new" && <span title={level} className={clsx("ml-auto h-1.5 w-1.5 shrink-0 rounded-full", LEVEL_DOT[level])} />}
           {meta && n.kind === "file" && <span className="ml-auto flex shrink-0 items-center gap-1.5">{meta(n.path)}</span>}
@@ -106,13 +106,13 @@ export function FileTree({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="px-3 py-2.5">
+      <div className="px-2 py-1.5">
         <div className="relative">
-          <Search className="pointer-events-none absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted" />
-          <input className="input h-8 pl-8 text-[14px]" placeholder="Filter files" value={q} onChange={(e) => setQ(e.target.value)} />
+          <Search className="pointer-events-none absolute left-2 top-[6px] h-3.5 w-3.5 text-muted" />
+          <input className="input h-[26px] pl-7 text-[13px]" placeholder="Filter files" value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
       </div>
-      <div className="min-h-0 flex-1 overflow-auto px-2.5 pb-4">{shown.map((r) => row(r, 0))}</div>
+      <div className="min-h-0 flex-1 overflow-auto pb-4">{shown.map((r) => row(r, 0))}</div>
     </div>
   );
 }

@@ -97,7 +97,7 @@ export function ChangesPage() {
   ];
 
   const left = (
-    <div className="flex h-full flex-col bg-panel">
+    <div className="flex h-full flex-col bg-side">
       <div className="space-y-2 border-b border-line p-3">
         {list.length > 1 && (
           <div>

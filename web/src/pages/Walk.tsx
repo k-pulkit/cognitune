@@ -82,7 +82,7 @@ export function WalkPage() {
           <h2 className="mt-1 text-lg font-semibold">{b.title || `Block ${i + 1}`}</h2>
           <p className="reading mt-1 text-muted">{b.why}</p>
           {block !== null && (
-            <div className="mt-5 min-w-0 overflow-hidden rounded-xl border border-line bg-panel">
+            <div className="mt-5 min-w-0 overflow-hidden rounded-md border border-line bg-panel">
               <div className="border-b border-line bg-raised/60 px-3 py-1.5 font-mono text-[12px] text-muted">{rel(w.file).split("/").slice(-2).join("/")}:{b.startLine}–{b.endLine}</div>
               <div className="lens-step-code"><CodeView text={block} lang={file.data!.lang} firstLine={b.startLine} /></div>
             </div>

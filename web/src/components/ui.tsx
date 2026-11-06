@@ -13,14 +13,14 @@ export function Button({
       {...rest}
       disabled={rest.disabled || loading}
       className={clsx(
-        "inline-flex select-none items-center justify-center gap-2 rounded-lg font-medium transition active:scale-[0.98]",
-        "disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40",
-        size === "sm" && "h-7 px-2.5 text-xs",
-        size === "md" && "h-9 px-3.5 text-sm",
-        size === "lg" && "h-11 px-5 text-[16px]",
-        variant === "primary" && "bg-accent text-accent-ink shadow-sm hover:brightness-110",
-        variant === "secondary" && "border border-line bg-panel text-ink hover:bg-raised",
+        "inline-flex select-none items-center justify-center gap-2 rounded-sm font-medium transition",
+        "disabled:cursor-not-allowed disabled:opacity-50",
+        "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent",
+        size === "sm" && "h-[22px] px-2 text-xs",
+        size === "md" && "h-[26px] px-3 text-[13px]",
+        size === "lg" && "h-8 px-4 text-sm",
+        variant === "primary" && "bg-accent text-accent-ink hover:brightness-110",
+        variant === "secondary" && "border border-line bg-raised text-ink hover:brightness-95",
         variant === "ghost" && "text-muted hover:bg-raised hover:text-ink",
         variant === "danger" && "border border-bad/30 bg-bad/10 text-bad hover:bg-bad/15",
         className,
@@ -36,7 +36,7 @@ export function Badge({ tone = "muted", children, className }: { tone?: "muted" 
   return (
     <span
       className={clsx(
-        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[12px] font-medium",
+        "inline-flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-[11px] font-medium",
         tone === "muted" && "bg-raised text-muted",
         tone === "accent" && "bg-accent/12 text-accent",
         tone === "good" && "bg-good/12 text-good",
@@ -123,15 +123,15 @@ export function Segmented<T extends string | number>({
   value, onChange, options,
 }: { value: T; onChange: (v: T) => void; options: { value: T; label: ReactNode; title?: string }[] }) {
   return (
-    <div className="inline-flex rounded-lg border border-line bg-raised p-0.5">
+    <div className="inline-flex rounded-sm border border-line bg-raised p-0.5">
       {options.map((o) => (
         <button
           key={String(o.value)}
           title={o.title}
           onClick={() => onChange(o.value)}
           className={clsx(
-            "rounded-md px-2.5 py-1 text-xs font-medium transition",
-            o.value === value ? "bg-panel text-ink shadow-sm" : "text-muted hover:text-ink",
+            "rounded-sm px-2.5 py-0.5 text-xs font-medium transition",
+            o.value === value ? "bg-panel text-ink" : "text-muted hover:text-ink",
           )}
         >
           {o.label}
@@ -145,20 +145,20 @@ export function Tabs<T extends string>({
   value, onChange, tabs, className,
 }: { value: T; onChange: (v: T) => void; tabs: { value: T; label: ReactNode; icon?: ReactNode; count?: number }[]; className?: string }) {
   return (
-    <div className={clsx("flex gap-1 overflow-x-auto border-b border-line px-2", className)}>
+    <div className={clsx("flex overflow-x-auto border-b border-line bg-side", className)}>
       {tabs.map((t) => (
         <button
           key={t.value}
           onClick={() => onChange(t.value)}
           className={clsx(
-            "relative flex shrink-0 items-center gap-1.5 whitespace-nowrap px-3 py-2.5 text-sm font-medium transition",
-            t.value === value ? "text-ink" : "text-muted hover:text-ink",
+            "relative flex h-[35px] shrink-0 items-center gap-1.5 whitespace-nowrap border-r border-line px-3 text-[13px] transition",
+            t.value === value ? "bg-bg text-ink" : "text-muted hover:text-ink",
           )}
         >
           {t.icon}
           {t.label}
           {t.count !== undefined && t.count > 0 && <span className="rounded-full bg-raised px-1.5 text-[11.5px] text-muted">{t.count}</span>}
-          {t.value === value && <span className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-accent" />}
+          {t.value === value && <span className="absolute inset-x-0 top-0 h-px bg-accent" />}
         </button>
       ))}
     </div>
@@ -177,13 +177,13 @@ export function Modal({
 }: { title: ReactNode; onClose: () => void; children: ReactNode; footer?: ReactNode; wide?: boolean }) {
   return (
     <div
-      className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4"
       onClick={onClose}
       onKeyDown={(e) => e.key === "Escape" && onClose()}
     >
       <div className={clsx("card flex max-h-[85vh] w-full flex-col overflow-hidden", wide ? "max-w-2xl" : "max-w-lg")} onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center border-b border-line px-5 py-3">
-          <h2 className="text-base font-semibold">{title}</h2>
+        <div className="flex items-center border-b border-line px-4 py-2">
+          <h2 className="text-sm font-semibold">{title}</h2>
           <button className="ml-auto text-muted hover:text-ink" onClick={onClose} aria-label="Close">
             <X className="h-4 w-4" />
           </button>
@@ -202,7 +202,7 @@ export function PageHead({ back, badges, title, sub, actions }: { back?: ReactNo
       {back}
       {badges && <div className="mt-3 flex flex-wrap items-center gap-2">{badges}</div>}
       <div className="mt-2 flex items-start gap-3">
-        <h1 className="min-w-0 flex-1 text-[26px] font-semibold leading-tight tracking-tight">{title}</h1>
+        <h1 className="min-w-0 flex-1 text-[20px] font-semibold leading-tight tracking-tight">{title}</h1>
         {actions && <div className="flex shrink-0 gap-2">{actions}</div>}
       </div>
       {sub && <div className="mt-1 text-sm text-muted">{sub}</div>}

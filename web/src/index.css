@@ -4,63 +4,68 @@
 
 /* Colour tokens as "r g b" so Tailwind can add alpha (bg-accent/10). */
 :root {
-  --bg: 248 248 251;
-  --panel: 255 255 255;
-  --raised: 243 243 248;
-  --line: 228 228 236;
-  --ink: 24 24 34;
-  --muted: 105 106 122;
-  --accent: 99 84 240;
+  --bg: 253 246 227;
+  --panel: 253 246 227;
+  --raised: 238 232 213;
+  --side: 238 232 213;
+  --rail: 221 214 193;
+  --sel: 223 202 136;
+  --status: 238 232 213;
+  --line: 221 214 193;
+  --ink: 88 110 117;
+  --muted: 131 148 150;
+  --accent: 38 139 210;
   --accent-ink: 255 255 255;
-  --good: 22 155 98;
-  --warn: 196 128 10;
-  --bad: 220 60 72;
+  --good: 133 153 0;
+  --warn: 181 137 0;
+  --bad: 220 50 47;
   color-scheme: light;
 }
 .dark {
-  --bg: 13 13 18;
-  --panel: 20 20 27;
-  --raised: 29 29 38;
-  --line: 42 42 54;
-  --ink: 232 232 240;
-  --muted: 145 146 165;
-  --accent: 140 128 255;
-  --accent-ink: 14 12 30;
-  --good: 64 200 140;
-  --warn: 236 178 70;
-  --bad: 248 108 118;
+  --bg: 31 31 31;
+  --panel: 31 31 31;
+  --raised: 42 45 46;
+  --side: 24 24 24;
+  --rail: 24 24 24;
+  --sel: 4 57 94;
+  --status: 24 24 24;
+  --line: 43 43 43;
+  --ink: 204 204 204;
+  --muted: 157 157 157;
+  --accent: 55 148 255;
+  --accent-ink: 255 255 255;
+  --good: 129 184 139;
+  --warn: 226 192 141;
+  --bad: 248 81 73;
   color-scheme: dark;
 }
 
 html, body, #root { height: 100%; }
-/* Long-form font: Source Serif 4 (optical sizes) or Inter, picked in Settings. */
-:root { --read-font: 'Inter Variable', system-ui, sans-serif; }
+/* Long-form font: Source Serif 4 (optical sizes) or the system UI font, picked in Settings. */
+:root { --read-font: system-ui, -apple-system, "Segoe UI", Ubuntu, sans-serif; }
 :root[data-read="serif"] { --read-font: Charter, 'Bitstream Charter', 'Source Serif 4 Variable', Georgia, serif; }
 body {
   @apply bg-bg text-ink font-sans antialiased;
-  /* Inter: single-storey a off, open digits, slashed zero off; tabular numbers where it matters are set per element. */
-  font-feature-settings: "cv11", "ss01";
-  font-size: 15px;
-  line-height: 1.55;
-  text-rendering: optimizeLegibility;
+    font-size: 13px;
+  line-height: 1.4;
 }
 
 /* Scrollbars that follow the theme. */
 * { scrollbar-width: thin; scrollbar-color: rgb(var(--line)) transparent; }
 *::-webkit-scrollbar { width: 10px; height: 10px; }
-*::-webkit-scrollbar-thumb { background: rgb(var(--line)); border-radius: 8px; border: 2px solid rgb(var(--bg)); }
+*::-webkit-scrollbar-thumb { background: rgb(var(--muted) / 0.35); border-radius: 0; }
 *::-webkit-scrollbar-thumb:hover { background: rgb(var(--muted) / 0.6); }
 *::-webkit-scrollbar-track { background: transparent; }
 
 ::selection { background: rgb(var(--accent) / 0.25); }
 
 @layer components {
-  .card { @apply rounded-xl border border-line bg-panel shadow-soft; }
+  .card { @apply rounded-md border border-line bg-panel; }
   .input {
-    @apply w-full rounded-lg border border-line bg-panel px-3 py-2 text-sm text-ink outline-none transition
-      placeholder:text-muted/70 focus:border-accent focus:ring-2 focus:ring-accent/20;
+    @apply w-full rounded-sm border border-line bg-panel px-2 py-1 text-[13px] text-ink outline-none
+      placeholder:text-muted/70 focus:border-accent;
   }
-  .label { @apply mb-1 block text-xs font-medium uppercase tracking-wide text-muted; }
+  .label { @apply mb-1 block text-[11px] font-semibold uppercase tracking-wide text-muted; }
   .kbd { @apply rounded border border-line bg-raised px-1.5 py-0.5 font-mono text-[11px] text-muted; }
 }
 
@@ -69,7 +74,7 @@ body {
 /* Tokens stay transparent; the line span must keep its own background (key line, bug, hole, marks). */
 .shiki span:not(.line) { background-color: transparent !important; }
 .dark .shiki, .dark .shiki span { color: var(--shiki-dark); }
-.code-view pre { margin: 0; padding: 12px 0; font-size: 13.5px; line-height: 1.65; counter-reset: line var(--line-start, 0); }
+.code-view pre { margin: 0; padding: 12px 0; font-size: 13px; line-height: 19px; counter-reset: line var(--line-start, 0); }
 .code-view code { display: block; min-width: max-content; }
 .code-view .line { display: inline-block; width: 100%; padding-right: 24px; }
 .code-view .line::before {
@@ -106,7 +111,7 @@ body {
 .reading-lg { font-family: var(--read-font); font-size: 19px; line-height: 1.45; }
 /* Inline code in text: a light tint only (no border), so a sentence full of identifiers still reads as a sentence. */
 .prose-g :not(pre) > code, .md-inline code, .read code, .read-sm code {
-  font-family: 'JetBrains Mono Variable', ui-monospace, monospace;
+  font-family: theme(fontFamily.mono);
   font-size: 0.875em;
   font-weight: 450;
   padding: 0.08em 0.3em;
@@ -146,8 +151,8 @@ body {
 
 /* ---- codemirror fit ---- */
 .cm-theme, .cm-editor { height: 100%; }
-.cm-editor { font-size: 12.5px; }
-.cm-editor .cm-scroller { font-family: "JetBrains Mono Variable", ui-monospace, monospace; }
+.cm-editor { font-size: 13px; }
+.cm-editor .cm-scroller { font-family: theme(fontFamily.mono); }
 .cm-editor.cm-focused { outline: none !important; }
 
 .shimmer { position: relative; overflow: hidden; }
