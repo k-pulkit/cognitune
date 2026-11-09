@@ -134,7 +134,13 @@ export class FakeAgent implements Agent {
         };
       }
       case "practice":
-        return { holes: [{ startLine: 2, endLine: 3, intent: "Do the main step.", hints: ["Look at the names.", "Return the result."] }] };
+        // Two lines of real code (from line 2 on) in the first file, so the trivial-hole filter keeps them.
+        const block = prompt.split("=== FILE ")[1] ?? "";
+        const body = [...block.matchAll(/^\s*(\d+)\| (.*)$/gm)].map((m) => ({ n: Number(m[1]), text: m[2] }));
+        const real = (t: string) => !!t.trim() && !/^\s*(\/\/|#|\*|\/\*|import\b|from\b|[{}()\[\];,]+\s*$)/.test(t);
+        const at = body.findIndex((l, i) => l.n >= 2 && real(l.text) && real(body[i + 1]?.text ?? ""));
+        const start = at >= 0 ? body[at].n : 2;
+        return { concept: "Fake concept.", holes: [{ file: /=== FILE (\S+)/.exec(prompt)?.[1], startLine: start, endLine: start + 1, intent: "Do the main step.", hints: ["Look at the names.", "Return the result."] }] };
       case "review": {
         const ids = [...prompt.matchAll(/^hole (\d+):/gm)].map((m) => Number(m[1]));
         return { summary: "Fake review.", holes: ids.map((id) => ({ id, verdict: "partial", feedback: "Close." })) };

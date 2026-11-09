@@ -153,6 +153,8 @@ body {
 .cm-theme, .cm-theme-light, .cm-theme-dark, .cm-editor { height: 100%; }
 .cm-editor { font-size: 13px; }
 .cm-editor .cm-scroller { overflow: auto; }
+/* Practice: the lines still waiting to be written. */
+.cm-editor .cm-hole-line { background: rgb(var(--warn) / 0.14); box-shadow: inset 3px 0 0 rgb(var(--warn)); }
 .cm-editor .cm-scroller { font-family: theme(fontFamily.mono); }
 .cm-editor.cm-focused { outline: none !important; }
 

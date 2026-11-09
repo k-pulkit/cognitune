@@ -7,7 +7,7 @@ import {
 } from "../core/insights.js";
 import { Jobs } from "../core/jobs.js";
 import { LENS_KINDS } from "../core/prompts.js";
-import { Learn } from "../core/services.js";
+import { Learn, normalizePractice } from "../core/services.js";
 import { items, prune, remove, usage } from "../core/storage.js";
 import { newId, type Collection, type Store } from "../core/store.js";
 import type {
@@ -211,18 +211,18 @@ export function createApi(store: Store, opts: { pruneEveryMs?: number } = {}) {
   api.get("/projects/:pid/practice", (c) => c.json(store.list(project(c).id, "practice")));
   api.get("/projects/:pid/practice/:id", (c) => {
     const x = store.get(project(c).id, "practice", c.req.param("id"));
-    return x ? c.json(x) : fail(c, 404, "practice not found");
+    return x ? c.json(normalizePractice(x)) : fail(c, 404, "practice not found");
   });
   api.post("/projects/:pid/practice", async (c) => {
     const p = project(c);
-    const req = await body<{ file: string; level: number; files?: string[] }>(c);
+    const req = await body<{ file?: string; level: number; files?: string[]; concept?: string }>(c);
     return startJob(c, "practice", p, (l) => l.practice(p, req));
   });
   api.put("/projects/:pid/practice/:id/attempt", async (c) => {
     const p = project(c);
-    const { text } = await body<{ text: string }>(c);
+    const { text, file } = await body<{ text: string; file?: string }>(c);
     // Saving needs no model.
-    return c.json(offline().saveAttempt(p, c.req.param("id"), text ?? ""));
+    return c.json(offline().saveAttempt(p, c.req.param("id"), text ?? "", file));
   });
   api.post("/projects/:pid/practice/:id/review", (c) => {
     const p = project(c);

@@ -142,13 +142,43 @@ describe("api", () => {
     const before = readFileSync(file(), "utf8");
     const pj = await waitJob(api, (await (await post(`/projects/${pid}/practice`, { file: file(), level: 1 })).json()).id);
     const p = await (await api.request(`/projects/${pid}/practice/${pj.resultId}`)).json();
-    expect(p.holed).toBe("def add(a, b):\n    # HOLE 1: Do the main step.\n");
+    // The whole body was cut, so the marker gets "pass" to stay valid Python.
+    expect(p.holed).toBe("def add(a, b):\n    pass  # HOLE 1: Do the main step.\n");
+    expect(p.files).toHaveLength(1);
+    expect(p.concept).toBe("Fake concept.");
     await post(`/projects/${pid}/practice/${p.id}/attempt`, { text: "def add(a, b):\n    return a + b\n" }, "PUT");
     const rj = await waitJob(api, (await (await post(`/projects/${pid}/practice/${p.id}/review`, {})).json()).id);
     const reviewed = await (await api.request(`/projects/${pid}/practice/${rj.resultId}`)).json();
     expect(reviewed.attempt).toContain("return a + b");
     expect(reviewed.review.holes[0].verdict).toBe("partial");
     expect(readFileSync(file(), "utf8")).toBe(before);
+  });
+
+  it("practice: several files, holes tagged by file, context read only, per-file saves", async () => {
+    const use = join(root, "src", "use.py");
+    writeFileSync(use, "from add import add\n\ndef twice(a):\n    x = add(a, a)\n    return x\n");
+    const notes = join(root, "notes.md");
+    writeFileSync(notes, "# notes\n");
+    const pj = await waitJob(api, (await (await post(`/projects/${pid}/practice`, { files: [file(), use, notes], level: 1, concept: "adding" })).json()).id);
+    const p = await (await api.request(`/projects/${pid}/practice/${pj.resultId}`)).json();
+    expect(p.concept).toBe("adding");
+    expect(p.files.map((f: { path: string }) => f.path)).toEqual([file(), use, notes]);
+    expect(p.holes.map((h: { id: number; file: string }) => [h.id, h.file])).toEqual([[1, file()]]);
+    // Files with no hole keep their text: they are context.
+    expect(p.files[2].holed).toBe("# notes\n");
+    await post(`/projects/${pid}/practice/${p.id}/attempt`, { file: file(), text: "def add(a, b):\n    return a + b\n" }, "PUT");
+    const again = await (await api.request(`/projects/${pid}/practice/${p.id}`)).json();
+    expect(again.files[0].attempt).toContain("return a + b");
+    expect(again.files[1].attempt).toBe(again.files[1].holed);
+  });
+
+  it("practice refuses a set of only data or text files", async () => {
+    const notes = join(root, "notes.md");
+    writeFileSync(notes, "# notes\n");
+    const res = await post(`/projects/${pid}/practice`, { files: [notes], level: 1 });
+    const j = await res.json();
+    const done = j.id ? await waitJob(api, j.id).catch((e: Error) => ({ error: e.message })) : j;
+    expect(JSON.stringify(done)).toMatch(/at least one file with logic/);
   });
 
   it("archive moves, never erases", async () => {
@@ -190,6 +220,13 @@ describe("helpers", () => {
       lines,
     );
     expect(holes.map((h) => h.intent)).toEqual(["real"]);
+  });
+
+  it("applyHoles adds pass only when a Python block would be left empty", () => {
+    const src = "def f(x):\n    y = x + 1\n    z = y * 2\n    return z\n";
+    const hole = (startLine: number, endLine: number) => [{ id: 1, startLine, endLine, intent: "i", hints: [] }];
+    expect(applyHoles(src, hole(2, 3), "python")).toBe("def f(x):\n    # HOLE 1: i\n    return z\n");
+    expect(applyHoles(src, hole(2, 4), "python")).toBe("def f(x):\n    pass  # HOLE 1: i\n");
   });
 
   it("applyHoles keeps indent and uses the language's comment", () => {

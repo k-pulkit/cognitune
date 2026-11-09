@@ -182,6 +182,8 @@ export interface Hole {
   endLine: number;
   intent: string;
   hints: string[];
+  /** The file (absolute path) the hole is cut from. Old single-file practices leave it empty; see Practice.files. */
+  file?: string;
 }
 
 export interface HoleReview {
@@ -190,10 +192,23 @@ export interface HoleReview {
   feedback: string;
 }
 
+/** One file of a practice: its real text, the copy with holes, and the learner's current version. */
+export interface PracticeFile {
+  path: string;
+  original: string;
+  holed: string;
+  attempt: string;
+}
+
 export interface Practice {
   id: string;
   projectId: string;
   createdAt: string;
+  /** What the exercise trains, in a sentence: "retry with backoff", "how a job is scheduled". */
+  concept?: string;
+  /** All files involved. Files with no hole are read-only context. Old practices lack this; the server fills it in. */
+  files?: PracticeFile[];
+  /** The first file, kept so old data and old readers still work. */
   file: string;
   level: 1 | 2 | 3 | 4;
   original: string;
