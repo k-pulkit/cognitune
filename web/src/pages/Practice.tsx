@@ -358,7 +358,7 @@ export function PracticePage() {
         <Button variant="primary" size="lg" className="w-full" icon={<Send className="h-4 w-4" />} loading={job.busy} onClick={check}>
           Check my work
         </Button>
-        <div className="grid grid-cols-[1.4fr_1fr_1fr] gap-2 [&>button]:whitespace-nowrap">
+        <div className="grid grid-cols-3 gap-2 [&>button]:whitespace-nowrap">
           <Button size="sm" icon={showOriginal ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />} onClick={() => setShowOriginal((s) => !s)}>
             {showOriginal ? "Hide original" : "Show original"}
           </Button>
