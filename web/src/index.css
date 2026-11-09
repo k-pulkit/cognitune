@@ -65,7 +65,10 @@ body {
     @apply w-full rounded-sm border border-line bg-panel px-2 py-1 text-[13px] text-ink outline-none
       placeholder:text-muted/70 focus:border-accent;
   }
-  .label { @apply mb-1 block text-[11px] font-semibold uppercase tracking-wide text-muted; }
+  /* #root-scoped: mermaid measures its own node labels (also class="label") in a div it appends straight to
+     document.body, outside #root. An unscoped rule here would shrink and bolden that text during measurement,
+     so mermaid sizes the node box for text smaller than what it actually draws, and the real label overflows it. */
+  #root .label { @apply mb-1 block text-[11px] font-semibold uppercase tracking-wide text-muted; }
   .kbd { @apply rounded border border-line bg-raised px-1.5 py-0.5 font-mono text-[11px] text-muted; }
 }
 
@@ -136,7 +139,8 @@ body {
 .prose-g li::marker { color: rgb(var(--muted)); font-variant-numeric: tabular-nums; }
 /* Diagrams fit the column and are capped in height; click one to see it full size. */
 .md-figure svg { max-width: 100% !important; max-height: 620px; width: auto; height: auto; }
-.md-figure .label, .md-figure-big .label { text-transform: none; letter-spacing: normal; margin: 0; display: inline; font-size: inherit; font-weight: inherit; color: inherit; }
+/* #root prefixed to outrank the #root .label rule above (an id beats two plain classes). */
+#root .md-figure .label, #root .md-figure-big .label { text-transform: none; letter-spacing: normal; margin: 0; display: inline; font-size: inherit; font-weight: inherit; color: inherit; }
 .md-figure-big svg { max-width: none !important; max-height: none; width: auto; height: auto; }
 .md-figure .node rect, .md-figure .node polygon { rx: 6; ry: 6; }
 .prose-g pre { @apply overflow-auto rounded-lg border border-line bg-raised p-3 font-mono text-[13.5px] leading-relaxed; }
