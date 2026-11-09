@@ -7,7 +7,7 @@ import { problems, type TaskName } from "./schemas.js";
 import { THREAD_MESSAGE_CAP, ReplyCache } from "./storage.js";
 import { newId, type Store } from "./store.js";
 import type {
-  Answer, Attempt, DiffSpec, FileProgress, Grade, Hole, HoleReview, Hunt, LearningPath, Lens, PlantedBug, Practice,
+  Answer, Attempt, DiffSpec, FileProgress, Grade, Hole, HoleReview, Hunt, LearningPath, Lens, PlantedBug, Practice, PracticeFile,
   Project, Quiz, StopActivity, Teachback, Thread, Trace, Verdict, Walk,
 } from "./types.js";
 import { hashText, langOf, Workspace } from "./workspace.js";
@@ -348,45 +348,73 @@ export class Learn {
 
   // ---- practice --------------------------------------------------------
 
-  async practice(project: Project, req: { file: string; level: number; files?: string[] }): Promise<Practice> {
+  async practice(project: Project, req: { file?: string; files?: string[]; concept?: string; level: number }): Promise<Practice> {
     const ws = new Workspace(project);
-    const file = ws.guard(req.file);
     const level = (Math.min(Math.max(Math.round(req.level || 2), 1), 4)) as Practice["level"];
-    if (/\.(json|ya?ml|toml|ini|cfg|lock|csv|tsv|md|txt|svg|xml|html?|css)$/i.test(file)) {
-      throw new Error("practice needs a file with logic (code). This one is data, config or text; open a source file instead.");
-    }
-    const original = ws.read(file).text;
-    // The other picked files are read-only context: they show how the target is used, but holes never come from them.
-    const ctx = [...new Set((req.files ?? []).map((f) => ws.guard(f)))].filter((f) => f !== file);
+    const paths = [...new Set([...(req.files ?? []), ...(req.file ? [req.file] : [])].map((f) => ws.guard(f)))];
+    // Data, config and text can be read for context but hold no logic to cut.
+    const DATA = /\.(json|ya?ml|toml|ini|cfg|lock|csv|tsv|md|txt|svg|xml|html?|css)$/i;
+    const code = paths.filter((f) => !DATA.test(f));
+    if (!code.length) throw new Error("practice needs at least one file with logic (code). These are data, config or text; add a source file.");
+    const texts = new Map(paths.map((f) => [f, ws.read(f).text] as const));
+    const concept = (req.concept ?? "").trim().slice(0, 300);
     const prompt =
-      `TARGET FILE (cut holes only from this one):\n${this.bundle(ws, [file])}` +
-      (ctx.length ? `\n\nCONTEXT FILES (read only; use them to see how the target is called, tested and what it must satisfy):\n${this.bundle(ws, ctx)}` : "");
-    const raw = await this.ask<{ holes?: unknown[] }>(ws, ["practice"], P.practiceSystem(level), prompt, { plan: true });
-    const holes = cleanHoles(arr(raw.holes), original.split("\n").length, original.split("\n"));
-    if (!holes.length) throw new Error("the model found no lines with real logic to turn into holes; try another file or a higher level");
-    const holed = applyHoles(original, holes, langOf(file));
+      (concept ? `CONCEPT TO PRACTISE: ${concept}\n\n` : "") +
+      `CODE FILES (holes may be cut from these):\n${this.bundle(ws, code)}` +
+      (paths.length > code.length ? `\n\nCONTEXT FILES (read only, no holes):\n${this.bundle(ws, paths.filter((f) => DATA.test(f)))}` : "");
+    const raw = await this.ask<{ concept?: unknown; holes?: unknown[] }>(ws, ["practice"], P.practiceSystem(level, !!concept, code.length > 1), prompt, { plan: true });
+    // Match each hole to a file by the path the model saw; one code file needs no path.
+    const byFile = new Map<string, unknown[]>();
+    for (const h of arr(raw.holes)) {
+      const want = str((h as Record<string, unknown>).file, 500);
+      const hit = want ? code.find((f) => ws.rel(f) === want || ws.rel(f).endsWith(want) || want.endsWith(ws.rel(f))) : code.length === 1 ? code[0] : undefined;
+      if (hit) byFile.set(hit, [...(byFile.get(hit) ?? []), h]);
+    }
+    const holes: Hole[] = [];
+    const files: PracticeFile[] = [];
+    for (const f of paths) {
+      const original = texts.get(f)!;
+      const lines = original.split("\n");
+      // cleanHoles numbers from 1 per file; renumber across files so a hole id is unique in the practice.
+      const mine = cleanHoles(byFile.get(f) ?? [], lines.length, lines).map((h, i) => ({ ...h, id: holes.length + i + 1, file: f }));
+      holes.push(...mine);
+      const holed = mine.length ? applyHoles(original, mine, langOf(f)) : original;
+      files.push({ path: f, original, holed, attempt: holed });
+    }
+    if (!holes.length) throw new Error("the model found no lines with real logic to turn into holes; try other files or a higher level");
+    // Files with holes first, in the order given; read-only context after them.
+    files.sort((x, y) => Number(holes.some((h) => h.file === y.path)) - Number(holes.some((h) => h.file === x.path)));
+    const first = files[0];
     const p: Practice = {
       id: newId(), projectId: project.id, createdAt: now(),
-      file, level, original, holed, holes, attempt: holed,
+      concept: concept || str(raw.concept, 300) || undefined,
+      files, file: first.path, level, original: first.original, holed: first.holed, holes, attempt: first.holed,
     };
     return this.store.put(project.id, "practice", p);
   }
 
-  saveAttempt(project: Project, id: string, text: string): Practice {
-    const p = this.store.get(project.id, "practice", id);
-    if (!p) throw new Error("practice not found");
-    p.attempt = text.slice(0, 1_000_000);
+  saveAttempt(project: Project, id: string, text: string, file?: string): Practice {
+    const got = this.store.get(project.id, "practice", id);
+    if (!got) throw new Error("practice not found");
+    const p = normalizePractice(got);
+    const f = p.files!.find((x) => x.path === file) ?? p.files![0];
+    f.attempt = text.slice(0, 1_000_000);
+    if (f.path === p.file) p.attempt = f.attempt;
     return this.store.put(project.id, "practice", p);
   }
 
   async review(project: Project, id: string): Promise<Practice> {
     const ws = new Workspace(project);
-    const p = this.store.get(project.id, "practice", id);
-    if (!p) throw new Error("practice not found");
-    const raw = await this.ask<{ summary?: unknown; holes?: unknown[] }>(ws, ["review"], P.reviewSystem(), P.reviewPrompt(p.original, p.attempt, p.holes));
-    const got = new Map(arr(raw.holes).map((h) => [num((h as Record<string, unknown>).id), h as Record<string, unknown>]));
+    const got = this.store.get(project.id, "practice", id);
+    if (!got) throw new Error("practice not found");
+    const p = normalizePractice(got);
+    const parts = p.files!
+      .map((f) => ({ rel: ws.rel(f.path), original: f.original, attempt: f.attempt, holes: p.holes.filter((h) => h.file === f.path) }))
+      .filter((f) => f.holes.length);
+    const raw = await this.ask<{ summary?: unknown; holes?: unknown[] }>(ws, ["review"], P.reviewSystem(), P.reviewPrompt(parts));
+    const got2 = new Map(arr(raw.holes).map((h) => [num((h as Record<string, unknown>).id), h as Record<string, unknown>]));
     const holes: HoleReview[] = p.holes.map((h) => {
-      const o = got.get(h.id) ?? {};
+      const o = got2.get(h.id) ?? {};
       return { id: h.id, verdict: verdict(o.verdict), feedback: str(o.feedback) };
     });
     p.review = { at: now(), holes, summary: str(raw.summary) };
@@ -683,6 +711,16 @@ export function scoreOf(grades: Grade[]): number {
 }
 
 /** Keep holes that are inside the file and do not overlap; number them in file order. */
+/** Old practices hold one file in top-level fields; give them the files list and a file on each hole. */
+export function normalizePractice(p: Practice): Practice {
+  if (p.files?.length) return p;
+  return {
+    ...p,
+    files: [{ path: p.file, original: p.original, holed: p.holed, attempt: p.attempt }],
+    holes: p.holes.map((h) => ({ ...h, file: h.file ?? p.file })),
+  };
+}
+
 /** A line that carries no logic: blank, a comment, a bracket, an import or a decorator. */
 const TRIVIAL = /^\s*(?:$|\/\/|#|\*|\/\*|\*\/|[{}()\[\];,]+\s*$|import\b|from\s+\S+\s+import\b|export\s*\{|@\w+|"""|'\'\'\')/;
 
@@ -722,7 +760,13 @@ export function applyHoles(original: string, holes: Hole[], lang: string): strin
   for (const h of [...holes].sort((a, b) => b.startLine - a.startLine)) {
     const first = lines[h.startLine - 1] ?? "";
     const indent = /^\s*/.exec(first)?.[0] ?? "";
-    lines.splice(h.startLine - 1, h.endLine - h.startLine + 1, `${indent}${open} HOLE ${h.id}: ${h.intent}${close}`);
+    // A comment alone is valid almost everywhere. Python is the exception: a block whose whole body was cut
+    // ("def f():" then the hole) is a syntax error, so it gets "pass" in front of the marker.
+    const prev = lines.slice(0, h.startLine - 1).reverse().find((l) => l.trim());
+    const next = lines.slice(h.endLine).find((l) => l.trim());
+    const nextIndent = next === undefined ? -1 : (/^\s*/.exec(next)?.[0].length ?? 0);
+    const emptyBlock = lang === "python" && !!prev && /:\s*(#.*)?$/.test(prev) && nextIndent < indent.length;
+    lines.splice(h.startLine - 1, h.endLine - h.startLine + 1, `${indent}${emptyBlock ? "pass  " : ""}${open} HOLE ${h.id}: ${h.intent}${close}`);
   }
   return lines.join("\n");
 }

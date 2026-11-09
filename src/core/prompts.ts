@@ -371,24 +371,27 @@ export const LEVELS: Record<number, string> = {
   4: "3-4 holes: whole function bodies of the most important logic.",
 };
 
-export function practiceSystem(level: number): string {
+export function practiceSystem(level: number, hasConcept = false, multi = false): string {
   return `TASK: practice
-You turn real code into a practice exercise: pick the lines that hold the key logic and mark them as holes the
-learner must write back. Level: ${LEVELS[level]}
-Rules: holes must not overlap; each hole is a range of whole lines (1-based, inclusive) from the numbers before "|",
-taken ONLY from the TARGET FILE. CONTEXT FILES, if any, are read-only: use them to learn how the target is called,
-tested and what it must satisfy, and to make each intent concrete (name the caller, the test or the data it serves).
+You turn real code into a practice exercise that trains ONE concept. ${hasConcept
+    ? "The learner named the concept; cut the lines where the code applies it."
+    : "Name the one concept the code is built around (the idea worth learning), then cut the lines where the code applies it."}
+${multi ? "The concept usually shows up in several files (definition, use, wiring, test). Spread the holes over the files where it matters, and say in each intent how this hole fits the whole." : ""}
+The holes are lines the learner must write back. Total size: ${LEVELS[level]}
+Rules: holes must not overlap; each hole is a range of whole lines (1-based, inclusive) from the numbers before "|"
+in ONE code file; set "file" to the path in that file's "=== FILE" header. CONTEXT FILES are read only.
 Good holes: a branch with a decision, a loop that builds or filters something, a transformation, error handling
 that changes the result, a guard that protects an invariant. Bad holes: imports, type declarations, constants and
-tables, logging, plain getters, glue, comments, closing brackets. Spread holes over different functions.
+tables, logging, plain getters, glue, comments, closing brackets.
 Each hole must be solvable from the code around it: the learner sees the signature, the neighbouring lines and
 the names, but not the cut lines. Do not cut a line whose meaning cannot be guessed from the rest.
-intent: what the hole must do (inputs, outputs, edge cases), without giving the code; 2-4 sentences.
-hints: 2-3, from gentle (where to look) to nearly the answer.
+intent: what the hole must do (inputs, outputs, edge cases) and what part of the concept it tests, without giving
+the code; 2-4 sentences. hints: 2-3, from gentle (where to look) to nearly the answer.
+concept: one sentence naming what this practice trains.
 ${STYLE}
 
 JSON shape:
-{ "holes": [{"startLine": 10, "endLine": 14, "intent": "...", "hints": ["...", "..."]}] }`;
+{ "concept": "...", "holes": [{"file": "src/a.ts", "startLine": 10, "endLine": 14, "intent": "...", "hints": ["...", "..."]}] }`;
 }
 
 export function reviewSystem(): string {
@@ -403,12 +406,15 @@ JSON shape:
 }
 
 export function reviewPrompt(
-  original: string,
-  attempt: string,
-  holes: { id: number; startLine: number; endLine: number; intent: string }[],
+  files: { rel: string; original: string; attempt: string; holes: { id: number; startLine: number; endLine: number; intent: string }[] }[],
 ): string {
-  const list = holes.map((h) => `hole ${h.id}: original lines ${h.startLine}-${h.endLine}; must: ${h.intent}`).join("\n");
-  return `HOLES:\n${list}\n\nORIGINAL FILE:\n${original}\n\nLEARNER'S FILE (holes filled in):\n${attempt}`;
+  const list = files
+    .flatMap((f) => f.holes.map((h) => `hole ${h.id}: file ${f.rel}, original lines ${h.startLine}-${h.endLine}; must: ${h.intent}`))
+    .join("\n");
+  const texts = files
+    .map((f) => `=== ${f.rel} ===\nORIGINAL:\n${f.original}\n\nLEARNER'S VERSION (holes filled in):\n${f.attempt}`)
+    .join("\n\n");
+  return `HOLES:\n${list}\n\n${texts}`;
 }
 
 // ---- teach-back ----------------------------------------------------------

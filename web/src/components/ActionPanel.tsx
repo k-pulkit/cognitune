@@ -29,7 +29,7 @@ const ACTIVITIES: { id: Activity; label: string; icon: typeof Compass; hint: str
 ];
 
 /** Activities that work on one open file rather than on the context. */
-const ONE_FILE: Activity[] = ["practice", "walk", "hunt", "notes"];
+const ONE_FILE: Activity[] = ["walk", "hunt", "notes"];
 
 const PRACTICE_LEVELS = [
   { value: 1, label: "1", title: "One short hole" },
@@ -74,6 +74,7 @@ export function ActionPanel({
   const [depth, setDepth] = useState<"overview" | "standard" | "deep">("standard");
   const [count, setCount] = useState<number | null>(null);
   const [level, setLevel] = useState(2);
+  const [concept, setConcept] = useState("");
   const [huntLevel, setHuntLevel] = useState(1);
   const [text, setText] = useState("");
   const job = useJob();
@@ -138,7 +139,7 @@ export function ActionPanel({
       <div className="min-h-0 flex-1 space-y-4 overflow-auto p-4">
         <p className="-mb-1 text-xs text-muted">{tile.hint}.</p>
 
-        {(!oneFile || tab === "practice") && (
+        {!oneFile && (
           <section>
             <div className="label flex items-center gap-1">
               <span>Context · {files.length}</span>
@@ -341,11 +342,21 @@ export function ActionPanel({
         {tab === "practice" && (
           <>
             <section>
+              <div className="label">Concept to practise <span className="normal-case tracking-normal">(optional)</span></div>
+              <input
+                className="input"
+                placeholder="e.g. retry with backoff, how a run resumes"
+                value={concept}
+                onChange={(e) => setConcept(e.target.value)}
+              />
+              <p className="mt-1.5 text-xs text-muted">Leave it empty and the model picks the main idea of the files above. Holes can land in any of them.</p>
+            </section>
+            <section>
               <div className="label">Difficulty</div>
               <Segmented value={level} onChange={setLevel} options={PRACTICE_LEVELS.map((l) => ({ ...l }))} />
-              <p className="mt-2 text-xs text-muted">{PRACTICE_LEVELS.find((l) => l.value === level)?.title}. The key lines are cut out of a copy; you write them back here, with hints if you need them. Context files above are read by the model to make the exercise fit; your folder is not touched.</p>
+              <p className="mt-2 text-xs text-muted">{PRACTICE_LEVELS.find((l) => l.value === level)?.title}. The key lines are cut out of a copy; you write them back here, with hints if you need them. Your folder is not touched.</p>
             </section>
-            <Button variant="primary" className="w-full" icon={<Hammer className="h-4 w-4" />} disabled={!practiceFile || job.busy} onClick={() => one("practice", { file: practiceFile, level, files: files.filter((f) => f !== practiceFile) }, "practice")}>
+            <Button variant="primary" className="w-full" icon={<Hammer className="h-4 w-4" />} disabled={noFiles || job.busy} onClick={() => one("practice", { files, level, concept: concept.trim() || undefined }, "practice")}>
               Make the practice
             </Button>
           </>
