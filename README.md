@@ -10,6 +10,11 @@ npx learnforge ./my-repo
 npx learnforge --demo        # a sample repo and canned answers: see every page in a minute, no model needed
 ```
 
+| | |
+|---|---|
+| ![Open a folder](assets/screenshots/projects.png) | ![A lens over real code](assets/screenshots/lens.png) |
+| ![The import graph](assets/screenshots/map.png) | ![Progress per file](assets/screenshots/progress.png) |
+
 ## What it does
 
 It is built on what makes learning stick: recall beats re-reading, spacing beats cramming, and
