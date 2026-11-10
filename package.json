@@ -1,6 +1,6 @@
 {
   "name": "learnforge",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Understand any codebase: lenses that explain code through one question, quizzes that prove you got it, practice that makes you write it back.",
   "license": "MIT",
   "type": "module",
