@@ -137,14 +137,14 @@ if (process.env.SMOKE_DIFF_DIR) {
   ok(true, "changed files show as a tree with folded folders");
 }
 await page.getByRole("button", { name: /^Working tree/ }).click();
-await page.getByPlaceholder("Type to filter").fill("learnforge 0.1");
+await page.getByPlaceholder("Type to filter").fill("groklab 0.1");
 // The ref list loads in the background; give it a moment before counting.
 for (let i = 0; i < 50 && (await page.locator("[data-i]").count()) !== 1; i++) await page.waitForTimeout(100);
 ok((await page.locator("[data-i]").count()) === 1, "typing filters the ref list");
 await page.keyboard.press("Enter");
-await page.getByRole("button", { name: /learnforge 0\.1\.0/ }).waitFor();
+await page.getByRole("button", { name: /groklab 0\.1\.0/ }).waitFor();
 ok(true, "Enter picks the filtered ref");
-await page.getByRole("button", { name: /learnforge 0\.1\.0/ }).click();
+await page.getByRole("button", { name: /groklab 0\.1\.0/ }).click();
 await page.getByPlaceholder("Type to filter").waitFor();
 await shot("12-combobox");
 await page.keyboard.press("Escape");
