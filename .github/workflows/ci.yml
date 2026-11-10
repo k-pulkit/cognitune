@@ -20,7 +20,7 @@ jobs:
       - name: Browser smoke test (fake model)
         run: |
           npx playwright-core install chromium
-          export CHROME=$(ls -d ~/.cache/ms-playwright/chromium-*/chrome-linux64/chrome | tail -1)
+          export CHROME=$(find ~/.cache/ms-playwright -maxdepth 3 -type f -name chrome -path '*chromium-*' | head -1)
           LEARNFORGE_HOME=$(mktemp -d) LEARNFORGE_AGENT=fake node dist/cli.js . --port 4799 --no-open &
           sleep 3
           node test/ui-smoke.mjs --url http://127.0.0.1:4799
