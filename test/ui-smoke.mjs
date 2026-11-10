@@ -136,15 +136,19 @@ if (process.env.SMOKE_DIFF_DIR) {
   await page.getByText(process.env.SMOKE_DIFF_DIR, { exact: true }).waitFor();
   ok(true, "changed files show as a tree with folded folders");
 }
+// refs() only reads the most recent 30 commits, so filter on HEAD's own sha: it is always
+// rank 1 in that window, unlike a fixed historical commit which ages out as history grows.
+const refs = await (await page.request.get(`${url}/api/projects/${pid}/refs`)).json();
+const headSha = refs.commits[0].sha;
 await page.getByRole("button", { name: /^Working tree/ }).click();
-await page.getByPlaceholder("Type to filter").fill("groklab 0.1");
+await page.getByPlaceholder("Type to filter").fill(headSha);
 // The ref list loads in the background (a git log read); give it real time on a loaded CI runner.
 for (let i = 0; i < 300 && (await page.locator("[data-i]").count()) !== 1; i++) await page.waitForTimeout(100);
 ok((await page.locator("[data-i]").count()) === 1, "typing filters the ref list");
 await page.keyboard.press("Enter");
-await page.getByRole("button", { name: /groklab 0\.1\.0/ }).waitFor();
+await page.getByRole("button", { name: new RegExp(headSha) }).waitFor();
 ok(true, "Enter picks the filtered ref");
-await page.getByRole("button", { name: /groklab 0\.1\.0/ }).click();
+await page.getByRole("button", { name: new RegExp(headSha) }).click();
 await page.getByPlaceholder("Type to filter").waitFor();
 await shot("12-combobox");
 await page.keyboard.press("Escape");
