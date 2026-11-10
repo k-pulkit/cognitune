@@ -10,6 +10,8 @@ npx cognitune ./my-repo
 npx cognitune --demo        # a sample repo and canned answers: see every page in a minute, no model needed
 ```
 
+Full install/setup guide (model backends, data layout, a shell shortcut): [SETUP.md](SETUP.md).
+
 | | |
 |---|---|
 | ![Open a folder](assets/screenshots/projects.png) | ![A lens over real code](assets/screenshots/lens.png) |
