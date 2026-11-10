@@ -7,7 +7,7 @@ import type {
 import { hashText, Workspace } from "./workspace.js";
 
 /**
- * Everything groklab works out from what is saved, without a model: review cards and their
+ * Everything learnforge works out from what is saved, without a model: review cards and their
  * schedule, misconceptions, per-file progress, the Today page, the glossary, path progress.
  */
 

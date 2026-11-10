@@ -20,7 +20,7 @@ export class CopilotCliAgent implements Agent {
   ) {}
 
   async complete(req: AgentRequest): Promise<string> {
-    const dir = mkdtempSync(join(tmpdir(), "groklab-copilot-"));
+    const dir = mkdtempSync(join(tmpdir(), "learnforge-copilot-"));
     const file = join(dir, "task.md");
     writeFileSync(file, `${req.system}\n\n---\n\n${req.prompt}`);
     const prompt = `Read the file ${file} and do exactly what it says. Reply with the answer only.`;

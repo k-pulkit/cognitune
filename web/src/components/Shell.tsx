@@ -85,7 +85,7 @@ export function Shell() {
     <div className="flex h-full flex-col">
       <div className="flex min-h-0 flex-1">
         <aside className="flex w-12 shrink-0 flex-col items-stretch overflow-y-auto bg-rail">
-          <NavLink to="/" className="grid h-12 place-items-center" title="groklab: projects" aria-label="groklab: projects">
+          <NavLink to="/" className="grid h-12 place-items-center" title="learnforge: projects" aria-label="learnforge: projects">
             <Logo className="h-6 w-6" />
           </NavLink>
           {pid ? (
@@ -142,7 +142,7 @@ export function Shell() {
               /* ignore */
             }
             nav(`/p/${pid}/explore`);
-            window.dispatchEvent(new CustomEvent("groklab:open", { detail: path }));
+            window.dispatchEvent(new CustomEvent("learnforge:open", { detail: path }));
           }}
         />
       )}

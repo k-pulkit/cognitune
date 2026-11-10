@@ -37,7 +37,7 @@ export function QuizPage() {
   const attempts = q?.attempts ?? [];
   const last: Attempt | undefined = attempts[attempts.length - 1];
   const viewing: Attempt | undefined = retake ? undefined : shown !== null ? attempts[shown] : last;
-  const draftKey = `groklab.quiz.${id}`;
+  const draftKey = `learnforge.quiz.${id}`;
 
   // Keep unsent answers in this tab so a reload does not lose them.
   useEffect(() => {

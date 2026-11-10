@@ -43,7 +43,7 @@ export function Split({
   className?: string;
   collapsible?: boolean;
 }) {
-  const key = `groklab.split.${id}`;
+  const key = `learnforge.split.${id}`;
   const [size, setSize] = useState(() => stored(key, initial, Number) || initial);
   const [collapsed, setCollapsed] = useState(() => collapsible && stored(`${key}.collapsed`, startCollapsed, (v) => v === "1"));
   const firstSignal = useRef(true);

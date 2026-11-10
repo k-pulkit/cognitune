@@ -65,17 +65,17 @@ function providers(s: Settings, timeoutMs: number) {
       available: () => !!process.env.ANTHROPIC_API_KEY,
       make: () => new SdkAgent(s["agent.model"], timeoutMs, s["agent.planModel"]),
       detail: `model ${s["agent.model"]}, key from the ANTHROPIC_API_KEY environment variable`,
-      missing: "Set ANTHROPIC_API_KEY in the environment, then restart groklab.",
+      missing: "Set ANTHROPIC_API_KEY in the environment, then restart learnforge.",
     },
   ];
 }
 
 /**
- * Pick the adapter from settings. CLIs use their own saved login, so groklab never asks for or
+ * Pick the adapter from settings. CLIs use their own saved login, so learnforge never asks for or
  * stores a key. `auto` tries Claude Code, then Codex, then Copilot, then ANTHROPIC_API_KEY.
  */
 export function makeAgent(s: Settings): { agent: Agent | null; info: AgentInfo } {
-  const mode = process.env.GROKLAB_AGENT || s["agent.mode"];
+  const mode = process.env.LEARNFORGE_AGENT || s["agent.mode"];
   const timeoutMs = s["agent.timeoutSec"] * 1000;
   const all = providers(s, timeoutMs);
   const available = Object.fromEntries(all.map((p) => [p.id, p.available()]));

@@ -2,7 +2,7 @@ import type { Agent, AgentRequest } from "./index.js";
 
 /**
  * Canned replies, keyed on the `TASK:` line of the system prompt. Used by tests and by
- * `GROKLAB_AGENT=fake` to try the UI without a model. Uses the first file and line it sees.
+ * `LEARNFORGE_AGENT=fake` to try the UI without a model. Uses the first file and line it sees.
  */
 export class FakeAgent implements Agent {
   readonly name = "fake";
@@ -10,8 +10,8 @@ export class FakeAgent implements Agent {
   async complete(req: AgentRequest): Promise<string> {
     const task = /^TASK: (\w+)/m.exec(req.system)?.[1] ?? "";
     const file = /=== FILE (\S+)/.exec(req.prompt)?.[1] ?? "file";
-    if (process.env.GROKLAB_FAKE_FAIL === task) throw new Error(`fake failure for ${task}`);
-    const delay = Number(process.env.GROKLAB_FAKE_DELAY_MS ?? 0);
+    if (process.env.LEARNFORGE_FAKE_FAIL === task) throw new Error(`fake failure for ${task}`);
+    const delay = Number(process.env.LEARNFORGE_FAKE_DELAY_MS ?? 0);
     if (delay) await new Promise((r) => setTimeout(r, delay));
     return "```json\n" + JSON.stringify(this.reply(task, file, req.prompt, req.system), null, 2) + "\n```";
   }
