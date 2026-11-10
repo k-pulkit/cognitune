@@ -1,6 +1,6 @@
 {
   "name": "cognitune",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Understand any codebase: lenses that explain code through one question, quizzes that prove you got it, practice that makes you write it back.",
   "license": "MIT",
   "type": "module",

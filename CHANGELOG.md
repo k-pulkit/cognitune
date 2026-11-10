@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.2 (2026-11-10)
+
+Release workflow fix, no feature changes:
+
+- `npm publish` is now followed by a check against the registry: if it reports failure but the
+  version is actually live (seen once, as a retry conflict with a leftover staged version), the
+  release still completes instead of falsely failing before the GitHub Release step.
+
 ## 0.2.1 (2026-11-10)
 
 Repo housekeeping, no feature changes:
