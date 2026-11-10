@@ -5,7 +5,7 @@ import { COLLECTIONS, type Store } from "./store.js";
 import type { StorageItem, StorageUsage } from "./types.js";
 
 /**
- * Keeps ~/.learnforge bounded. Everything that can grow without limit has a cap:
+ * Keeps ~/.cognitune bounded. Everything that can grow without limit has a cap:
  *
  *   archive (deleted items, forgotten projects)  -> removed after storage.archiveDays
  *   model reply cache                            -> oldest first, down to storage.cacheMB
@@ -14,7 +14,7 @@ import type { StorageItem, StorageUsage } from "./types.js";
  *   *.tmp left by a crash mid-write              -> removed after an hour
  *
  * prune() runs at start-up and every 6 hours, and from Settings > Storage > Clean up now.
- * It only ever touches files inside the learnforge home folder, never the user's folders.
+ * It only ever touches files inside the cognitune home folder, never the user's folders.
  */
 
 const DAY = 86_400_000;
@@ -164,7 +164,7 @@ export class ReplyCache {
 
 // ---- pick and remove -------------------------------------------------------
 // Settings > Storage lists single items so the user can tick some and remove only those.
-// Ids are paths under the learnforge home. remove() accepts only the shapes items() produces,
+// Ids are paths under the cognitune home. remove() accepts only the shapes items() produces,
 // so a crafted id can never reach anything else.
 
 const SHAPES = [

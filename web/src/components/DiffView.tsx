@@ -101,14 +101,14 @@ function SplitDiff({ rows }: { rows: Pair[] }) {
   const box = useRef<HTMLDivElement>(null);
   const [pct, setPct] = useState(() => {
     try {
-      return Number(localStorage.getItem("learnforge.diff.split")) || 50;
+      return Number(localStorage.getItem("cognitune.diff.split")) || 50;
     } catch {
       return 50;
     }
   });
   useEffect(() => {
     try {
-      localStorage.setItem("learnforge.diff.split", String(pct));
+      localStorage.setItem("cognitune.diff.split", String(pct));
     } catch {
       /* ignore */
     }

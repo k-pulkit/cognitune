@@ -19,7 +19,7 @@ export class Jobs {
     if (!store) return;
     this.file = join(store.home, "jobs.json");
     for (const j of store.read<Job[]>(this.file, [])) {
-      if (j.status === "running") Object.assign(j, { status: "failed", error: "learnforge stopped while this ran", endedAt: j.startedAt });
+      if (j.status === "running") Object.assign(j, { status: "failed", error: "cognitune stopped while this ran", endedAt: j.startedAt });
       this.jobs.set(j.id, j);
     }
   }

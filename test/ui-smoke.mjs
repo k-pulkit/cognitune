@@ -1,6 +1,6 @@
-// Browser smoke test: drives every page end to end against a running server with LEARNFORGE_AGENT=fake.
+// Browser smoke test: drives every page end to end against a running server with COGNITUNE_AGENT=fake.
 //
-//   LEARNFORGE_HOME=$(mktemp -d) LEARNFORGE_AGENT=fake node dist/cli.js . --port 4799 --no-open &
+//   COGNITUNE_HOME=$(mktemp -d) COGNITUNE_AGENT=fake node dist/cli.js . --port 4799 --no-open &
 //   node test/ui-smoke.mjs [--url http://127.0.0.1:4799] [--shots DIR] [--dark]
 //
 // Needs a Chromium: CHROME=/path/to/chrome, else the newest one in ~/.cache/ms-playwright.
@@ -48,7 +48,7 @@ const shot = async (name) => {
 
 // Projects
 await page.goto(url);
-await page.getByRole("heading", { name: "learnforge" }).waitFor();
+await page.getByRole("heading", { name: "cognitune" }).waitFor();
 ok(await page.getByText("Open a folder").isVisible(), "projects page shows 'Open a folder'");
 await shot("1-projects");
 const projects = await (await page.request.get(`${url}/api/projects`)).json();

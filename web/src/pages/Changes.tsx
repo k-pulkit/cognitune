@@ -30,7 +30,7 @@ const STATUS_TONE: Record<DiffFile["status"], string> = {
 export function ChangesPage() {
   const { project, rel } = useProject();
   const repos = useQuery({ queryKey: ["repos", project.id, project.contexts], queryFn: () => get<GitRepo[]>(`/projects/${project.id}/repos`) });
-  const repoKey = `learnforge.repo.${project.id}`;
+  const repoKey = `cognitune.repo.${project.id}`;
   const [spec, setSpec] = useState<DiffSpec>(() => {
     let repo: string | undefined;
     try {

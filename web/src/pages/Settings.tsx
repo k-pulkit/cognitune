@@ -24,7 +24,7 @@ const PROVIDERS: { id: Settings["agent.mode"]; label: string; text: string }[] =
 
 const mb = (b: number) => (b < 1024 * 1024 ? `${Math.max(1, Math.round(b / 1024))} KB` : `${(b / 1024 / 1024).toFixed(1)} MB`);
 
-/** What learnforge keeps on disk, and a button to apply the limits now. */
+/** What cognitune keeps on disk, and a button to apply the limits now. */
 function StorageCard() {
   const qc = useQueryClient();
   const u = useQuery({ queryKey: ["storage"], queryFn: () => get<StorageUsage>("/storage") });
@@ -228,7 +228,7 @@ export function SettingsPage() {
               <span className="reading text-muted">Read the code, then explain it.</span>
             </div>
           </Field>
-          <Field label="Model access" hint="CLIs use their own saved login, so learnforge never needs or stores a key. Auto picks the first one found.">
+          <Field label="Model access" hint="CLIs use their own saved login, so cognitune never needs or stores a key. Auto picks the first one found.">
             <div className="grid gap-2 sm:grid-cols-2">
               {PROVIDERS.map((p) => {
                 const found = agent.available?.[p.id];

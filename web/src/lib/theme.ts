@@ -14,14 +14,14 @@ function apply(pref: ThemePref) {
 export function useTheme() {
   const [pref, setPref] = useState<ThemePref>(() => {
     try {
-      return (localStorage.getItem("learnforge.theme") as ThemePref) || "system";
+      return (localStorage.getItem("cognitune.theme") as ThemePref) || "system";
     } catch {
       return "system";
     }
   });
   useEffect(() => {
     try {
-      localStorage.setItem("learnforge.theme", pref);
+      localStorage.setItem("cognitune.theme", pref);
     } catch {
       /* ignore */
     }
@@ -50,7 +50,7 @@ export type ReadingFont = "serif" | "sans";
 
 function readFont(): ReadingFont {
   try {
-    return localStorage.getItem("learnforge.readingFont2") === "sans" ? "sans" : "serif";
+    return localStorage.getItem("cognitune.readingFont2") === "sans" ? "sans" : "serif";
   } catch {
     return "serif";
   }
@@ -66,7 +66,7 @@ export function useReadingFont() {
   const [font, setFont] = useState<ReadingFont>(readFont);
   useEffect(() => {
     try {
-      localStorage.setItem("learnforge.readingFont2", font);
+      localStorage.setItem("cognitune.readingFont2", font);
     } catch {
       /* ignore */
     }

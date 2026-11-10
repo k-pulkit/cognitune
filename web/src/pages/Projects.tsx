@@ -40,7 +40,7 @@ export function ProjectsPage() {
         <div className="flex items-center gap-3">
           <Logo className="h-11 w-11" />
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">learnforge</h1>
+            <h1 className="text-2xl font-semibold tracking-tight">cognitune</h1>
             <p className="text-sm text-muted">Understand any codebase. Prove it to yourself.</p>
           </div>
         </div>
@@ -105,7 +105,7 @@ export function ProjectsPage() {
           ))}
           {!projects.isLoading && !list.length && (
             <div className="card col-span-full border-dashed p-10 text-center text-sm text-muted">
-              No projects yet. Open a folder, or start from a terminal: <span className="kbd">npx learnforge ./my-repo</span>
+              No projects yet. Open a folder, or start from a terminal: <span className="kbd">npx cognitune ./my-repo</span>
             </div>
           )}
         </div>

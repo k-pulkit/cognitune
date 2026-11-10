@@ -7,7 +7,7 @@ import type {
 } from "./types.js";
 
 /**
- * Everything learnforge writes lives under one home folder (default ~/.learnforge).
+ * Everything cognitune writes lives under one home folder (default ~/.cognitune).
  * The user's code folders are never written.
  *
  *   settings.json
@@ -78,7 +78,7 @@ export function projectIdFor(root: string): string {
 export class Store {
   readonly home: string;
 
-  constructor(home = process.env.LEARNFORGE_HOME || join(homedir(), ".learnforge")) {
+  constructor(home = process.env.COGNITUNE_HOME || join(homedir(), ".cognitune")) {
     this.home = resolve(home);
     mkdirSync(join(this.home, "projects"), { recursive: true });
   }
