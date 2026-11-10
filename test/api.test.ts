@@ -8,10 +8,10 @@ import { createApi } from "../src/server/app.js";
 import { applyHoles, cleanHoles, scoreOf } from "../src/core/services.js";
 import { parseJson } from "../src/core/prompts.js";
 
-process.env.LEARNFORGE_AGENT = "fake";
+process.env.COGNITUNE_AGENT = "fake";
 
 function repo(): string {
-  const dir = mkdtempSync(join(tmpdir(), "learnforge-repo-"));
+  const dir = mkdtempSync(join(tmpdir(), "cognitune-repo-"));
   const g = (...a: string[]) => execFileSync("git", a, { cwd: dir, stdio: "ignore" });
   g("init", "-q", "-b", "main");
   g("config", "user.email", "t@t");
@@ -45,7 +45,7 @@ describe("api", () => {
     api.request(path, { method, body: JSON.stringify(body), headers: { "content-type": "application/json" } });
 
   beforeEach(async () => {
-    home = mkdtempSync(join(tmpdir(), "learnforge-home-"));
+    home = mkdtempSync(join(tmpdir(), "cognitune-home-"));
     api = createApi(new Store(home));
     root = repo();
     pid = (await (await post("/projects", { root })).json()).id;
@@ -64,7 +64,7 @@ describe("api", () => {
   });
 
   it("reads a context folder added to the project", async () => {
-    const ctx = mkdtempSync(join(tmpdir(), "learnforge-ctx-"));
+    const ctx = mkdtempSync(join(tmpdir(), "cognitune-ctx-"));
     writeFileSync(join(ctx, "notes.md"), "# notes");
     expect((await post(`/projects/${pid}`, { contexts: [ctx] }, "PATCH")).status).toBe(200);
     const f = await (await api.request(`/projects/${pid}/file?path=${encodeURIComponent(join(ctx, "notes.md"))}`)).json();
@@ -80,7 +80,7 @@ describe("api", () => {
   });
 
   it("a repo with no commits shows every file as added", async () => {
-    const fresh = mkdtempSync(join(tmpdir(), "learnforge-new-"));
+    const fresh = mkdtempSync(join(tmpdir(), "cognitune-new-"));
     execFileSync("git", ["init", "-q"], { cwd: fresh });
     writeFileSync(join(fresh, "a.py"), "x = 1\n");
     const id = (await (await post("/projects", { root: fresh })).json()).id;
@@ -91,7 +91,7 @@ describe("api", () => {
   });
 
   it("finds git repos inside a folder that is not one, and diffs each", async () => {
-    const ws = mkdtempSync(join(tmpdir(), "learnforge-ws-"));
+    const ws = mkdtempSync(join(tmpdir(), "cognitune-ws-"));
     mkdirSync(join(ws, "team"));
     execFileSync("git", ["clone", "-q", root, join(ws, "team", "app")]);
     mkdirSync(join(ws, "node_modules", "dep"), { recursive: true });

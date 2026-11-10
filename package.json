@@ -1,15 +1,15 @@
 {
-  "name": "learnforge",
+  "name": "cognitune",
   "version": "0.2.1",
   "description": "Understand any codebase: lenses that explain code through one question, quizzes that prove you got it, practice that makes you write it back.",
   "license": "MIT",
   "type": "module",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/k-pulkit/learnforge.git"
+    "url": "git+https://github.com/k-pulkit/cognitune.git"
   },
   "bin": {
-    "learnforge": "dist/cli.js"
+    "cognitune": "dist/cli.js"
   },
   "files": [
     "dist",

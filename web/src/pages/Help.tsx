@@ -33,9 +33,9 @@ const GROUPS: Group[] = [
       {
         id: "start",
         title: "The idea in one minute",
-        what: "learnforge helps you understand code, not just read it. It asks a model to explain, then makes you answer, explain back and find bugs, and it brings things back when you are about to forget them.",
+        what: "cognitune helps you understand code, not just read it. It asks a model to explain, then makes you answer, explain back and find bugs, and it brings things back when you are about to forget them.",
         steps: [
-          "Open a folder (Projects page). learnforge only reads it. It never changes your files.",
+          "Open a folder (Projects page). cognitune only reads it. It never changes your files.",
           "Go to Explore. Tick the files you want to understand.",
           "Pick an activity on the right: Lens to read, Quiz or Teach to test yourself.",
           "Wrong answers become Weak spots and review cards. Today shows what to do next.",
@@ -58,7 +58,7 @@ const GROUPS: Group[] = [
           "Click a project card to enter it. The rail on the left changes to the project pages.",
           "Remove (the button on the project card) takes it off the list. Its data moves to an archive and is deleted after the keep time (Settings > Storage). Opening the same folder again restores it.",
         ],
-        examples: ["Try the built-in sample: run learnforge with --demo. It opens a tiny queue project with a fake model."],
+        examples: ["Try the built-in sample: run cognitune with --demo. It opens a tiny queue project with a fake model."],
       },
       {
         id: "keys",
@@ -219,7 +219,7 @@ const GROUPS: Group[] = [
       {
         id: "hunt",
         title: "Bug hunt: find the planted bugs",
-        what: "learnforge plants bugs in a copy of the code (your files are not touched). You mark the lines you think are wrong.",
+        what: "cognitune plants bugs in a copy of the code (your files are not touched). You mark the lines you think are wrong.",
         steps: [
           "Choose difficulty: Easy (one visible bug), Medium (two, one needs the logic), Hard (two or three subtle ones).",
           "Click Make hunt. Read the copy and click lines you think are buggy.",
@@ -330,7 +330,7 @@ const GROUPS: Group[] = [
       {
         id: "settings",
         title: "Settings",
-        what: "Which model runs, how text looks, and what learnforge keeps.",
+        what: "Which model runs, how text looks, and what cognitune keeps.",
         steps: [
           "Planning model (default claude-opus-5-5) plans lenses, quizzes, walks, practice, bug hunts and paths; the model above (default claude-sonnet-5-5) writes them. Plan first can be turned off for one-shot answers.",
           "Model: choose the agent (Auto, Claude Code CLI, Codex CLI, GitHub Copilot CLI, an Anthropic API key, or Demo). Auto uses the first one installed.",
@@ -342,7 +342,7 @@ const GROUPS: Group[] = [
       {
         id: "storage",
         title: "Storage: keeping it small",
-        what: "Everything is plain JSON files in your learnforge folder (shown in Settings). It stays bounded on its own and you can also remove things by hand.",
+        what: "Everything is plain JSON files in your cognitune folder (shown in Settings). It stays bounded on its own and you can also remove things by hand.",
         steps: [
           "Automatic: archived items and forgotten projects are removed after the keep time (30 days by default). The reply cache keeps to its size (50 MB). Quiz attempts, card history, tutor chats and the job log are capped.",
           "Clean up now applies those limits at once.",

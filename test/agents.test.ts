@@ -25,7 +25,7 @@ echo "reply from ${name}"
   return path;
 }
 
-const dir = mkdtempSync(join(tmpdir(), "learnforge-stubs-"));
+const dir = mkdtempSync(join(tmpdir(), "cognitune-stubs-"));
 const settings = {
   ...DEFAULT_SETTINGS,
   "agent.claudeCommand": stub(dir, "claude"),

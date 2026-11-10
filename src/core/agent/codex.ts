@@ -19,7 +19,7 @@ export class CodexCliAgent implements Agent {
   ) {}
 
   async complete(req: AgentRequest): Promise<string> {
-    const out = join(mkdtempSync(join(tmpdir(), "learnforge-codex-")), "last.md");
+    const out = join(mkdtempSync(join(tmpdir(), "cognitune-codex-")), "last.md");
     const args = ["exec", "--sandbox", "read-only", "--skip-git-repo-check", "--cd", req.cwd, "--output-last-message", out];
     if (this.model) args.push("--model", this.model);
     args.push("-");

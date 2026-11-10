@@ -49,8 +49,8 @@ export function ProjectProvider({ pid, children, fallback }: { pid: string; chil
       setOpen((e as CustomEvent<string>).detail);
       setFocusLine(null);
     };
-    window.addEventListener("learnforge:open", on);
-    return () => window.removeEventListener("learnforge:open", on);
+    window.addEventListener("cognitune:open", on);
+    return () => window.removeEventListener("cognitune:open", on);
   }, []);
   useEffect(() => save(`gl.open.${pid}`, openFile), [pid, openFile]);
 

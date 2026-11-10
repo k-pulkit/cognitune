@@ -4,7 +4,7 @@
 
 Repo housekeeping, no feature changes:
 
-- Renamed the project from groklab to learnforge (package name, CLI, env vars, storage dir).
+- Renamed the project (groklab -> learnforge -> cognitune): package name, CLI, env vars, storage dir.
 - Public GitHub repo, CI and a tag-triggered npm release workflow (trusted publishing, no stored token).
 - README screenshots.
 

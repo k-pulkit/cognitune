@@ -1,13 +1,13 @@
-# learnforge
+# cognitune
 
 Understand any codebase, and prove to yourself that you do.
 
-AI makes code faster to write and easier to not understand. learnforge turns the model around: instead of
+AI makes code faster to write and easier to not understand. cognitune turns the model around: instead of
 writing code for you, it helps you build the model of the code in your own head.
 
 ```bash
-npx learnforge ./my-repo
-npx learnforge --demo        # a sample repo and canned answers: see every page in a minute, no model needed
+npx cognitune ./my-repo
+npx cognitune --demo        # a sample repo and canned answers: see every page in a minute, no model needed
 ```
 
 | | |
@@ -57,13 +57,13 @@ project as context. The model reads only what you give it.
 
 ## Model access
 
-learnforge makes one model call per lens, quiz, grade, practice, tutor turn and so on (about 15 s to 2 min).
+cognitune makes one model call per lens, quiz, grade, practice, tutor turn and so on (about 15 s to 2 min).
 Replies are checked against a schema (one retry with the problems listed), and lens, walkthrough and path
 replies are cached: the same lens on an unchanged file is free the second time.
-It drives a coding CLI you already use, with that CLI's own login, so **learnforge never asks for or
+It drives a coding CLI you already use, with that CLI's own login, so **cognitune never asks for or
 stores a key**. Pick one in Settings; *Auto* takes the first one it finds, in this order:
 
-| Provider | How learnforge runs it | Login |
+| Provider | How cognitune runs it | Login |
 |---|---|---|
 | **Claude Code** (default) | `claude -p`, read-only tools (`Read`, `Grep`, `Glob`) | your Claude Code login |
 | **OpenAI Codex** | `codex exec -`, `--sandbox read-only` | `codex login` |
@@ -71,17 +71,17 @@ stores a key**. Pick one in Settings; *Auto* takes the first one it finds, in th
 | **Anthropic API** | Messages API; the picked files go in the prompt | `ANTHROPIC_API_KEY` in the environment |
 
 Each CLI runs with the project folder as its working directory. Model per provider is optional
-(empty = the CLI's default). `LEARNFORGE_AGENT=fake` gives canned answers, to try the UI without a model.
+(empty = the CLI's default). `COGNITUNE_AGENT=fake` gives canned answers, to try the UI without a model.
 
 ## Your files are safe
 
-- learnforge never writes to your folders. Practice works on a copy.
-- Everything it makes lives in `~/.learnforge` (change with `LEARNFORGE_HOME`), as plain JSON files, one
+- cognitune never writes to your folders. Practice works on a copy.
+- Everything it makes lives in `~/.cognitune` (change with `COGNITUNE_HOME`), as plain JSON files, one
   per item. Files, not SQLite: the data is small, you can read and back it up, and there is no native
   module to build.
 
 ```
-~/.learnforge/
+~/.cognitune/
   settings.json  projects.json  jobs.json  prune.json
   projects/<id>/<lenses|quizzes|practice|cards|misconceptions|teachbacks|threads|walks|hunts|paths|notes>/<id>.json
   projects/<id>/archive/...        "Archive" moves items here
@@ -100,14 +100,14 @@ sizes and has *Clean up now*):
 | Card review history, tutor messages, job history | 50 per card, 200 per chat, 100 jobs |
 | Temp files left by a crash | removed after an hour |
 
-Cleanup runs at start-up and every 6 hours, and only ever inside the learnforge folder.
+Cleanup runs at start-up and every 6 hours, and only ever inside the cognitune folder.
 
 - The server binds to `127.0.0.1` only. There is no login: it is a local, one-person tool.
 
 ## CLI
 
 ```
-learnforge [folder] [--port 4711] [--host 127.0.0.1] [--no-open] [--demo]
+cognitune [folder] [--port 4711] [--host 127.0.0.1] [--no-open] [--demo]
 ```
 
 ## Develop
@@ -120,7 +120,7 @@ npm run typecheck
 npm run build        # dist/web (Vite) + dist/cli.js (tsup)
 
 # Browser smoke test over every page (needs a Chromium; set CHROME or have one in ~/.cache/ms-playwright)
-LEARNFORGE_HOME=$(mktemp -d) LEARNFORGE_AGENT=fake node dist/cli.js . --port 4799 --no-open &
+COGNITUNE_HOME=$(mktemp -d) COGNITUNE_AGENT=fake node dist/cli.js . --port 4799 --no-open &
 node test/ui-smoke.mjs [--dark] [--shots DIR]
 ```
 
