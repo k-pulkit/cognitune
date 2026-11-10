@@ -8,23 +8,23 @@ import { Hono } from "hono";
 import { createApi } from "./server/app.js";
 import { Store } from "./core/store.js";
 
-const HELP = `groklab - understand any codebase
+const HELP = `learnforge - understand any codebase
 
-Usage: groklab [folder] [options]
+Usage: learnforge [folder] [options]
 
   folder           Folder to open (default: show the project list)
-  --port <n>       Port (default 4711, or GROKLAB_PORT)
+  --port <n>       Port (default 4711, or LEARNFORGE_PORT)
   --host <addr>    Address to bind (default 127.0.0.1)
   --no-open        Do not open the browser
   --demo           Try it with a small sample repo and canned answers (no model, temp data)
   -h, --help       Show this help
 
-Data lives in ~/.groklab (GROKLAB_HOME). Your folders are never written. Old archive
+Data lives in ~/.learnforge (LEARNFORGE_HOME). Your folders are never written. Old archive
 and cache entries are cleaned up on their own (Settings > Storage).
 Model: the claude, codex or copilot CLI if installed (their own login), else ANTHROPIC_API_KEY.`;
 
 function parseArgs(argv: string[]) {
-  const out = { folder: "", port: Number(process.env.GROKLAB_PORT) || 4711, host: "127.0.0.1", open: true, demo: false };
+  const out = { folder: "", port: Number(process.env.LEARNFORGE_PORT) || 4711, host: "127.0.0.1", open: true, demo: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "-h" || a === "--help") {
@@ -82,9 +82,9 @@ if (opts.demo) {
   }
   // Demo data goes to one fixed temp folder: it never mixes with real progress, and repeated
   // demo runs reuse it instead of leaving a new folder behind each time.
-  process.env.GROKLAB_AGENT = "fake";
-  process.env.GROKLAB_HOME = join(tmpdir(), "groklab-demo");
-  process.env.GROKLAB_FAKE_DELAY_MS ??= "1500";
+  process.env.LEARNFORGE_AGENT = "fake";
+  process.env.LEARNFORGE_HOME = join(tmpdir(), "learnforge-demo");
+  process.env.LEARNFORGE_FAKE_DELAY_MS ??= "1500";
   opts.folder = sample;
 }
 const store = new Store();
@@ -115,6 +115,6 @@ if (opts.folder) {
 
 serve({ fetch: app.fetch, port: opts.port, hostname: opts.host }, (info) => {
   const url = `http://${opts.host === "0.0.0.0" ? "localhost" : opts.host}:${info.port}${path}`;
-  console.log(`groklab running at ${url}\ndata: ${store.home}\nCtrl+C to stop.`);
+  console.log(`learnforge running at ${url}\ndata: ${store.home}\nCtrl+C to stop.`);
   if (opts.open && web) openBrowser(url);
 });

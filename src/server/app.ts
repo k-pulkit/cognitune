@@ -21,7 +21,7 @@ export function createApi(store: Store, opts: { pruneEveryMs?: number } = {}) {
   const api = new Hono();
   const jobs = new Jobs(store);
 
-  // Keep ~/.groklab bounded: clean up now and every few hours.
+  // Keep ~/.learnforge bounded: clean up now and every few hours.
   const sweep = () => {
     try {
       prune(store);
@@ -420,14 +420,14 @@ export function createApi(store: Store, opts: { pruneEveryMs?: number } = {}) {
     return c.json(today(store, p, () => hubs(p)));
   });
 
-  /** Everything groklab saved for this project, as one JSON file. */
+  /** Everything learnforge saved for this project, as one JSON file. */
   api.get("/projects/:pid/export", (c) => {
     const p = project(c);
     const all: Record<string, unknown> = { project: p, exportedAt: new Date().toISOString() };
     for (const col of ["lenses", "quizzes", "practice", "cards", "misconceptions", "teachbacks", "threads", "walks", "hunts", "paths", "notes"] as Collection[]) {
       all[col] = store.list(p.id, col);
     }
-    return download(c, `groklab-${p.id}.json`, JSON.stringify(all, null, 2), "application/json");
+    return download(c, `learnforge-${p.id}.json`, JSON.stringify(all, null, 2), "application/json");
   });
 
   return api;

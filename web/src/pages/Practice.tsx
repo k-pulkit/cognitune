@@ -259,7 +259,7 @@ export function PracticePage() {
         ) : (
           <span className="flex shrink-0 items-center gap-1"><Lock className="h-3 w-3" /> context, read only</span>
         )}
-        <span className="ml-auto hidden shrink-0 lg:inline">A copy in groklab; your folder is not touched</span>
+        <span className="ml-auto hidden shrink-0 lg:inline">A copy in learnforge; your folder is not touched</span>
       </div>
       <div className="relative min-h-0 flex-1 bg-panel">
         <div className="absolute inset-0">

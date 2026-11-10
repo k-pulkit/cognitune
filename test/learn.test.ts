@@ -12,10 +12,10 @@ import { prune, ReplyCache, usage } from "../src/core/storage.js";
 import { Store } from "../src/core/store.js";
 import { createApi } from "../src/server/app.js";
 
-process.env.GROKLAB_AGENT = "fake";
+process.env.LEARNFORGE_AGENT = "fake";
 
 function repo(): string {
-  const dir = mkdtempSync(join(tmpdir(), "groklab-repo-"));
+  const dir = mkdtempSync(join(tmpdir(), "learnforge-repo-"));
   const g = (...a: string[]) => execFileSync("git", a, { cwd: dir, stdio: "ignore" });
   g("init", "-q", "-b", "main");
   g("config", "user.email", "t@t");
@@ -57,7 +57,7 @@ describe("learning features", () => {
   };
 
   beforeEach(async () => {
-    store = new Store(mkdtempSync(join(tmpdir(), "groklab-home-")));
+    store = new Store(mkdtempSync(join(tmpdir(), "learnforge-home-")));
     api = createApi(store);
     root = repo();
     pid = (await (await api.request("/projects", { method: "POST", body: JSON.stringify({ root }), headers: { "content-type": "application/json" } })).json()).id;
@@ -258,7 +258,7 @@ describe("learning features", () => {
   });
 
   it("import graph handles python relative and absolute imports", () => {
-    const d = mkdtempSync(join(tmpdir(), "groklab-py-"));
+    const d = mkdtempSync(join(tmpdir(), "learnforge-py-"));
     mkdirSync(join(d, "pkg"));
     writeFileSync(join(d, "pkg", "__init__.py"), "");
     writeFileSync(join(d, "pkg", "a.py"), "from .b import f\nimport pkg.c\n");
@@ -273,7 +273,7 @@ describe("learning features", () => {
   });
 
   it("import graph follows tsconfig path aliases", () => {
-    const d = mkdtempSync(join(tmpdir(), "groklab-alias-"));
+    const d = mkdtempSync(join(tmpdir(), "learnforge-alias-"));
     mkdirSync(join(d, "web", "src", "lib"), { recursive: true });
     writeFileSync(join(d, "web", "tsconfig.json"), '{ // comment\n "compilerOptions": { "baseUrl": ".", "paths": { "@/*": ["src/*"], } } }');
     writeFileSync(join(d, "web", "src", "main.tsx"), 'import { a } from "@/lib/a";\nimport x from "react";\n');
@@ -321,10 +321,10 @@ describe("learning features", () => {
 
 describe("storage stays bounded", () => {
   it("removes old archive, trims the cache and quiz attempts, keeps the best attempt", () => {
-    const home = mkdtempSync(join(tmpdir(), "groklab-home-"));
+    const home = mkdtempSync(join(tmpdir(), "learnforge-home-"));
     const store = new Store(home);
     store.saveSettings({ "storage.archiveDays": 10, "storage.cacheMB": 0, "storage.maxAttempts": 3 });
-    const p = store.openProject(mkdtempSync(join(tmpdir(), "groklab-x-")));
+    const p = store.openProject(mkdtempSync(join(tmpdir(), "learnforge-x-")));
     const card = store.put(p.id, "cards", makeCard(p.id, { kind: "own", front: "f", back: "b" }));
     store.archive(p.id, "cards", card.id);
     const archived = join(home, "projects", p.id, "archive", "cards", `${card.id}.json`);
@@ -355,9 +355,9 @@ describe("storage stays bounded", () => {
   });
 
   it("forgetting a project archives its data; reopening brings it back", () => {
-    const home = mkdtempSync(join(tmpdir(), "groklab-home-"));
+    const home = mkdtempSync(join(tmpdir(), "learnforge-home-"));
     const store = new Store(home);
-    const root = mkdtempSync(join(tmpdir(), "groklab-x-"));
+    const root = mkdtempSync(join(tmpdir(), "learnforge-x-"));
     const p = store.openProject(root);
     store.put(p.id, "cards", makeCard(p.id, { kind: "own", front: "f", back: "b" }));
     store.forgetProject(p.id);
@@ -368,7 +368,7 @@ describe("storage stays bounded", () => {
   });
 
   it("jobs persist with a cap and a restart marks running ones failed", async () => {
-    const home = mkdtempSync(join(tmpdir(), "groklab-home-"));
+    const home = mkdtempSync(join(tmpdir(), "learnforge-home-"));
     const store = new Store(home);
     const jobs = new Jobs(store);
     for (let i = 0; i < 105; i++) jobs.start("lens", "p", async () => ({ id: String(i) }));
@@ -382,9 +382,9 @@ describe("storage stays bounded", () => {
   });
 
   it("reports usage by part", async () => {
-    const home = mkdtempSync(join(tmpdir(), "groklab-home-"));
+    const home = mkdtempSync(join(tmpdir(), "learnforge-home-"));
     const store = new Store(home);
-    const p = store.openProject(mkdtempSync(join(tmpdir(), "groklab-x-")));
+    const p = store.openProject(mkdtempSync(join(tmpdir(), "learnforge-x-")));
     store.put(p.id, "notes", { id: "n1", projectId: p.id, createdAt: new Date().toISOString(), text: "hello" });
     const api = createApi(store);
     const u = await (await api.request("/storage")).json();

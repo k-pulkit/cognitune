@@ -1,6 +1,6 @@
-// Browser smoke test: drives every page end to end against a running server with GROKLAB_AGENT=fake.
+// Browser smoke test: drives every page end to end against a running server with LEARNFORGE_AGENT=fake.
 //
-//   GROKLAB_HOME=$(mktemp -d) GROKLAB_AGENT=fake node dist/cli.js . --port 4799 --no-open &
+//   LEARNFORGE_HOME=$(mktemp -d) LEARNFORGE_AGENT=fake node dist/cli.js . --port 4799 --no-open &
 //   node test/ui-smoke.mjs [--url http://127.0.0.1:4799] [--shots DIR] [--dark]
 //
 // Needs a Chromium: CHROME=/path/to/chrome, else the newest one in ~/.cache/ms-playwright.
@@ -48,7 +48,7 @@ const shot = async (name) => {
 
 // Projects
 await page.goto(url);
-await page.getByRole("heading", { name: "groklab" }).waitFor();
+await page.getByRole("heading", { name: "learnforge" }).waitFor();
 ok(await page.getByText("Open a folder").isVisible(), "projects page shows 'Open a folder'");
 await shot("1-projects");
 const projects = await (await page.request.get(`${url}/api/projects`)).json();
@@ -137,14 +137,14 @@ if (process.env.SMOKE_DIFF_DIR) {
   ok(true, "changed files show as a tree with folded folders");
 }
 await page.getByRole("button", { name: /^Working tree/ }).click();
-await page.getByPlaceholder("Type to filter").fill("groklab 0.1");
+await page.getByPlaceholder("Type to filter").fill("learnforge 0.1");
 // The ref list loads in the background; give it a moment before counting.
 for (let i = 0; i < 50 && (await page.locator("[data-i]").count()) !== 1; i++) await page.waitForTimeout(100);
 ok((await page.locator("[data-i]").count()) === 1, "typing filters the ref list");
 await page.keyboard.press("Enter");
-await page.getByRole("button", { name: /groklab 0\.1\.0/ }).waitFor();
+await page.getByRole("button", { name: /learnforge 0\.1\.0/ }).waitFor();
 ok(true, "Enter picks the filtered ref");
-await page.getByRole("button", { name: /groklab 0\.1\.0/ }).click();
+await page.getByRole("button", { name: /learnforge 0\.1\.0/ }).click();
 await page.getByPlaceholder("Type to filter").waitFor();
 await shot("12-combobox");
 await page.keyboard.press("Escape");

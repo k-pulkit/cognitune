@@ -7,7 +7,7 @@ import type {
 } from "./types.js";
 
 /**
- * Everything groklab writes lives under one home folder (default ~/.groklab).
+ * Everything learnforge writes lives under one home folder (default ~/.learnforge).
  * The user's code folders are never written.
  *
  *   settings.json
@@ -78,7 +78,7 @@ export function projectIdFor(root: string): string {
 export class Store {
   readonly home: string;
 
-  constructor(home = process.env.GROKLAB_HOME || join(homedir(), ".groklab")) {
+  constructor(home = process.env.LEARNFORGE_HOME || join(homedir(), ".learnforge")) {
     this.home = resolve(home);
     mkdirSync(join(this.home, "projects"), { recursive: true });
   }
