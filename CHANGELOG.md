@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.4 (2026-11-17)
+
+- The Changes page's diff view is now syntax-highlighted (ts/js and every other shiki language),
+  matching the main file viewer; it previously rendered every diff line as plain monospace text
+  in both split and unified mode.
+
 ## 0.2.3 (2026-11-17)
 
 - Fenced code blocks in lens/quiz/explainer prose (`` ```ts ``, `` ```js ``, and any other shiki

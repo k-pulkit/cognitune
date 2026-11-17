@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { GitCompare } from "lucide-react";
 import type { DiffFile, DiffSpec, GitRepo } from "@core/types";
 import { get } from "@/lib/api";
+import { langOf } from "@/lib/path";
 import { useProject } from "@/lib/project";
 import { ActionPanel } from "@/components/ActionPanel";
 import { Combobox, type ComboOption } from "@/components/Combobox";
@@ -171,7 +172,7 @@ export function ChangesPage() {
         <Segmented value={mode} onChange={setMode} options={[{ value: "split", label: "Split" }, { value: "unified", label: "Unified" }]} />
       </div>
       <div className="min-h-0 flex-1 overflow-auto bg-panel">
-        {activeFile ? <DiffView patch={activeFile.patch} mode={mode} /> : <Empty title="Pick a file" />}
+        {activeFile ? <DiffView patch={activeFile.patch} mode={mode} lang={langOf(activeFile.path)} /> : <Empty title="Pick a file" />}
       </div>
     </div>
   );
