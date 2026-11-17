@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.3 (2026-11-17)
+
+- Fenced code blocks in lens/quiz/explainer prose (`` ```ts ``, `` ```js ``, and any other shiki
+  language) are now syntax-highlighted the same way as the main file viewer; previously only
+  `mermaid` blocks got special treatment and everything else rendered as plain text.
+- The quiz page's file list collapses to 6 + "N more" instead of showing every file in full,
+  matching the lens page.
+
 ## 0.2.2 (2026-11-10)
 
 Release workflow fix, no feature changes:

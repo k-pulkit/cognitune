@@ -5,6 +5,7 @@ import { ArrowLeft, CheckCircle2, CircleHelp, Download, FileCode2, Layers, Messa
 import { Link, useNavigate, useParams } from "react-router-dom";
 import type { Answer, Attempt, Card, FileContent, Quiz } from "@core/types";
 import { del, get, relTime, useJob } from "@/lib/api";
+import { shortPath } from "@/lib/path";
 import { useProject } from "@/lib/project";
 import { CardDialog } from "@/components/CardDialog";
 import { CodeView } from "@/components/CodeView";
@@ -97,11 +98,12 @@ export function QuizPage() {
         </div>
         <h1 className="mt-2 text-[20px] font-semibold leading-tight tracking-tight">{q.title}</h1>
         <div className="mt-3 flex flex-wrap gap-1.5">
-          {q.files.map((f) => (
-            <button key={f} onClick={() => setPeek({ file: f })} className="inline-flex items-center gap-1 rounded-md bg-raised px-2 py-1 font-mono text-[12px] hover:text-accent">
-              <FileCode2 className="h-3 w-3" /> {rel(f)}
+          {q.files.slice(0, 6).map((f) => (
+            <button key={f} onClick={() => setPeek({ file: f })} title={rel(f)} className="inline-flex max-w-full items-center gap-1 rounded-md bg-raised px-2 py-1 font-mono text-[12px] hover:text-accent">
+              <FileCode2 className="h-3 w-3 shrink-0" /> <span className="truncate">{shortPath(rel(f), 64)}</span>
             </button>
           ))}
+          {q.files.length > 6 && <span className="px-1 py-1 text-[12px] text-muted">+{q.files.length - 6} more</span>}
         </div>
 
         {viewing && (

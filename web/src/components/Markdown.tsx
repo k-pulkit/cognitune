@@ -3,6 +3,37 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useIsDark } from "@/lib/theme";
 
+let shikiPromise: Promise<typeof import("shiki")> | null = null;
+const shiki = () => (shikiPromise ??= import("shiki"));
+const FENCE_ALIAS: Record<string, string> = { sh: "bash", yml: "yaml", ts: "typescript", js: "javascript", py: "python" };
+
+function escapeHtml(s: string) {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+/** A fenced code block in lens/quiz/explainer prose, highlighted the same way as the main file viewer. */
+function CodeBlock({ lang, code }: { lang: string; code: string }) {
+  const [html, setHtml] = useState(`<pre><code>${escapeHtml(code)}</code></pre>`);
+  useEffect(() => {
+    let live = true;
+    const language = FENCE_ALIAS[lang] ?? lang;
+    shiki()
+      .then(async (s) => {
+        const out = await s.codeToHtml(code, {
+          lang: language in s.bundledLanguages ? language : "text",
+          themes: { light: "solarized-light", dark: "dark-plus" },
+          defaultColor: false,
+        });
+        if (live) setHtml(out);
+      })
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [lang, code]);
+  return <div dangerouslySetInnerHTML={{ __html: html }} />;
+}
+
 /** Mermaid colours from the app tokens (index.css), so diagrams match the page in both themes. */
 const LIGHT_VARS = {
   background: "#fdf6e3", mainBkg: "#eee8d5", primaryColor: "#eee8d5", primaryTextColor: "#586e75", primaryBorderColor: "#268bd2",
@@ -95,13 +126,14 @@ export function Markdown({ children }: { children: string }) {
           code({ className, children: c, ...props }) {
             const lang = /language-(\w+)/.exec(className ?? "")?.[1];
             if (lang === "mermaid") return <Mermaid code={String(c).trim()} />;
+            if (lang) return <CodeBlock lang={lang} code={String(c).replace(/\n$/, "")} />;
             return <code className={className} {...props}>{c}</code>;
           },
           pre({ children: c }) {
-            // A mermaid block renders its own box; keep <pre> for real code only.
+            // Mermaid and CodeBlock render their own box; keep <pre> for plain, language-less code only.
             const child = Array.isArray(c) ? c[0] : c;
             const cls = (child as { props?: { className?: string } })?.props?.className ?? "";
-            if (cls.includes("language-mermaid")) return <>{c}</>;
+            if (cls.includes("language-")) return <>{c}</>;
             return <pre>{c}</pre>;
           },
           a({ href, children: c }) {
