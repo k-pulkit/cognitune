@@ -334,7 +334,7 @@ export function listFiles(root: string): string[] {
       return;
     }
     for (const e of entries) {
-      if (e.name.startsWith(".") && e.name !== ".github") continue;
+      if (e.name.startsWith(".") && e.name !== ".github" && e.name !== ".claude") continue;
       const p = join(dir, e.name);
       if (e.isDirectory()) {
         if (!SKIP_DIRS.has(e.name)) walk(p);
