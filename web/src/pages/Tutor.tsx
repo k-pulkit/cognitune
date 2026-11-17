@@ -5,6 +5,7 @@ import { FileCode2, Lightbulb, Send, Trash2 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import type { Thread } from "@core/types";
 import { get, useJob } from "@/lib/api";
+import { shortPath } from "@/lib/path";
 import { useProject } from "@/lib/project";
 import { BackLink, useArchive } from "@/components/BackLink";
 import { CodePane } from "@/components/CodePane";
@@ -48,11 +49,12 @@ export function TutorPage() {
         </div>
         <div className="mt-1 truncate text-base font-semibold">{t.title}</div>
         <div className="mt-1 flex flex-wrap gap-1.5">
-          {t.files.map((f) => (
-            <button key={f} onClick={() => setView({ file: f })} className="inline-flex items-center gap-1 rounded-md bg-raised px-2 py-0.5 font-mono text-[12px] hover:text-accent">
-              <FileCode2 className="h-3 w-3" /> {rel(f)}
+          {t.files.slice(0, 6).map((f) => (
+            <button key={f} onClick={() => setView({ file: f })} title={rel(f)} className="inline-flex max-w-full items-center gap-1 rounded-md bg-raised px-2 py-0.5 font-mono text-[12px] hover:text-accent">
+              <FileCode2 className="h-3 w-3 shrink-0" /> <span className="truncate">{shortPath(rel(f), 64)}</span>
             </button>
           ))}
+          {t.files.length > 6 && <span className="px-1 py-0.5 text-[12px] text-muted">+{t.files.length - 6} more</span>}
         </div>
       </div>
       <div className="min-h-0 flex-1 space-y-4 overflow-auto px-6 py-5">
