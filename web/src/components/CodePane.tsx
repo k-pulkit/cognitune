@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import type { FileContent } from "@core/types";
 import { get } from "@/lib/api";
+import { langOf } from "@/lib/path";
 import { useProject } from "@/lib/project";
 import { CodeView } from "./CodeView";
 import { Empty, ErrorNote, Spinner } from "./ui";
@@ -38,7 +39,7 @@ export function CodePane({
           <div className="min-h-0 flex-1 overflow-auto">
             {q.isLoading && <div className="p-4"><Spinner /></div>}
             {q.error && <div className="p-3"><ErrorNote error={(q.error as Error).message} /></div>}
-            {body !== undefined && <CodeView text={body} lang={lang ?? q.data?.lang ?? "text"} focusLine={line} marks={marks} onLineClick={onLineClick} />}
+            {body !== undefined && <CodeView text={body} lang={lang ?? q.data?.lang ?? langOf(file)} focusLine={line} marks={marks} onLineClick={onLineClick} />}
           </div>
         </>
       ) : (
