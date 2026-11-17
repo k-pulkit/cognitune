@@ -5,6 +5,11 @@
 - The Changes page's diff view is now syntax-highlighted (ts/js and every other shiki language),
   matching the main file viewer; it previously rendered every diff line as plain monospace text
   in both split and unified mode.
+- Bug hunt's planted-bugs code copy had the same problem for a different reason: `CodePane`
+  only read the language off its own file-content query, which is disabled whenever a caller
+  passes text directly (bug hunt always does), so it silently fell back to plain text.
+- The teach-back and tutor pages' file-chip lists now collapse to 6 + "N more" like the lens
+  and quiz pages, instead of listing every file in full.
 
 ## 0.2.3 (2026-11-17)
 
