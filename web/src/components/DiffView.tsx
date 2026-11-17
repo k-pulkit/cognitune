@@ -103,7 +103,10 @@ function useHighlightedRows(rows: Row[], lang: string) {
 export function DiffView({ patch, mode, lang = "text" }: { patch: string; mode: "split" | "unified"; lang?: string }) {
   const rows = useMemo(() => parsePatch(patch), [patch]);
   const hl = useHighlightedRows(rows, lang);
-  const rowText = (r: Row) => (hl.has(r) ? <span dangerouslySetInnerHTML={{ __html: hl.get(r)! }} /> : r.text);
+  // shiki's defaultColor:false output needs a ".shiki" ancestor for its light/dark CSS vars to
+  // turn into an actual text color (see index.css); extracting just a line's innerHTML drops the
+  // <pre class="shiki"> wrapper that would normally provide it, so put the class back here.
+  const rowText = (r: Row) => (hl.has(r) ? <span className="shiki" dangerouslySetInnerHTML={{ __html: hl.get(r)! }} /> : r.text);
   // New or deleted file: only one side has lines, so a split view would be half empty.
   const allOneSide = !rows.some((r) => r.kind === "ctx") && (!rows.some((r) => r.kind === "add") || !rows.some((r) => r.kind === "del"));
 
@@ -175,7 +178,7 @@ function SplitDiff({ rows, hl }: { rows: Pair[]; hl: Map<Row, string> }) {
   const cell = (r: Row | undefined, side: 0 | 1, key: string) => (
     <div key={key} className={clsx("flex min-w-0", r?.kind === "del" && "diff-del", r?.kind === "add" && "diff-add", !r && "bg-raised/60")}>
       <span className={num}>{r ? (side === 0 ? r.left : r.right) : ""}</span>
-      <span className={TEXT}>{r ? (hl.has(r) ? <span dangerouslySetInnerHTML={{ __html: hl.get(r)! }} /> : r.text) : ""}</span>
+      <span className={TEXT}>{r ? (hl.has(r) ? <span className="shiki" dangerouslySetInnerHTML={{ __html: hl.get(r)! }} /> : r.text) : ""}</span>
     </div>
   );
 
