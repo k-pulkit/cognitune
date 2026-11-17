@@ -123,6 +123,25 @@ describe("learning features", () => {
     expect(md).toContain("Covers: src/add.ts");
   });
 
+  it("a follow-up adds to the same lens, with extra files as context", async () => {
+    const j = await job("/lenses", { files: [add()], kind: "explain" });
+    const two = join(root, "src", "two.ts");
+    const m = await job(`/lenses/${j.resultId}/more`, { question: "Where does two come from?", files: [two, add()] });
+    expect(m.resultId).toBe(j.resultId);
+    const l = await get(`/lenses/${j.resultId}`);
+    expect(l.followUps).toHaveLength(1);
+    expect(l.followUps[0].question).toBe("Where does two come from?");
+    expect(l.followUps[0].answer).toContain("Where does two come from?");
+    expect(l.followUps[0].files).toEqual([two]);
+    expect(l.followUps[0].deepDives).toHaveLength(1);
+    expect(l.files).toEqual([add(), two]);
+    expect(l.concepts.map((c: { term: string }) => c.term)).toContain("Follow-up term");
+    expect(l.gotchas).toContain("Line 4 is easy to miss.");
+    const md = await (await api.request(`/projects/${pid}/lenses/${j.resultId}/export`)).text();
+    expect(md).toContain("## Follow-ups");
+    expect((await send(`/lenses/${j.resultId}/more`, { question: " " })).status).toBe(400);
+  });
+
   it("history lens reads git log", async () => {
     const j = await job("/lenses", { files: [add()], kind: "history" });
     expect((await get(`/lenses/${j.resultId}`)).kind).toBe("history");

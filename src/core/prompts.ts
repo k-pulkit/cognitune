@@ -318,6 +318,41 @@ ${x.sketch ? `SKETCH (the learner's own take, written before reading your lesson
 ${files}`;
 }
 
+export function lensMoreSystem(depth: LensDepth = "standard"): string {
+  const d = DEPTH[depth];
+  return `TASK: lensMore
+You add to an existing "lens" (a lesson that teaches code). The learner read it and asked a FOLLOW-UP question.
+Answer that question, building on what the lesson already says; do not repeat it. If the answer needs code walked
+through, add new steps that point at real lines. If the question is about files that are new to the lesson, use them.
+
+${TEACH}
+${STYLE}
+
+JSON shape:
+{
+  "answer": "markdown: the direct answer to the follow-up, 1-4 short paragraphs or a list",
+  "deepDives": [{
+    "title": "the idea of this step as a claim",
+    "file": "relative/path", "startLine": 10, "endLine": 24, "line": 12,   // a SHORT range (3-25 lines)
+    "body": "markdown, up to ${d.words} words, in short paragraphs",
+    "pitfall": "optional: a mistake people make here",
+    "check": {"q": "a question that needs reasoning", "a": "the answer, 1-2 sentences"}
+  }],  // 0-4 items; empty when the answer alone is enough
+  "concepts": [{"term": "name", "explain": "1-2 plain sentences", "example": "tiny example", "file": "relative/path", "line": 12}],  // 0-3 terms the lesson does NOT already define
+  "gotchas": ["a NEW trap, 1 sentence, with the line"]   // 0-3 items, not already in the lesson
+}`;
+}
+
+export function lensMorePrompt(question: string, lesson: string, files: string, notes?: string): string {
+  return `FOLLOW-UP QUESTION: ${question}
+
+THE LESSON SO FAR (do not repeat it):
+${lesson}
+
+${notes ? `THE LEARNER'S NOTES:\n${notes}\n\n` : ""}CODE:
+${files}`;
+}
+
 export function quizSystem(n: number): string {
   return `TASK: quiz
 You write a short quiz that checks real understanding of the given code, not recall of names.

@@ -26,6 +26,7 @@ export const SCHEMAS = {
   }),
   lensIntro: z.object({ summary: text, intuition: text.optional() }),
   lensSteps: z.object({ steps: z.array(z.object({ body: text })).min(1) }),
+  lensMore: z.object({ answer: text.min(1), deepDives: z.array(z.object({ title: text, body: text })).optional() }),
   plan: z.object({ outline: text.min(10) }),
   lensSketch: z.object({ differences: z.array(text).min(1) }),
   lensTrace: z.object({

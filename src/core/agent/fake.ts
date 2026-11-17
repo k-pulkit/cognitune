@@ -49,6 +49,15 @@ export class FakeAgent implements Agent {
           ],
         };
       }
+      case "lensMore": {
+        const q = /^FOLLOW-UP QUESTION: (.*)$/m.exec(prompt)?.[1] ?? "";
+        return {
+          answer: `Fake answer to "${q}": line 3 is where it happens.`,
+          deepDives: [{ title: "Line 3 answers the follow-up", file, line: 3, startLine: 2, endLine: 5, body: "The fake step for the follow-up." }],
+          concepts: [{ term: "Follow-up term", explain: "A term the first lesson did not define." }],
+          gotchas: ["Line 4 is easy to miss."],
+        };
+      }
       case "walkPlan":
         return { blocks: [1, 2].map((i) => ({ startLine: i, endLine: i + 2, title: `Block ${i} does one thing`, covers: ["a fact"], example: "n = 3", question: "what happens for n = 3?" })) };
       case "walkBlocks": {

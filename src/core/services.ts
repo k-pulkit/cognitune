@@ -197,6 +197,53 @@ export class Learn {
   }
 
   /**
+   * A follow-up question on a lens, answered on top of it: the reply becomes a new follow-up section,
+   * its new terms and traps join the lens's own lists, and any extra files join the lens.
+   */
+  async lensMore(project: Project, id: string, req: { question: string; files?: string[] }): Promise<Lens> {
+    const ws = new Workspace(project);
+    const l = this.store.get(project.id, "lenses", id);
+    if (!l) throw new Error("lens not found");
+    const question = (req.question ?? "").trim().slice(0, 4000);
+    if (!question) throw new Error("ask a question first");
+    const extra = [...new Set((req.files ?? []).map((f) => ws.guard(f)))].filter((f) => !l.files.includes(f));
+    const files = [...l.files, ...extra];
+    const lesson = [
+      `Title: ${l.title}`,
+      l.tldr && `Idea: ${l.tldr}`,
+      `Summary: ${l.summary}`,
+      l.concepts.length && `Terms already defined: ${l.concepts.map((c) => c.term).join(", ")}`,
+      `Steps:\n${l.deepDives.map((d) => `- ${d.title}`).join("\n")}`,
+      l.gotchas?.length && `Gotchas:\n${l.gotchas.map((g) => `- ${g}`).join("\n")}`,
+      ...(l.followUps ?? []).map((f) => `Earlier follow-up: ${f.question}\nAnswer: ${f.answer.slice(0, 1200)}`),
+    ].filter(Boolean).join("\n\n").slice(0, 12_000);
+    const raw = await this.ask<Record<string, unknown>>(
+      ws, ["lensMore"], P.lensMoreSystem(l.depth), P.lensMorePrompt(question, lesson, this.bundle(ws, files), this.notes(ws, files)),
+    );
+    const known = new Set(l.concepts.map((c) => c.term.toLowerCase()));
+    const concepts = arr(raw.concepts).map((c) => {
+      const o = c as Record<string, unknown>;
+      return { term: str(o.term, 120), explain: str(o.explain), example: str(o.example, 1000) || undefined, file: ws.absFromRel(str(o.file, 500)), line: num(o.line) };
+    }).filter((c) => c.term && !known.has(c.term.toLowerCase())).slice(0, 3);
+    const gotchas = strs(raw.gotchas, 400, 3).filter((g) => !l.gotchas?.includes(g));
+    const next: Lens = {
+      ...l,
+      files,
+      fileHashes: { ...this.hashes(ws, extra), ...l.fileHashes },
+      concepts: [...l.concepts, ...concepts],
+      gotchas: [...(l.gotchas ?? []), ...gotchas],
+      followUps: [
+        ...(l.followUps ?? []),
+        {
+          at: now(), question, files: extra, answer: str(raw.answer, 12_000),
+          deepDives: arr(raw.deepDives).map((d) => cleanDive(d as Record<string, unknown>, ws)).filter((d) => d.title || d.body).slice(0, 4),
+        },
+      ],
+    };
+    return this.store.put(project.id, "lenses", next);
+  }
+
+  /**
    * A lens in parts instead of one call: the planner outlines (title, tldr, every step with its lines and
    * what it must cover), then the writer fills in the opening and the steps, a few steps per call, side by
    * side. The result has the same shape as the one-shot reply, so the caller does not care which ran.

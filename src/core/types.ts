@@ -110,6 +110,18 @@ export interface Lens {
   differences?: string[];
   /** Trace lens only: a step-by-step run on a toy input. */
   trace?: Trace;
+  /** Questions asked after reading, each answered on top of the lens (oldest first). */
+  followUps?: LensFollowUp[];
+}
+
+export interface LensFollowUp {
+  at: string;
+  question: string;
+  /** Files added as context for this question, beyond the lens's own. */
+  files: string[];
+  /** Markdown. */
+  answer: string;
+  deepDives: DeepDive[];
 }
 
 export interface TraceStep {

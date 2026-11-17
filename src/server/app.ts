@@ -171,6 +171,14 @@ export function createApi(store: Store, opts: { pruneEveryMs?: number } = {}) {
     if (!store.get(p.id, "lenses", id)) return fail(c, 404, "lens not found");
     return startJob(c, "lens", p, (l) => l.lens(p, { files: [], kind: "", refreshOf: id }));
   });
+  api.post("/projects/:pid/lenses/:id/more", async (c) => {
+    const p = project(c);
+    const id = c.req.param("id");
+    if (!store.get(p.id, "lenses", id)) return fail(c, 404, "lens not found");
+    const req = await body<{ question?: string; files?: string[] }>(c);
+    if (!req.question?.trim()) return fail(c, 400, "ask a question first");
+    return startJob(c, "lens", p, (l) => l.lensMore(p, id, { question: req.question!, files: req.files }));
+  });
   api.get("/projects/:pid/lenses/:id/export", (c) => {
     const p = project(c);
     const l = store.get(p.id, "lenses", c.req.param("id"));

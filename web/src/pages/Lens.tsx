@@ -2,8 +2,8 @@ import { useMemo, useState } from "react";
 import clsx from "clsx";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import {
-  AlertTriangle, ArrowLeft, ArrowRight, BookOpen, ChevronLeft, ChevronRight, Download, Eye, FileCode2, GitCompareArrows, Layers,
-  Lightbulb, ListChecks, Maximize2, PenLine, RefreshCw, Sparkles, Trash2, TriangleAlert,
+  AlertTriangle, ArrowLeft, ArrowRight, BookOpen, ChevronLeft, ChevronRight, CornerDownRight, Download, Eye, FileCode2, GitCompareArrows, Layers,
+  Lightbulb, ListChecks, Maximize2, MessageSquarePlus, PenLine, RefreshCw, Sparkles, Trash2, TriangleAlert,
 } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import type { Card, DeepDive, FileContent, Lens } from "@core/types";
@@ -34,10 +34,13 @@ function range(d: DeepDive): [number, number] | null {
  */
 export function LensPage() {
   const { id = "" } = useParams();
-  const { project, rel, setOpenFile, setSelected } = useProject();
+  const { project, rel, selected, setOpenFile, setSelected } = useProject();
   const nav = useNavigate();
   const job = useJob();
   const refresh = useJob();
+  const more = useJob();
+  const [ask, setAsk] = useState("");
+  const [withTicked, setWithTicked] = useState(true);
   const [view, setView] = useState<{ file: string; line?: number } | null>(null);
   const [card, setCard] = useState<Partial<Card> | null>(null);
   const [mode, setMode] = useState<"all" | "step">("all");
@@ -46,7 +49,10 @@ export function LensPage() {
   const l = lens.data;
 
   // The text of every file a step points at, for the inline snippets.
-  const diveFiles = useMemo(() => [...new Set((l?.deepDives ?? []).map((d) => d.file).filter((f): f is string => !!f))], [l]);
+  const diveFiles = useMemo(
+    () => [...new Set([...(l?.deepDives ?? []), ...(l?.followUps ?? []).flatMap((f) => f.deepDives)].map((d) => d.file).filter((f): f is string => !!f))],
+    [l],
+  );
   const texts = useQueries({
     queries: diveFiles.map((f) => ({
       queryKey: ["file", project.id, f],
@@ -67,6 +73,12 @@ export function LensPage() {
     setOpenFile(file);
     nav(`/p/${project.id}/explore`);
   };
+  const extraTicked = selected.filter((f) => !l.files.includes(f));
+  const askMore = () =>
+    more.run(`/projects/${project.id}/lenses/${l.id}/more`, { question: ask, files: withTicked ? extraTicked : [] }, () => {
+      setAsk("");
+      void lens.refetch();
+    });
   const dives = l.deepDives;
   const shownDives = mode === "all" ? dives.map((d, i) => [d, i] as const) : dives[step] ? [[dives[step], step] as const] : [];
   /** A section heading, like a blog post's h2. */
@@ -230,6 +242,65 @@ export function LensPage() {
             </div>
           </>
         )}
+
+        {(l.followUps ?? []).length > 0 && (
+          <>
+            <H2 icon={<CornerDownRight className="h-5 w-5" />}>Follow-ups</H2>
+            <div className="space-y-14">
+              {l.followUps!.map((f, k) => (
+                <div key={k}>
+                  <div className="border-l-[3px] border-accent/60 py-1 pl-5">
+                    <div className="text-[11.5px] font-semibold uppercase tracking-[0.08em] text-accent">You asked · {relTime(f.at)}</div>
+                    <p className="read mt-1 font-medium">{f.question}</p>
+                    {f.files.length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {f.files.map((p) => (
+                          <button key={p} onClick={() => show(p)} title={rel(p)} className="inline-flex max-w-full items-center gap-1 rounded-md bg-ink/5 px-2 py-0.5 font-mono text-[11.5px] text-muted hover:text-accent">
+                            + <span className="truncate">{shortPath(rel(p), 64)}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <div className="mt-5"><Markdown>{f.answer}</Markdown></div>
+                  {f.deepDives.length > 0 && (
+                    <ol className="mt-10 space-y-12 [&>li+li]:border-t [&>li+li]:border-line [&>li+li]:pt-10">
+                      {f.deepDives.map((d, i) => (
+                        <Step key={i} d={d} n={i + 1} text={d.file ? fileText.get(d.file) : undefined} rel={rel} onShow={show} />
+                      ))}
+                    </ol>
+                  )}
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        <section className="mt-16 rounded-md border border-line p-6">
+          <div className="flex items-center gap-2 text-[17px] font-semibold"><MessageSquarePlus className="h-4 w-4 text-accent" /> Ask more about this</div>
+          <p className="read mt-1 text-muted">The answer is added to this lens, not a new one. New terms and gotchas join the lists above.</p>
+          <textarea
+            className="input mt-4 min-h-[84px] resize-y text-[14px]"
+            placeholder="e.g. How would this change if the caller were an IAM user instead of a role?  Ctrl+Enter to send."
+            value={ask}
+            onChange={(e) => setAsk(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && ask.trim() && !more.busy) askMore();
+            }}
+          />
+          {extraTicked.length > 0 && (
+            <label className="mt-2 flex cursor-pointer items-center gap-2 text-[13px] text-muted">
+              <input type="checkbox" checked={withTicked} onChange={(e) => setWithTicked(e.target.checked)} />
+              Also use {extraTicked.length === 1 ? shortPath(rel(extraTicked[0]), 48) : `the ${extraTicked.length} ticked files`} as context
+            </label>
+          )}
+          <div className="mt-3 flex items-center gap-3">
+            <Button variant="primary" icon={<MessageSquarePlus className="h-4 w-4" />} disabled={more.busy || !ask.trim()} onClick={askMore}>Add to lens</Button>
+            {extraTicked.length === 0 && <span className="text-[12.5px] text-muted">Tick files in Explore to add them as extra context.</span>}
+          </div>
+          {more.busy && more.job && <div className="mt-3"><JobProgress kind="lens" elapsed={more.elapsed} /></div>}
+          {more.error && <div className="mt-3"><ErrorNote error={more.error} onClose={more.clearError} /></div>}
+        </section>
 
         <section className="mt-16 rounded-md border border-line bg-raised/40 p-6">
           <div className="text-[17px] font-semibold">Did it land?</div>

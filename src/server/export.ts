@@ -25,16 +25,28 @@ export function lensMarkdown(l: Lens, ws: Workspace): string {
     });
     out.push("");
   }
-  if (l.deepDives.length) {
-    out.push("## Deep dives", "");
-    for (const d of l.deepDives) {
+  const dives = (list: typeof l.deepDives, h: string) => {
+    for (const d of list) {
       const where = d.file ? ` (${ws.rel(d.file)}${d.startLine ? `:${d.startLine}-${d.endLine}` : d.line ? `:${d.line}` : ""})` : "";
-      out.push(`### ${d.title}${where}`, "", d.body, "");
+      out.push(`${h} ${d.title}${where}`, "", d.body, "");
       if (d.pitfall) out.push(`> **Pitfall:** ${d.pitfall}`, "");
       if (d.check) out.push(`<details><summary>Check yourself: ${d.check.q}</summary>\n\n${d.check.a}\n</details>`, "");
     }
+  };
+  if (l.deepDives.length) {
+    out.push("## Deep dives", "");
+    dives(l.deepDives, "###");
   }
   if (l.gotchas?.length) out.push("## Gotchas", "", ...l.gotchas.map((g) => `- ${g}`), "");
+  if (l.followUps?.length) {
+    out.push("## Follow-ups", "");
+    for (const f of l.followUps) {
+      out.push(`### ${f.question}`, "");
+      if (f.files.length) out.push(`*Added context:* ${f.files.map((p) => `\`${ws.rel(p)}\``).join(", ")}`, "");
+      out.push(f.answer, "");
+      dives(f.deepDives, "####");
+    }
+  }
   if (l.nextSteps?.length) out.push("## Read next", "", ...l.nextSteps.map((n) => `- \`${ws.rel(n.file)}\`: ${n.why}`), "");
   return out.join("\n");
 }
