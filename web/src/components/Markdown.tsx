@@ -116,12 +116,64 @@ function arrows(md: string): string {
     .join("");
 }
 
-export function Markdown({ children }: { children: string }) {
+const LINE_GROUP = /\blines?\s+(\d+(?:\s*(?:[-–]|to|,|and)\s*\d+)*)/gi;
+const NUM_OR_SEP = /(\d+)|([-–]|to|,|and)/gi;
+
+function sepText(sep: string): string {
+  if (/^[a-z]+$/i.test(sep)) return ` ${sep} `;
+  return sep === "," ? ", " : sep;
+}
+
+/**
+ * "line 100" / "lines 64-71" / "lines 27 and 29" become links to a `codeline:` pseudo-URL,
+ * skipped inside code/fences. A dash or "to" between two numbers makes one range link; "," or
+ * "and" link each number on its own.
+ */
+export function linkifyLines(md: string): string {
+  return md
+    .split(/(```[\s\S]*?```|`[^`\n]*`)/g)
+    .map((part, i) => {
+      if (i % 2) return part;
+      return part.replace(LINE_GROUP, (whole, nums: string) => {
+        const lead = whole.slice(0, whole.length - nums.length);
+        const tokens = [...nums.matchAll(NUM_OR_SEP)];
+        let out = "";
+        for (let k = 0; k < tokens.length; k++) {
+          const num = tokens[k][1];
+          if (!num) continue; // a separator, already emitted by the number before it
+          const sep = tokens[k + 1];
+          const isRange = sep && !sep[1] && /^(-|–|to)$/i.test(sep[2] ?? "");
+          if (isRange && tokens[k + 2]?.[1]) {
+            const to = tokens[k + 2][1];
+            out += `[${num}${sepText(sep![2]!)}${to}](codeline:${num}-${to})`;
+            k += 2;
+          } else {
+            out += `[${num}](codeline:${num}-${num})`;
+            if (sep) out += sepText(sep[2]!);
+          }
+        }
+        return lead + out;
+      });
+    })
+    .join("");
+}
+
+export function Markdown({
+  children, className, onLineClick,
+}: {
+  children: string;
+  className?: string;
+  /** Jump the code pane to a line range named in the text (see linkifyLines). */
+  onLineClick?: (from: number, to: number) => void;
+}) {
   children = arrows(children);
   return (
-    <div className="prose-g">
+    <div className={className ? `prose-g ${className}` : "prose-g"}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
+        // react-markdown's default urlTransform drops unknown schemes (it would silently empty
+        // out our codeline: links); only loosen it where that pseudo-scheme is actually in use.
+        urlTransform={onLineClick ? (url) => url : undefined}
         components={{
           code({ className, children: c, ...props }) {
             const lang = /language-(\w+)/.exec(className ?? "")?.[1];
@@ -137,6 +189,8 @@ export function Markdown({ children }: { children: string }) {
             return <pre>{c}</pre>;
           },
           a({ href, children: c }) {
+            const ref = onLineClick && /^codeline:(\d+)-(\d+)$/.exec(href ?? "");
+            if (ref) return <button type="button" className="codeline" onClick={() => onLineClick(Number(ref[1]), Number(ref[2]))}>{c}</button>;
             return <a href={href} target="_blank" rel="noreferrer">{c}</a>;
           },
         }}

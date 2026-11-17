@@ -148,6 +148,73 @@ body {
 .prose-g table { @apply w-full text-sm; }
 .prose-g th, .prose-g td { @apply border-b border-line px-2 py-1 text-left; }
 
+/* ---- Tutor chat: WhatsApp Web layout (bubbles on a darker "wallpaper", time in the corner) ----
+   Rules are prefixed with .chat-bubble: `:root[data-read="serif"] .prose-g` (17px reading text)
+   would otherwise out-rank them and make the tutor's bubble bigger than the user's. */
+.chat-area { background: rgb(var(--raised)); }
+.dark .chat-area { background: rgb(var(--bg)); }
+.chat-bubble {
+  position: relative;
+  max-width: min(70%, 40rem);
+  padding: 6px 9px 7px;
+  border-radius: 8px;
+  box-shadow: 0 1px 0.5px rgb(0 0 0 / 0.13);
+  font-family: theme(fontFamily.sans);
+  font-size: 14px; line-height: 1.4; letter-spacing: 0;
+  overflow-wrap: anywhere;
+}
+.chat-me   { background: rgb(var(--accent)); color: rgb(var(--accent-ink)); }
+.chat-them { background: rgb(var(--panel)); color: rgb(var(--ink)); }
+.dark .chat-them { background: rgb(var(--raised)); }
+.chat-me.chat-first   { border-top-right-radius: 0; }
+.chat-them.chat-first { border-top-left-radius: 0; }
+
+.chat-label {
+  display: flex; align-items: center; gap: 4px; margin-bottom: 2px;
+  font-size: 12px; line-height: 1.4; font-weight: 600;
+}
+/* Time sits in the bottom-right corner; the spacer after the last line keeps text from running under it. */
+.chat-time {
+  position: absolute; right: 8px; bottom: 4px;
+  font-size: 11px; line-height: 1; opacity: 0.6; white-space: nowrap; user-select: none;
+}
+.chat-spacer { display: inline-block; width: 62px; }
+.chat-bubble .prose-g.chat-msg > :last-child::after { content: ""; display: inline-block; width: 62px; }
+
+.chat-bubble .prose-g.chat-msg {
+  font-family: inherit; font-size: inherit; line-height: inherit;
+  letter-spacing: inherit; color: inherit; max-width: none;
+}
+.chat-bubble .prose-g.chat-msg > * { margin: 0; }
+.chat-bubble .prose-g.chat-msg > * + * { margin-top: 0.5em; }
+.chat-bubble .prose-g.chat-msg ul, .chat-bubble .prose-g.chat-msg ol { padding-left: 1.25em; }
+.chat-bubble .prose-g.chat-msg pre {
+  font-size: 12.5px; line-height: 1.45; padding: 6px 8px; border-radius: 6px;
+  background: rgb(var(--raised)); border: 0; overflow-x: auto;
+}
+.chat-bubble .prose-g.chat-msg :not(pre) > code {
+  font-size: 0.88em; line-height: 1; padding: 0.1em 0.3em; border-radius: 4px;
+  background: rgb(var(--ink) / 0.07);
+}
+
+/* A "line 42" / "lines 64-71" reference in a tutor hint: jumps the code pane on click. */
+.prose-g .codeline {
+  font-family: theme(fontFamily.mono); font-size: 0.85em; font-weight: 500;
+  cursor: pointer; border: 0; padding: 0.05em 0.3em; border-radius: 3px;
+  background: rgb(var(--accent) / 0.08); color: rgb(var(--accent));
+}
+.prose-g .codeline:hover { background: rgb(var(--accent) / 0.18); text-decoration: underline; }
+.prose-g.chat-msg .codeline {
+  font-family: inherit; font-size: 1em; font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  padding: 0; border-radius: 0; background: none; color: rgb(var(--accent));
+  text-decoration: underline; text-underline-offset: 2px;
+  text-decoration-color: rgb(var(--accent) / 0.4);
+}
+.prose-g.chat-msg .codeline:hover {
+  background: none; text-decoration-color: rgb(var(--accent));
+}
+
 /* ---- diff ---- */
 .diff-add { background: rgb(var(--good) / 0.12); }
 .diff-del { background: rgb(var(--bad) / 0.12); }
