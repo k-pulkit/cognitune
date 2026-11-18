@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.5 (2026-11-18)
+
+Fixes:
+
+- Lens diagrams: "click to enlarge" opened an empty box. The enlarged diagram is now sized from the
+  diagram itself, up to 1.6x its size on the page, and fits the window.
+
 ## 0.3.4 (2026-11-18)
 
 Fixes:
