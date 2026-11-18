@@ -9,7 +9,8 @@ import { shortPath } from "@/lib/path";
 import { useProject } from "@/lib/project";
 import { BackLink, useArchive } from "@/components/BackLink";
 import { CodePane } from "@/components/CodePane";
-import { Markdown, linkifyLines } from "@/components/Markdown";
+import { Markdown } from "@/components/Markdown";
+import { linkifyLines } from "@/lib/lines";
 import { Split } from "@/components/Split";
 import { Button, Empty, ErrorNote, JobProgress, Spinner } from "@/components/ui";
 
