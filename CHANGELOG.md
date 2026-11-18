@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.3.1 (2026-11-18)
+
+New:
+
+- **Progress rolls up by repo and folder.** At a folder of many repos, each repo is one row with a
+  coverage bar; click to go into its folders, then files. A scope bar (breadcrumb with a repo picker)
+  narrows the cards, table and heatmap, and search filters the touched files in it. The scope lives
+  in the address, so it can be bookmarked. Untouched rows fold into one "show N untouched" line.
+- **Map shows repos and folders, not ~2,000 files.** Nodes are repos, then folders, then files at
+  the current scope; a folder of 8 code files or fewer shows its files. Imports between two folders
+  are one arrow, thicker for more imports, so a Python package's `__init__.py` no longer looks like a
+  hub. Click a folder to go in. The layout runs off the main thread behind a placeholder map, and the
+  server keeps the graph until you press Refresh (it used to rebuild every minute).
+- README: a banner, the Read / Prove / Keep loop, and screenshots cropped to be readable.
+
+Fixes:
+
+- Tutor links dropped the word between two ranges: "lines 41-48 and 58-60" showed as "41-4858-60".
+- The Today page's path card said "Do this stop"; it now names the activity ("Start the lens"),
+  like the Paths page.
+- The Library's tab strip stretches to fill its row instead of ending in an empty block.
+
 ## 0.3.0 (2026-11-18)
 
 New:
