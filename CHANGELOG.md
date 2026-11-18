@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.4 (2026-11-18)
+
+Fixes:
+
+- Model calls no longer fill your own session lists. Claude Code, Codex and Copilot used to start
+  in the project folder, so every lens, quiz and tutor turn showed up in that folder's
+  `claude --resume` list. They now run from `~/.cognitune/agent` with the project as a readable
+  folder, and Claude Code runs with session saving off.
+
 ## 0.3.3 (2026-11-18)
 
 Fixes:
