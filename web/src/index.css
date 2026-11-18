@@ -141,7 +141,8 @@ body {
 .md-figure svg { max-width: 100% !important; max-height: 620px; width: auto; height: auto; }
 /* #root prefixed to outrank the #root .label rule above (an id beats two plain classes). */
 #root .md-figure .label, #root .md-figure-big .label { text-transform: none; letter-spacing: normal; margin: 0; display: inline; font-size: inherit; font-weight: inherit; color: inherit; }
-.md-figure-big svg { max-width: none !important; max-height: none; width: auto; height: auto; }
+.md-figure-big svg { display: block; max-width: none !important; max-height: none; height: auto;
+  width: min(calc(var(--fig-w, 800) * 1.6px), 90vw, calc(82vh * var(--fig-ar, 1.5))); }
 .md-figure .node rect, .md-figure .node polygon { rx: 6; ry: 6; }
 .prose-g pre { @apply overflow-auto rounded-lg border border-line bg-raised p-3 font-mono text-[13.5px] leading-relaxed; }
 .prose-g blockquote { @apply border-l-2 border-accent/50 pl-3 text-muted; }

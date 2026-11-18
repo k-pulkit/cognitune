@@ -1,4 +1,4 @@
-import { createContext, memo, useContext, useEffect, useId, useMemo, useState } from "react";
+import { type CSSProperties, createContext, memo, useContext, useEffect, useId, useMemo, useState } from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useIsDark } from "@/lib/theme";
@@ -87,6 +87,10 @@ export function Mermaid({ code }: { code: string }) {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [big]);
+  // The svg's own width is "100%", which is 0 inside the shrink-to-fit dialog. Size it from the
+  // viewBox instead: 1.6x its drawn size, capped to fit the window (see .md-figure-big in index.css).
+  const box = /viewBox="[-\d.]+ [-\d.]+ ([\d.]+) ([\d.]+)"/.exec(svg);
+  const bigStyle = box ? ({ "--fig-w": box[1], "--fig-ar": Number(box[1]) / Number(box[2]) } as CSSProperties) : undefined;
   if (bad) return <pre>{code}</pre>;
   return (
     <>
@@ -101,7 +105,7 @@ export function Mermaid({ code }: { code: string }) {
       </div>
       {big && (
         <div className="fixed inset-0 z-50 grid cursor-zoom-out place-items-center bg-ink/40 p-6 backdrop-blur-sm" onClick={() => setBig(false)}>
-          <div className="md-figure-big max-h-full max-w-full overflow-auto rounded-md border border-line bg-panel p-6" onClick={(e) => e.stopPropagation()} dangerouslySetInnerHTML={{ __html: svg }} />
+          <div className="md-figure-big max-h-full max-w-full overflow-auto rounded-md border border-line bg-panel p-6" style={bigStyle} onClick={(e) => e.stopPropagation()} dangerouslySetInnerHTML={{ __html: svg }} />
         </div>
       )}
     </>
