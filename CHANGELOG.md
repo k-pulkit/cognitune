@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.3 (2026-11-18)
+
+Fixes:
+
+- Split diff: the column divider ran through hunk headers ("@@ -40,10 +42,11 @@ export class
+  Queue<T> {"); headers now span both columns above the divider.
+
 ## 0.3.2 (2026-11-18)
 
 Map:
