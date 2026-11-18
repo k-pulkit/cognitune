@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 250" width="1200" height="250" role="img" aria-label="The loop: read with a question, prove it, keep it. What you miss comes back.">
+  <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+    <!-- card 1 -->
+    <rect x="11" y="11" width="338" height="158" rx="14" fill="#fdf6e3" stroke="#d9d2bd" stroke-width="2"/>
+    <circle cx="48" cy="50" r="17" fill="#268bd2"/>
+    <text x="48" y="57" font-size="19" font-weight="700" text-anchor="middle" fill="#ffffff">1</text>
+    <text x="78" y="58" font-size="21" font-weight="700" fill="#586e75">Read with a question</text>
+    <text x="32" y="102" font-size="15" fill="#586e75">A lesson about the files you pick.</text>
+    <text x="32" y="142" font-size="14" font-weight="600" fill="#268bd2">Lens · Tutor · Walkthrough</text>
+
+    <!-- card 2 -->
+    <rect x="431" y="11" width="338" height="158" rx="14" fill="#fdf6e3" stroke="#d9d2bd" stroke-width="2"/>
+    <circle cx="468" cy="50" r="17" fill="#859900"/>
+    <text x="468" y="57" font-size="19" font-weight="700" text-anchor="middle" fill="#ffffff">2</text>
+    <text x="498" y="58" font-size="21" font-weight="700" fill="#586e75">Prove it</text>
+    <text x="452" y="102" font-size="15" fill="#586e75">Answer in your own words.</text>
+    <text x="452" y="142" font-size="14" font-weight="600" fill="#859900">Quiz · Teach-back · Practice · Bug hunt</text>
+
+    <!-- card 3 -->
+    <rect x="851" y="11" width="338" height="158" rx="14" fill="#fdf6e3" stroke="#d9d2bd" stroke-width="2"/>
+    <circle cx="888" cy="50" r="17" fill="#b58900"/>
+    <text x="888" y="57" font-size="19" font-weight="700" text-anchor="middle" fill="#ffffff">3</text>
+    <text x="918" y="58" font-size="21" font-weight="700" fill="#586e75">Keep it</text>
+    <text x="872" y="102" font-size="15" fill="#586e75">Misses come back until they stick.</text>
+    <text x="872" y="142" font-size="14" font-weight="600" fill="#b58900">Review cards · Weak spots · Today</text>
+
+    <!-- forward arrows -->
+    <g stroke="#93a1a1" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M365 90h46M399 78l12 12l-12 12"/>
+      <path d="M785 90h46M819 78l12 12l-12 12"/>
+      <!-- return arrow -->
+      <path d="M1020 181v14q0 16 -16 16H196q-16 0 -16 -16v-14" stroke-dasharray="2 9"/>
+      <path d="M168 193l12 -12l12 12"/>
+    </g>
+    <rect x="455" y="196" width="290" height="30" rx="15" fill="#fdf6e3" stroke="#d9d2bd" stroke-width="1.5"/>
+    <text x="600" y="216" font-size="14" font-weight="600" text-anchor="middle" fill="#586e75">what you got wrong comes back</text>
+  </g>
+</svg>

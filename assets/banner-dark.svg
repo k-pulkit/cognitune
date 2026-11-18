@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 380" width="1200" height="380" role="img" aria-label="cognitune: understand any codebase, and prove to yourself that you do">
+  <defs>
+    <clipPath id="code"><rect x="640" y="56" width="300" height="268" rx="12"/></clipPath>
+  </defs>
+  <rect x="1" y="1" width="1198" height="378" rx="20" fill="#1f1f1f" stroke="#2d2d2d" stroke-width="2"/>
+
+  <!-- logo + wordmark -->
+  <rect x="72" y="70" width="64" height="64" rx="16" fill="#268bd2"/>
+  <circle cx="100" cy="98" r="14" fill="none" stroke="#ffffff" stroke-width="6"/>
+  <path d="M110 108l12 12" stroke="#ffffff" stroke-width="6" stroke-linecap="round"/>
+  <text x="154" y="124" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="60" font-weight="700" letter-spacing="-1.5" fill="#d6cfbd">cognitune</text>
+
+  <!-- tagline -->
+  <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="26" font-weight="600">
+    <text x="72" y="192" fill="#d6cfbd">Understand any codebase,</text>
+    <text x="72" y="226" fill="#268bd2">and prove to yourself that you do.</text>
+  </g>
+
+  <!-- command -->
+  <rect x="72" y="272" width="392" height="52" rx="10" fill="#2d2d2d"/>
+  <text x="94" y="305" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="21" fill="#d6cfbd"><tspan fill="#93a1a1">$ </tspan>npx cognitune ./my-repo</text>
+
+  <g transform="translate(36 0)">
+  <!-- code card -->
+  <g clip-path="url(#code)">
+    <rect x="640" y="56" width="300" height="268" fill="#1f1f1f"/>
+    <rect x="640" y="56" width="300" height="40" fill="#2d2d2d"/>
+    <rect x="640" y="182" width="300" height="30" fill="#268bd2" opacity="0.14"/>
+    <rect x="640" y="182" width="4" height="30" fill="#268bd2"/>
+  </g>
+  <rect x="640" y="56" width="300" height="268" rx="12" fill="none" stroke="#444444" stroke-width="1.5"/>
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="14">
+    <text x="660" y="81" fill="#d6cfbd">src/queue.ts</text>
+    <g fill="#93a1a1" text-anchor="end">
+      <text x="678" y="142">48</text><text x="678" y="172">49</text><text x="678" y="202" fill="#268bd2" font-weight="700">50</text>
+      <text x="678" y="232">51</text><text x="678" y="262">52</text><text x="678" y="292">53</text>
+    </g>
+    <text x="694" y="202" fill="#d6cfbd">if (attempts &gt;= max) {</text>
+  </g>
+  <g fill="#444444">
+    <rect x="694" y="132" width="150" height="10" rx="5"/>
+    <rect x="694" y="162" width="190" height="10" rx="5"/>
+    <rect x="712" y="222" width="130" height="10" rx="5"/>
+    <rect x="712" y="252" width="70" height="10" rx="5"/>
+    <rect x="694" y="282" width="20" height="10" rx="5"/>
+  </g>
+
+  <!-- quiz card -->
+  <rect x="834" y="150" width="300" height="196" rx="12" fill="#d6cfbd" opacity="0.10"/>
+  <rect x="828" y="142" width="300" height="196" rx="12" fill="#1f1f1f" stroke="#444444" stroke-width="1.5"/>
+  <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+    <text x="850" y="174" font-size="12" font-weight="700" letter-spacing="1.2" fill="#268bd2">QUESTION</text>
+    <rect x="1054" y="158" width="54" height="24" rx="6" fill="#859900" opacity="0.18"/>
+    <text x="1081" y="175" font-size="13" font-weight="600" text-anchor="middle" fill="#859900">right</text>
+    <text x="850" y="204" font-size="17" font-weight="600" fill="#d6cfbd">Which line decides</text>
+    <text x="850" y="227" font-size="17" font-weight="600" fill="#d6cfbd">the job is dead?</text>
+    <rect x="850" y="244" width="256" height="38" rx="8" fill="#2d2d2d"/>
+    <text x="864" y="268" font-size="14" fill="#d6cfbd">Line 50, the attempts check.</text>
+    <rect x="850" y="296" width="52" height="24" rx="6" fill="#268bd2" opacity="0.16"/>
+    <text x="876" y="313" font-size="12" font-weight="700" letter-spacing="0.8" text-anchor="middle" fill="#268bd2">SURE</text>
+    <text x="914" y="313" font-size="13" fill="#93a1a1">graded against the code</text>
+  </g>
+  </g>
+</svg>
