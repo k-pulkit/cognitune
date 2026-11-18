@@ -1,5 +1,5 @@
-import { useEffect, useId, useState } from "react";
-import ReactMarkdown from "react-markdown";
+import { createContext, memo, useContext, useEffect, useId, useMemo, useState } from "react";
+import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useIsDark } from "@/lib/theme";
 
@@ -158,7 +158,36 @@ export function linkifyLines(md: string): string {
     .join("");
 }
 
-export function Markdown({
+// Components live at module level: ReactMarkdown uses each one as an element type, so a fresh function
+// per render makes React remount it, and every mermaid diagram and code block redraws from blank.
+const PLUGINS = [remarkGfm];
+const LineClick = createContext<((from: number, to: number) => void) | undefined>(undefined);
+
+const BASE: Components = {
+  code({ className, children: c, ...props }) {
+    const lang = /language-(\w+)/.exec(className ?? "")?.[1];
+    if (lang === "mermaid") return <Mermaid code={String(c).trim()} />;
+    if (lang) return <CodeBlock lang={lang} code={String(c).replace(/\n$/, "")} />;
+    return <code className={className} {...props}>{c}</code>;
+  },
+  pre({ children: c }) {
+    // Mermaid and CodeBlock render their own box; keep <pre> for plain, language-less code only.
+    const child = Array.isArray(c) ? c[0] : c;
+    const cls = (child as { props?: { className?: string } })?.props?.className ?? "";
+    if (cls.includes("language-")) return <>{c}</>;
+    return <pre>{c}</pre>;
+  },
+  a: function Link({ href, children: c }) {
+    const onLineClick = useContext(LineClick);
+    const ref = onLineClick && /^codeline:(\d+)-(\d+)$/.exec(href ?? "");
+    if (ref) return <button type="button" className="codeline" onClick={() => onLineClick(Number(ref[1]), Number(ref[2]))}>{c}</button>;
+    return <a href={href} target="_blank" rel="noreferrer">{c}</a>;
+  },
+};
+
+const keepUrl = (url: string) => url;
+
+export const Markdown = memo(function Markdown({
   children, className, onLineClick,
 }: {
   children: string;
@@ -166,58 +195,38 @@ export function Markdown({
   /** Jump the code pane to a line range named in the text (see linkifyLines). */
   onLineClick?: (from: number, to: number) => void;
 }) {
-  children = arrows(children);
+  const md = useMemo(() => arrows(children), [children]);
   return (
     <div className={className ? `prose-g ${className}` : "prose-g"}>
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
-        // react-markdown's default urlTransform drops unknown schemes (it would silently empty
-        // out our codeline: links); only loosen it where that pseudo-scheme is actually in use.
-        urlTransform={onLineClick ? (url) => url : undefined}
-        components={{
-          code({ className, children: c, ...props }) {
-            const lang = /language-(\w+)/.exec(className ?? "")?.[1];
-            if (lang === "mermaid") return <Mermaid code={String(c).trim()} />;
-            if (lang) return <CodeBlock lang={lang} code={String(c).replace(/\n$/, "")} />;
-            return <code className={className} {...props}>{c}</code>;
-          },
-          pre({ children: c }) {
-            // Mermaid and CodeBlock render their own box; keep <pre> for plain, language-less code only.
-            const child = Array.isArray(c) ? c[0] : c;
-            const cls = (child as { props?: { className?: string } })?.props?.className ?? "";
-            if (cls.includes("language-")) return <>{c}</>;
-            return <pre>{c}</pre>;
-          },
-          a({ href, children: c }) {
-            const ref = onLineClick && /^codeline:(\d+)-(\d+)$/.exec(href ?? "");
-            if (ref) return <button type="button" className="codeline" onClick={() => onLineClick(Number(ref[1]), Number(ref[2]))}>{c}</button>;
-            return <a href={href} target="_blank" rel="noreferrer">{c}</a>;
-          },
-        }}
-      >
-        {children}
-      </ReactMarkdown>
+      <LineClick.Provider value={onLineClick}>
+        <ReactMarkdown
+          remarkPlugins={PLUGINS}
+          // react-markdown's default urlTransform drops unknown schemes (it would silently empty
+          // out our codeline: links); only loosen it where that pseudo-scheme is actually in use.
+          urlTransform={onLineClick ? keepUrl : undefined}
+          components={BASE}
+        >
+          {md}
+        </ReactMarkdown>
+      </LineClick.Provider>
     </div>
   );
-}
+});
+
+const INLINE: Components = {
+  p: ({ children: c }) => <>{c}{" "}</>,
+  a: ({ href, children: c }) => <a href={href} target="_blank" rel="noreferrer">{c}</a>,
+};
 
 /**
  * Markdown for one short field (a summary, a concept, a check question): `code`, **bold**,
  * *italic* and links render; paragraphs become plain text runs so it can sit inside a sentence.
  */
-export function Inline({ children, className }: { children: string; className?: string }) {
-  children = arrows(children);
+export const Inline = memo(function Inline({ children, className }: { children: string; className?: string }) {
+  const md = useMemo(() => arrows(children), [children]);
   return (
     <span className={className ? `md-inline ${className}` : "md-inline"}>
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
-        components={{
-          p: ({ children: c }) => <>{c}{" "}</>,
-          a: ({ href, children: c }) => <a href={href} target="_blank" rel="noreferrer">{c}</a>,
-        }}
-      >
-        {children}
-      </ReactMarkdown>
+      <ReactMarkdown remarkPlugins={PLUGINS} components={INLINE}>{md}</ReactMarkdown>
     </span>
   );
-}
+});

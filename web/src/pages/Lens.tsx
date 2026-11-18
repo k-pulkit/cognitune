@@ -27,6 +27,19 @@ function range(d: DeepDive): [number, number] | null {
   return null;
 }
 
+/** A section heading, like a blog post's h2. */
+function H2({ icon, children, aside }: { icon?: React.ReactNode; children: React.ReactNode; aside?: React.ReactNode }) {
+  return (
+    <div className="mb-5 mt-16 flex items-center gap-3">
+      <h2 className="flex items-center gap-2 text-[22px] font-semibold tracking-[-0.015em]">
+        {icon && <span className="text-muted [&>svg]:h-[18px] [&>svg]:w-[18px]">{icon}</span>}
+        {children}
+      </h2>
+      {aside && <div className="ml-auto">{aside}</div>}
+    </div>
+  );
+}
+
 /**
  * A lens reads top to bottom like a lesson: the one idea, why it matters, the words you need,
  * the intuition, then a walkthrough where each step shows its own lines of code, a pitfall and a
@@ -81,17 +94,6 @@ export function LensPage() {
     });
   const dives = l.deepDives;
   const shownDives = mode === "all" ? dives.map((d, i) => [d, i] as const) : dives[step] ? [[dives[step], step] as const] : [];
-  /** A section heading, like a blog post's h2. */
-  const H2 = ({ icon, children, aside }: { icon?: React.ReactNode; children: React.ReactNode; aside?: React.ReactNode }) => (
-    <div className="mb-5 mt-16 flex items-center gap-3">
-      <h2 className="flex items-center gap-2 text-[22px] font-semibold tracking-[-0.015em]">
-        {icon && <span className="text-muted [&>svg]:h-[18px] [&>svg]:w-[18px]">{icon}</span>}
-        {children}
-      </h2>
-      {aside && <div className="ml-auto">{aside}</div>}
-    </div>
-  );
-
   // Blog layout: text sits in a centred reading column (.lens > *), figures, cards and code
   // break out wider (.wide). See .lens in index.css.
   const doc = (
