@@ -219,6 +219,8 @@ body {
 .diff-add { background: rgb(var(--good) / 0.12); }
 .diff-del { background: rgb(var(--bad) / 0.12); }
 .diff-hunk { background: rgb(var(--accent) / 0.08); color: rgb(var(--muted)); }
+/* A split view's full-width hunk row sits above the column divider, so it needs an opaque fill. */
+.diff-hunk-solid { background: linear-gradient(rgb(var(--accent) / 0.08), rgb(var(--accent) / 0.08)), rgb(var(--panel)); }
 
 /* ---- codemirror fit ---- */
 .cm-theme, .cm-theme-light, .cm-theme-dark, .cm-editor { height: 100%; }

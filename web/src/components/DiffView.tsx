@@ -187,7 +187,7 @@ function SplitDiff({ rows, hl }: { rows: Pair[]; hl: Map<Row, string> }) {
       <div className="grid py-1" style={{ gridTemplateColumns: `${pct}% ${100 - pct}%` }}>
         {rows.map((s, i) =>
           s.hunk ? (
-            <div key={i} className="diff-hunk col-span-2 whitespace-pre-wrap break-all px-4">{s.hunk}</div>
+            <div key={i} className="diff-hunk diff-hunk-solid relative z-20 col-span-2 whitespace-pre-wrap [overflow-wrap:anywhere] px-4">{s.hunk}</div>
           ) : (
             [cell(s.left, 0, `${i}l`), cell(s.right, 1, `${i}r`)]
           ),
