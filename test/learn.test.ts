@@ -83,8 +83,8 @@ describe("learning features", () => {
   });
 
   it("a weak-spot quiz can aim at one chosen weak spot", async () => {
-    const a = recordMisconception(store, pid, { text: "thinks add mutates its input", file: add(), from: "quiz", sourceId: "x:1" });
-    const b = recordMisconception(store, pid, { text: "thinks two() reads a config file", file: add(), from: "teachback", sourceId: "y:1" });
+    const a = recordMisconception(store, pid, { text: "thinks add mutates its input", file: add(), from: "quiz", sourceId: "x:1" })!;
+    const b = recordMisconception(store, pid, { text: "thinks two() reads a config file", file: add(), from: "teachback", sourceId: "y:1" })!;
     const prompts: string[] = [];
     const fake = new FakeAgent();
     await new Learn(store, { name: "spy", complete: async (r) => (prompts.push(r.prompt), fake.complete(r)) })

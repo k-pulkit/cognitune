@@ -1,23 +1,35 @@
 # Changelog
 
-## 0.2.4 (2026-11-17)
+## 0.3.0 (2026-11-18)
 
-- The Changes page's diff view is now syntax-highlighted (ts/js and every other shiki language),
-  matching the main file viewer; it previously rendered every diff line as plain monospace text
-  in both split and unified mode.
-- Bug hunt's planted-bugs code copy had the same problem for a different reason: `CodePane`
-  only read the language off its own file-content query, which is disabled whenever a caller
-  passes text directly (bug hunt always does), so it silently fell back to plain text.
-- The teach-back and tutor pages' file-chip lists now collapse to 6 + "N more" like the lens
-  and quiz pages, instead of listing every file in full.
+New:
 
-## 0.2.3 (2026-11-17)
+- **Lens follow-ups.** "Ask more about this" at the end of a lens adds the answer to the same
+  lens instead of making a new one. Ticked files can come along as extra context; new terms and
+  gotchas join the lens's lists, and the markdown export includes the follow-ups.
+- **Weak spots page.** A Weak spots tab in the Library: quiz yourself on one weak spot, or
+  dismiss one the grader got wrong. Today links to it.
+- **Walk "Try again".** A block you didn't get right can be answered again; a right answer
+  clears its weak spot.
+- **Jobs in the status bar.** Running jobs show at the bottom of the window, and a job that
+  finishes after you left its page shows a "ready · open" link.
+- **Tutor chat** is restyled as chat bubbles with timestamps, and "line 42" / "lines 64-71" in a
+  hint jump the code pane to those lines.
+- Teach-back and the tutor, started from the Changes page, now see the diff (only lens and quiz
+  did before). The tutor sees it on every turn.
+- A review card links back to the lens or quiz it came from.
+- `.claude` folders show in the Explore file tree, so session notes can be ticked as context.
 
-- Fenced code blocks in lens/quiz/explainer prose (`` ```ts ``, `` ```js ``, and any other shiki
-  language) are now syntax-highlighted the same way as the main file viewer; previously only
-  `mermaid` blocks got special treatment and everything else rendered as plain text.
-- The quiz page's file list collapses to 6 + "N more" instead of showing every file in full,
-  matching the lens page.
+Fixes:
+
+- The tutor's replies rendered at 17px next to 14px user messages: the serif reading-font rule
+  out-ranked the chat styles. Both now match.
+- The lens page flickered while a job ran: every mermaid diagram and code block was remounted
+  twice a second. Markdown rendering now keeps them mounted.
+- Syntax highlighting now works in the Changes diff view, in fenced code blocks inside lens and
+  quiz prose, and in bug hunt's code copy (each was plain text before, for different reasons).
+- File-chip lists on the quiz, teach-back and tutor pages collapse to 6 + "N more", like the
+  lens page.
 
 ## 0.2.2 (2026-11-10)
 
