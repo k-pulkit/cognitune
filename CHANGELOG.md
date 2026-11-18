@@ -30,6 +30,8 @@ Fixes:
   quiz prose, and in bug hunt's code copy (each was plain text before, for different reasons).
 - File-chip lists on the quiz, teach-back and tutor pages collapse to 6 + "N more", like the
   lens page.
+- The Library's tabs fit on one row instead of scrolling sideways (a narrow window wraps them),
+  and a path stop's button says what it starts ("Start the lens") instead of "Do this stop".
 
 ## 0.2.2 (2026-11-10)
 

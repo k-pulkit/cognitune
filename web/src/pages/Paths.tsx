@@ -12,6 +12,7 @@ import { Badge, Button, Empty, ErrorNote, JobProgress, PageHead, Spinner } from 
 type PathView = LearningPath & { done: boolean[] };
 
 const ACTIVITY_LABEL: Record<string, string> = { lens: "Read a lens", walk: "Walk through", quiz: "Quiz", teachback: "Teach back" };
+const START_LABEL: Record<string, string> = { lens: "Start the lens", walk: "Start the walk", quiz: "Start the quiz", teachback: "Start the teach-back" };
 
 /** All paths, and a form to make a new one. */
 export function PathsPage() {
@@ -113,7 +114,7 @@ export function PathPage() {
                 <div className="mt-2 flex flex-wrap items-center gap-1.5">
                   {st.files.map((f) => <span key={f} className="rounded bg-raised px-1.5 py-0.5 font-mono text-[12px]">{rel(f)}</span>)}
                   <Button size="sm" variant={i === firstOpen ? "primary" : "secondary"} className="ml-auto" onClick={() => doStop(st)}>
-                    {p.done[i] ? "Again" : "Do this stop"}
+                    {p.done[i] ? "Do it again" : START_LABEL[st.activity] ?? "Start"}
                   </Button>
                 </div>
               </div>

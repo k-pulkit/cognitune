@@ -88,22 +88,24 @@ export function LibraryPage() {
             <Download className="h-3.5 w-3.5" /> Export all
           </a>
         </div>
+        {/* 11 tabs: no icons so they fit one row at normal widths; a narrow window wraps rather than scrolls. */}
         <Tabs
-          className="-mx-2 mt-3 overflow-x-auto border-b-0"
+          className="-mx-2 mt-3 border-b-0"
+          wrap
           value={tab}
           onChange={setTab}
           tabs={[
-            { value: "lenses", label: "Lenses", icon: <Compass className="h-4 w-4" />, count: lenses.data?.length },
-            { value: "quizzes", label: "Quizzes", icon: <ListChecks className="h-4 w-4" />, count: quizzes.data?.length },
-            { value: "teachbacks", label: "Teach-backs", icon: <GraduationCap className="h-4 w-4" />, count: teach.data?.length },
-            { value: "walks", label: "Walks", icon: <Footprints className="h-4 w-4" />, count: walks.data?.length },
-            { value: "practice", label: "Practice", icon: <Hammer className="h-4 w-4" />, count: practice.data?.length },
-            { value: "hunts", label: "Bug hunts", icon: <Bug className="h-4 w-4" />, count: hunts.data?.length },
-            { value: "threads", label: "Tutor", icon: <MessageCircleQuestion className="h-4 w-4" />, count: threads.data?.length },
-            { value: "cards", label: "Cards", icon: <Layers className="h-4 w-4" />, count: cards.data?.length },
-            { value: "weak", label: "Weak spots", icon: <Target className="h-4 w-4" />, count: weak.data?.length },
-            { value: "glossary", label: "Glossary", icon: <BookA className="h-4 w-4" /> },
-            { value: "notes", label: "Notes", icon: <StickyNote className="h-4 w-4" />, count: notes.data?.length },
+            { value: "lenses", label: "Lenses", count: lenses.data?.length },
+            { value: "quizzes", label: "Quizzes", count: quizzes.data?.length },
+            { value: "teachbacks", label: "Teach-backs", count: teach.data?.length },
+            { value: "walks", label: "Walks", count: walks.data?.length },
+            { value: "practice", label: "Practice", count: practice.data?.length },
+            { value: "hunts", label: "Bug hunts", count: hunts.data?.length },
+            { value: "threads", label: "Tutor", count: threads.data?.length },
+            { value: "cards", label: "Cards", count: cards.data?.length },
+            { value: "weak", label: "Weak spots", count: weak.data?.length },
+            { value: "glossary", label: "Glossary" },
+            { value: "notes", label: "Notes", count: notes.data?.length },
           ]}
         />
         </div>

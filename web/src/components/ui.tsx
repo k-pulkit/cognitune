@@ -142,10 +142,14 @@ export function Segmented<T extends string | number>({
 }
 
 export function Tabs<T extends string>({
-  value, onChange, tabs, className,
-}: { value: T; onChange: (v: T) => void; tabs: { value: T; label: ReactNode; icon?: ReactNode; count?: number }[]; className?: string }) {
+  value, onChange, tabs, className, wrap = false,
+}: {
+  value: T; onChange: (v: T) => void; tabs: { value: T; label: ReactNode; icon?: ReactNode; count?: number }[]; className?: string;
+  /** Wrap onto a second row when they do not fit, instead of scrolling sideways. */
+  wrap?: boolean;
+}) {
   return (
-    <div className={clsx("flex overflow-x-auto border-b border-line bg-side", className)}>
+    <div className={clsx("flex border-b border-line bg-side", wrap ? "flex-wrap" : "overflow-x-auto", className)}>
       {tabs.map((t) => (
         <button
           key={t.value}
