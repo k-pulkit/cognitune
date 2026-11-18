@@ -2,13 +2,14 @@ import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Agent, AgentRequest } from "./index.js";
-import { runCli } from "./cli.js";
+import { agentHome, runCli } from "./cli.js";
 
 /**
  * GitHub Copilot CLI: `copilot -p` runs one prompt and exits; `-s` drops the stats around the
  * answer. It has no stdin prompt, and a large prompt does not fit in one argument, so the full
  * prompt goes in a temp file the model is told to read. Only the read tool is allowed; shell and
- * write are denied. Uses the user's Copilot login (or COPILOT_GITHUB_TOKEN / GH_TOKEN).
+ * write are denied. It runs from the cognitune agent folder with the repo as an added dir, so its
+ * sessions don't land under the repo. Uses the user's Copilot login (or COPILOT_GITHUB_TOKEN / GH_TOKEN).
  */
 export class CopilotCliAgent implements Agent {
   readonly name = "GitHub Copilot CLI";
@@ -22,10 +23,10 @@ export class CopilotCliAgent implements Agent {
   async complete(req: AgentRequest): Promise<string> {
     const dir = mkdtempSync(join(tmpdir(), "cognitune-copilot-"));
     const file = join(dir, "task.md");
-    writeFileSync(file, `${req.system}\n\n---\n\n${req.prompt}`);
+    writeFileSync(file, `${req.system}\n\nThe project folder is ${req.cwd}. File paths in this task are relative to it.\n\n---\n\n${req.prompt}`);
     const prompt = `Read the file ${file} and do exactly what it says. Reply with the answer only.`;
-    const args = ["-p", prompt, "-s", "--no-ask-user", "--allow-tool=read", "--deny-tool=shell", "--deny-tool=write", `--add-dir=${dir}`];
+    const args = ["-p", prompt, "-s", "--no-ask-user", "--allow-tool=read", "--deny-tool=shell", "--deny-tool=write", `--add-dir=${dir}`, `--add-dir=${req.cwd}`];
     if (this.model) args.push(`--model=${this.model}`);
-    return runCli(this.command, args, { cwd: req.cwd, timeoutMs: this.timeoutMs });
+    return runCli(this.command, args, { cwd: agentHome(), timeoutMs: this.timeoutMs });
   }
 }

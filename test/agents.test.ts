@@ -7,7 +7,7 @@ import { DEFAULT_SETTINGS } from "../src/core/store.js";
 
 /**
  * Stub CLIs: each writes its argv (one per line) and stdin to files, then prints a reply.
- * The codex stub also writes the reply to the -o / --output-last-message path, like the real one.
+ * Each also writes the folder it ran in. The codex stub also writes the reply to the -o / --output-last-message path, like the real one.
  */
 function stub(dir: string, name: string, extra = ""): string {
   const path = join(dir, name);
@@ -16,6 +16,7 @@ function stub(dir: string, name: string, extra = ""): string {
     `#!/bin/sh
 if [ "$1" = "--version" ]; then echo 1.0; exit 0; fi
 printf '%s\\n' "$@" > "${dir}/${name}.args"
+pwd > "${dir}/${name}.cwd"
 cat > "${dir}/${name}.stdin"
 ${extra}
 echo "reply from ${name}"
@@ -26,6 +27,10 @@ echo "reply from ${name}"
 }
 
 const dir = mkdtempSync(join(tmpdir(), "cognitune-stubs-"));
+// Model CLIs run from <COGNITUNE_HOME>/agent, never from the repo (req.cwd).
+process.env.COGNITUNE_HOME = mkdtempSync(join(tmpdir(), "cognitune-home-"));
+const agentDir = join(process.env.COGNITUNE_HOME, "agent");
+const ranIn = (name: string) => readFileSync(join(dir, `${name}.cwd`), "utf8").trim();
 const settings = {
   ...DEFAULT_SETTINGS,
   "agent.claudeCommand": stub(dir, "claude"),
@@ -49,6 +54,8 @@ describe("agent adapters", () => {
     const a = args("claude");
     expect(a.slice(0, 1)).toEqual(["-p"]);
     expect(a).toEqual(expect.arrayContaining(["--tools", "Read", "Grep", "Glob", "--append-system-prompt", "--model", "claude-sonnet-5-5"]));
+    expect(a).toEqual(expect.arrayContaining(["--no-session-persistence", "--add-dir", dir]));
+    expect(ranIn("claude")).toBe(agentDir);
     expect(readFileSync(join(dir, "claude.stdin"), "utf8")).toBe("the prompt");
   });
 
@@ -57,19 +64,22 @@ describe("agent adapters", () => {
     expect((await agent!.complete(req)).trim()).toBe("last message");
     const a = args("codex");
     expect(a[0]).toBe("exec");
-    expect(a).toEqual(expect.arrayContaining(["--sandbox", "read-only", "--skip-git-repo-check", "--cd", dir, "--model", "gpt-x"]));
+    expect(a).toEqual(expect.arrayContaining(["--sandbox", "read-only", "--skip-git-repo-check", "--cd", agentDir, "--model", "gpt-x"]));
+    expect(ranIn("codex")).toBe(agentDir);
     expect(a[a.length - 1]).toBe("-");
     expect(readFileSync(join(dir, "codex.stdin"), "utf8")).toContain("TASK: lens");
+    expect(readFileSync(join(dir, "codex.stdin"), "utf8")).toContain(`The project folder is ${dir}.`);
   });
 
   it("copilot: -p points at a task file holding system + prompt; shell and write denied", async () => {
     const { agent } = makeAgent({ ...settings, "agent.mode": "copilot" });
     expect(await agent!.complete(req)).toContain("reply from copilot");
     const a = args("copilot");
-    expect(a).toEqual(expect.arrayContaining(["-s", "--no-ask-user", "--allow-tool=read", "--deny-tool=shell", "--deny-tool=write"]));
+    expect(a).toEqual(expect.arrayContaining(["-s", "--no-ask-user", "--allow-tool=read", "--deny-tool=shell", "--deny-tool=write", `--add-dir=${dir}`]));
+    expect(ranIn("copilot")).toBe(agentDir);
     expect(a.some((x) => x.startsWith("--model"))).toBe(false); // empty model = CLI default
     const task = /Read the file (\S+) and/.exec(a[1])![1];
-    expect(readFileSync(task, "utf8")).toBe("TASK: lens\nsys\n\n---\n\nthe prompt");
+    expect(readFileSync(task, "utf8")).toBe(`TASK: lens\nsys\n\nThe project folder is ${dir}. File paths in this task are relative to it.\n\n---\n\nthe prompt`);
   });
 
   it("a chosen CLI that is missing gives an install hint, no agent", () => {
