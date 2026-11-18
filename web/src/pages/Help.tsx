@@ -287,8 +287,10 @@ const GROUPS: Group[] = [
       {
         id: "progress",
         title: "Progress",
-        what: "A heatmap of when you practised and a level per file.",
+        what: "What you can show you understand, rolled up from files to folders and git repos.",
         steps: [
+          "At a folder of many repos, each repo is one row with a coverage bar; click a row to go into its folders, then files. The bar at the top goes back up, and its repo picker jumps to a repo.",
+          "The cards, the table and the heatmap all follow that scope. Search filters the touched files in it. The scope is in the address, so you can bookmark it.",
           "Levels: new, seen, understood, fading, stale. A file turns fading after a few weeks without practice, and stale when the code changed since you studied it (Settings > fade days).",
           "Click a file to open it in Explore.",
         ],
@@ -301,13 +303,15 @@ const GROUPS: Group[] = [
       {
         id: "map",
         title: "Map: how files connect",
-        what: "A graph of which files import which. Big dots are files many others depend on.",
+        what: "Which parts of the code import which. At a folder of many repos each repo is one node; inside a repo, folders; then files.",
         steps: [
-          "Open Map. Drag to move, scroll to zoom, click a node to open that file.",
-          "Use the selector at the top (same tree as Explore) to narrow the map to a folder or a few files.",
-          "Dot colours show your level on each file, so the new ones are what you have not studied.",
+          "Open Map. Square nodes are folders (the number is how many code files they hold), circles are files. A thicker arrow carries more imports.",
+          "Click a folder to go into it; the bar at the top goes back up, and its repo picker jumps straight to a repo. Click a file to open it in Explore.",
+          "A folder of 8 code files or fewer shows its files directly, so you never drill in for two files.",
+          "Colours show your level: grey not yet, blue seen, green understood, amber fading or stale.",
+          "The map is read once and kept. Press Refresh after imports change.",
         ],
-        examples: ["Pick src/server only to see how the server files connect, ignoring the rest."],
+        examples: ["At the top level, a thick arrow from one repo to another shows a real dependency between them. Click the target to see which of its folders are used."],
         notes: ["Import links are found by reading import lines (TypeScript, JavaScript and Python). Aliases from tsconfig paths are followed."],
       },
       {

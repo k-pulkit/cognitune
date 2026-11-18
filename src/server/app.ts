@@ -32,14 +32,16 @@ export function createApi(store: Store, opts: { pruneEveryMs?: number } = {}) {
   sweep();
   if (opts.pruneEveryMs) setInterval(sweep, opts.pruneEveryMs).unref();
 
-  // The import graph is cheap but not free on a big repo; reuse it for a minute.
+  // The import graph takes seconds on a big multi-repo folder; keep it until the Map page's
+  // Refresh asks for a new one (imports change far less often than the page is opened).
   const graphs = new Map<string, { at: number; g: Graph }>();
-  const graphOf = (p: Project): Graph => {
-    const hit = graphs.get(p.id);
-    if (hit && Date.now() - hit.at < 60_000) return hit.g;
-    const g = new Workspace(p).graph();
-    graphs.set(p.id, { at: Date.now(), g });
-    return g;
+  const graphOf = (p: Project, refresh = false): Graph & { builtAt: string } => {
+    let hit = graphs.get(p.id);
+    if (!hit || refresh) {
+      hit = { at: Date.now(), g: new Workspace(p).graph() };
+      graphs.set(p.id, hit);
+    }
+    return { ...hit.g, builtAt: new Date(hit.at).toISOString() };
   };
   const hubs = (p: Project) => graphOf(p).nodes.filter((n) => n.fanIn > 0).sort((a, b) => b.fanIn - a.fanIn).map((n) => n.path);
   const offline = () => new Learn(store, { name: "none", complete: async () => "" });
@@ -371,7 +373,7 @@ export function createApi(store: Store, opts: { pruneEveryMs?: number } = {}) {
 
   // ---- orientation ------------------------------------------------------------------
 
-  api.get("/projects/:pid/graph", (c) => c.json(graphOf(project(c))));
+  api.get("/projects/:pid/graph", (c) => c.json(graphOf(project(c), c.req.query("refresh") === "1")));
   api.get("/projects/:pid/glossary", (c) => c.json(glossary(store, project(c).id)));
 
   const pathView = (x: LearningPath) => ({ ...x, done: pathDone(store, x) });

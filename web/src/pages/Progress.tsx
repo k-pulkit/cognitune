@@ -1,12 +1,13 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import clsx from "clsx";
 import { useQuery } from "@tanstack/react-query";
-import { BarChart3, ChevronDown, ChevronRight, FileCode2, Folder, GitBranch, Search, X } from "lucide-react";
+import { BarChart3, ChevronRight, FileCode2, Folder, GitBranch, Search, X } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import type { FileLevel, FileProgress, GitRepo, TreeNode } from "@core/types";
 import { get, relTime } from "@/lib/api";
 import { useProject } from "@/lib/project";
 import { rollup, touched, under, type Rollup } from "@/lib/rollup";
+import { CELL, CoverageBar, ORDER, ScopeBar } from "@/components/Scope";
 import { Badge, Empty, Score, Segmented } from "@/components/ui";
 
 const LEVELS: { level: FileLevel; label: string; tone: "good" | "warn" | "muted"; text: string }[] = [
@@ -16,78 +17,12 @@ const LEVELS: { level: FileLevel; label: string; tone: "good" | "warn" | "muted"
   { level: "seen", label: "Seen", tone: "muted", text: "Touched by a lens or an activity, no pass yet." },
 ];
 
-const CELL: Record<FileLevel, string> = {
-  new: "bg-line/70",
-  seen: "bg-accent/35",
-  understood: "bg-good",
-  fading: "bg-warn/60",
-  stale: "bg-warn",
-};
-const ORDER: FileLevel[] = ["understood", "fading", "stale", "seen", "new"];
 
 function flatFiles(nodes: TreeNode[]): string[] {
   return nodes.flatMap((n) => (n.kind === "file" ? [n.path] : flatFiles(n.children ?? [])));
 }
 
-/** Share of each level as one thin bar: green understood, amber fading/stale, blue seen, grey not yet. */
-function CoverageBar({ counts, total, className }: { counts: Record<FileLevel, number>; total: number; className?: string }) {
-  return (
-    <div className={clsx("flex h-1.5 overflow-hidden rounded-full bg-line/50", className)}>
-      {/* A tiny share still gets a few pixels, so "2 of 606 touched" is visible. */}
-      {ORDER.map((l) => counts[l] > 0 && <div key={l} className={CELL[l]} style={{ width: `${(counts[l] / Math.max(total, 1)) * 100}%`, minWidth: l === "new" ? 0 : 4 }} />)}
-    </div>
-  );
-}
-
 const levelTone = (l: FileLevel) => (l === "understood" ? "good" : l === "stale" || l === "fading" ? "warn" : "muted");
-
-/** Pick a repo to scope the page to: a filter box and every repo with its coverage. */
-function RepoPicker({ repos, current, onPick }: { repos: Rollup[]; current: string | null; onPick: (path: string | null) => void }) {
-  const [open, setOpen] = useState(false);
-  const [q, setQ] = useState("");
-  const box = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    const close = (e: MouseEvent) => !box.current?.contains(e.target as Node) && setOpen(false);
-    window.addEventListener("mousedown", close);
-    return () => window.removeEventListener("mousedown", close);
-  }, [open]);
-  const shown = repos.filter((r) => r.label.toLowerCase().includes(q.toLowerCase()));
-  const name = repos.find((r) => r.path === current)?.label;
-  return (
-    <div ref={box} className="relative">
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className={clsx("flex items-center gap-1.5 rounded-md px-2 py-1 font-mono text-[13px] transition hover:bg-raised", name ? "text-ink" : "text-muted")}
-      >
-        <GitBranch className="h-3.5 w-3.5 text-accent" /> {name ?? `all ${repos.length} repos`} <ChevronDown className="h-3.5 w-3.5 text-muted" />
-      </button>
-      {open && (
-        <div className="absolute left-0 top-full z-20 mt-1 w-[34rem] rounded-md border border-line bg-panel p-2 shadow-soft">
-          <input className="input mb-2" placeholder="Filter repos" value={q} onChange={(e) => setQ(e.target.value)} autoFocus />
-          <div className="max-h-80 overflow-auto">
-            {current && (
-              <button className="w-full rounded px-2 py-1.5 text-left text-[13px] text-muted hover:bg-raised" onClick={() => { onPick(null); setOpen(false); }}>
-                All repos
-              </button>
-            )}
-            {shown.map((r) => (
-              <button
-                key={r.path}
-                onClick={() => { onPick(r.path); setOpen(false); }}
-                className={clsx("grid w-full grid-cols-[1fr_5rem_4.5rem] items-center gap-3 rounded px-2 py-1.5 text-left hover:bg-raised", r.path === current && "bg-raised")}
-              >
-                <span className="truncate font-mono text-[12.5px]">{r.label}</span>
-                <CoverageBar counts={r.counts} total={r.total} />
-                <span className="text-right text-[11.5px] tabular-nums text-muted">{touched(r)} / {r.total}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
 
 /** Every file in the scope as a small square, grouped like the table's rows, coloured by level. */
 function Heatmap({ groups, levels, onOpen, label }: {
@@ -167,12 +102,6 @@ export function ProgressPage() {
     nav(`/p/${project.id}/explore`);
   };
 
-  // Breadcrumb: the repo the scope is in (picked from the picker), then the folders below it.
-  const inRepo = repos.find((r) => r.path === scope || under(r.path, scope)) ?? null;
-  const crumbBase = inRepo && inRepo.path !== root ? inRepo.path : root;
-  const crumbs = (scope === crumbBase ? [] : scope.slice(crumbBase.length + 1).split("/")).map((part, i, all) => ({
-    label: part, path: `${crumbBase}/${all.slice(0, i + 1).join("/")}`,
-  }));
 
   const words = search.toLowerCase().split(/\s+/).filter(Boolean);
   const matches = words.length
@@ -242,38 +171,14 @@ export function ProgressPage() {
           <Segmented value={view} onChange={(v) => set({ view: v === "map" ? "map" : null })} options={[{ value: "table", label: "Table" }, { value: "map", label: "Heatmap" }]} />
         </div>
 
-        {/* Scope: project › repo (picker) › folders, and a search over the paths below it. */}
-        <div className="mt-5 flex flex-wrap items-center gap-1 rounded-md border border-line bg-panel px-2 py-1.5">
-          <button onClick={() => goTo(null)} className={clsx("rounded-md px-2 py-1 text-[13px] font-medium hover:bg-raised", scope === root ? "text-ink" : "text-muted")}>
-            {project.name}
-          </button>
-          {repoRows.length > 0 && (
-            <>
-              <ChevronRight className="h-3.5 w-3.5 text-muted" />
-              <RepoPicker repos={repoRows} current={inRepo?.path ?? null} onPick={goTo} />
-            </>
-          )}
-          {(repoRows.length > 0 && !inRepo ? [] : crumbs).map((c) => (
-            <span key={c.path} className="flex items-center gap-1">
-              <ChevronRight className="h-3.5 w-3.5 text-muted" />
-              <button onClick={() => goTo(c.path)} className={clsx("rounded-md px-1.5 py-1 font-mono text-[13px] hover:bg-raised", c.path === scope ? "text-ink" : "text-muted")}>
-                {c.label}
-              </button>
-            </span>
-          ))}
-          {repoRows.length > 0 && !inRepo && scope !== root && (
-            <span className="flex items-center gap-1">
-              <ChevronRight className="h-3.5 w-3.5 text-muted" />
-              <span className="px-1.5 py-1 font-mono text-[13px]">{scopeRel}</span>
-            </span>
-          )}
-          <div className="relative ml-auto w-60">
+        <ScopeBar className="mt-5" root={root} rootLabel={project.name} scope={scope} repos={repos} repoRows={repoRows} onScope={goTo}>
+          <div className="relative w-60">
             <Search className="pointer-events-none absolute left-2.5 top-2 h-3.5 w-3.5 text-muted" />
             <input className="input h-8 pl-8 pr-7 text-[13px]" placeholder={scope === root ? "Search touched files" : "Search in here"} value={search}
               onChange={(e) => set({ q: e.target.value || null }, true)} />
             {search && <button className="absolute right-2 top-2 text-muted hover:text-ink" onClick={() => set({ q: null }, true)} aria-label="Clear search"><X className="h-3.5 w-3.5" /></button>}
           </div>
-        </div>
+        </ScopeBar>
 
         <div className="mt-4 grid gap-3 sm:grid-cols-4">
           {LEVELS.map((l) => (

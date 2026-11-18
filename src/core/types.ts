@@ -456,6 +456,8 @@ export interface GraphNode {
 export interface Graph {
   nodes: GraphNode[];
   edges: { from: string; to: string }[];
+  /** When the server built it (it keeps one until asked to refresh). */
+  builtAt?: string;
 }
 
 export type StopActivity = "lens" | "walk" | "quiz" | "teachback";
