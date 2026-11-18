@@ -145,7 +145,7 @@ export function Tabs<T extends string>({
   value, onChange, tabs, className, wrap = false,
 }: {
   value: T; onChange: (v: T) => void; tabs: { value: T; label: ReactNode; icon?: ReactNode; count?: number }[]; className?: string;
-  /** Wrap onto a second row when they do not fit, instead of scrolling sideways. */
+  /** Stretch the tabs across the full width, wrapping onto a second row when they do not fit (no sideways scroll). */
   wrap?: boolean;
 }) {
   return (
@@ -156,6 +156,7 @@ export function Tabs<T extends string>({
           onClick={() => onChange(t.value)}
           className={clsx(
             "relative flex h-[35px] shrink-0 items-center gap-1.5 whitespace-nowrap border-r border-line px-3 text-[13px] transition",
+            wrap && "grow justify-center last:border-r-0",
             t.value === value ? "bg-bg text-ink" : "text-muted hover:text-ink",
           )}
         >
