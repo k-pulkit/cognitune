@@ -5,6 +5,7 @@ import type { Today } from "@core/types";
 import { get, relTime, useJob } from "@/lib/api";
 import { useProject } from "@/lib/project";
 import { Badge, Button, ErrorNote, JobProgress, Spinner } from "@/components/ui";
+import { START_LABEL } from "./Paths";
 
 /** What to do now: due cards, weak spots, fading files, the next stop on a path. */
 export function TodayPage() {
@@ -108,7 +109,7 @@ export function TodayPage() {
                 <div className="mt-0.5 text-[16px] font-medium">{t.nextStop.stop.title}</div>
                 <p className="mt-1 text-[14px] text-muted">{t.nextStop.stop.why}</p>
                 <div className="mt-4 flex gap-2">
-                  <Button size="sm" variant="primary" onClick={() => go(t.nextStop!.stop.files, t.nextStop!.stop.activity)}>Do this stop</Button>
+                  <Button size="sm" variant="primary" onClick={() => go(t.nextStop!.stop.files, t.nextStop!.stop.activity)}>{START_LABEL[t.nextStop!.stop.activity] ?? "Start"}</Button>
                   <Link to={`${p}/paths/${t.nextStop.pathId}`} className="inline-flex items-center text-xs text-muted hover:text-ink">see the path</Link>
                 </div>
               </>

@@ -317,7 +317,7 @@ const GROUPS: Group[] = [
         steps: [
           "Open Paths. Describe your goal, or leave it blank for a general tour.",
           "Click Make a path. Each stop has files, why it matters and an activity.",
-          "Do this stop opens Explore with the files ticked and the activity ready.",
+          "A stop's Start button (\"Start the lens\", \"Start the quiz\"...) opens Explore with the files ticked and the activity ready.",
           "Tick a stop off when done. Today shows the next stop.",
         ],
         examples: ["Goal: \"I need to add retries to the job runner.\" The path walks queue, worker, then error handling."],

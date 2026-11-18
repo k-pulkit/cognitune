@@ -12,7 +12,7 @@ import { Badge, Button, Empty, ErrorNote, JobProgress, PageHead, Spinner } from 
 type PathView = LearningPath & { done: boolean[] };
 
 const ACTIVITY_LABEL: Record<string, string> = { lens: "Read a lens", walk: "Walk through", quiz: "Quiz", teachback: "Teach back" };
-const START_LABEL: Record<string, string> = { lens: "Start the lens", walk: "Start the walk", quiz: "Start the quiz", teachback: "Start the teach-back" };
+export const START_LABEL: Record<string, string> = { lens: "Start the lens", walk: "Start the walk", quiz: "Start the quiz", teachback: "Start the teach-back" };
 
 /** All paths, and a form to make a new one. */
 export function PathsPage() {
