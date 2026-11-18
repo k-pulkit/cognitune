@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { beforeEach, describe, expect, it } from "vitest";
 import { importGraph } from "../src/core/graph.js";
-import { progress, rateCard, makeCard, streak } from "../src/core/insights.js";
+import { progress, rateCard, makeCard, recordMisconception, streak } from "../src/core/insights.js";
 import { Jobs } from "../src/core/jobs.js";
 import { FakeAgent } from "../src/core/agent/fake.js";
 import { Learn, matchMarks, plantBugs } from "../src/core/services.js";
@@ -80,6 +80,35 @@ describe("learning features", () => {
     expect(wq.questions[0].misconceptionId).toBe(mis[0].id);
     await job(`/quizzes/${weak.resultId}/attempts`, { answers: [{ qid: "q1", answer: "a long enough answer to count as right", sure: true }] });
     expect(await get("/misconceptions")).toHaveLength(0);
+  });
+
+  it("a weak-spot quiz can aim at one chosen weak spot", async () => {
+    const a = recordMisconception(store, pid, { text: "thinks add mutates its input", file: add(), from: "quiz", sourceId: "x:1" });
+    const b = recordMisconception(store, pid, { text: "thinks two() reads a config file", file: add(), from: "teachback", sourceId: "y:1" });
+    const prompts: string[] = [];
+    const fake = new FakeAgent();
+    await new Learn(store, { name: "spy", complete: async (r) => (prompts.push(r.prompt), fake.complete(r)) })
+      .quiz(store.project(pid)!, { files: [], weak: true, weakIds: [b.id] });
+    const sent = prompts.join("\n");
+    expect(sent).toContain(b.text);
+    expect(sent).not.toContain(a.text);
+  });
+
+  it("teach-back and tutor on the Changes page see the diff, on every tutor turn", async () => {
+    writeFileSync(add(), "import { two } from \"./two.js\";\nexport function add(a: number) {\n  return a + two() + 1;\n}\n");
+    const diff = { base: "HEAD", head: "" };
+    const prompts: string[] = [];
+    const fake = new FakeAgent();
+    const learn = new Learn(store, { name: "spy", complete: async (r) => (prompts.push(r.prompt), fake.complete(r)) });
+    const p = store.project(pid)!;
+    const t = await learn.teachback(p, { files: [add()], text: "It now adds one more to the total than before.", diff });
+    expect(t.diff).toEqual(diff);
+    expect(prompts.at(-1)).toContain("THE CHANGE THEY ARE EXPLAINING");
+    expect(prompts.at(-1)).toContain("+  return a + two() + 1;");
+    const th = await learn.startThread(p, { files: [add()], text: "Why the + 1?", diff });
+    expect(prompts.at(-1)).toContain("THE CHANGE BEING DISCUSSED");
+    await learn.tutorReply(p, th.id, "Off by one?", false);
+    expect(prompts.at(-1)).toContain("THE CHANGE BEING DISCUSSED");
   });
 
   it("schedules cards: again comes back sooner than easy", async () => {

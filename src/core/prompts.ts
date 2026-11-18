@@ -467,8 +467,8 @@ JSON shape:
 { "score": 4, "summary": "1-2 sentences", "right": ["..."], "missing": ["..."], "wrong": ["..."] }`;
 }
 
-export function teachbackPrompt(text: string, files: string): string {
-  return `THE LEARNER'S EXPLANATION:\n${text}\n\nCODE:\n${files}`;
+export function teachbackPrompt(text: string, files: string, diff?: string): string {
+  return `THE LEARNER'S EXPLANATION:\n${text}\n\n${diff ? `THE CHANGE THEY ARE EXPLAINING (unified diff):\n${diff}\n\n` : ""}CODE:\n${files}`;
 }
 
 // ---- tutor ------------------------------------------------------------------
@@ -493,9 +493,11 @@ JSON shape:
 { "reply": "markdown" }`;
 }
 
-export function tutorPrompt(history: { role: string; text: string }[], files: string, notes?: string): string {
+export function tutorPrompt(history: { role: string; text: string }[], files: string, notes?: string, diff?: string): string {
   const h = history.map((m) => `${m.role === "user" ? "LEARNER" : "TUTOR"}: ${m.text}`).join("\n\n");
-  return `CONVERSATION SO FAR:\n${h}\n\n${notes ? `THE LEARNER'S NOTES:\n${notes}\n\n` : ""}CODE:\n${files}`;
+  return `CONVERSATION SO FAR:\n${h}\n\n${notes ? `THE LEARNER'S NOTES:\n${notes}\n\n` : ""}${
+    diff ? `THE CHANGE BEING DISCUSSED (unified diff):\n${diff}\n\n` : ""
+  }CODE:\n${files}`;
 }
 
 // ---- walkthrough --------------------------------------------------------------

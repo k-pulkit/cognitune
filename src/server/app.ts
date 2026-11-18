@@ -196,7 +196,7 @@ export function createApi(store: Store, opts: { pruneEveryMs?: number } = {}) {
   });
   api.post("/projects/:pid/quizzes", async (c) => {
     const p = project(c);
-    const req = await body<{ files?: string[]; diff?: DiffSpec; lensId?: string; count?: number; weak?: boolean }>(c);
+    const req = await body<{ files?: string[]; diff?: DiffSpec; lensId?: string; count?: number; weak?: boolean; weakIds?: string[] }>(c);
     return startJob(c, "quiz", p, (l) => l.quiz(p, { ...req, files: req.files ?? [] }));
   });
   api.post("/projects/:pid/quizzes/:id/attempts", async (c) => {
@@ -317,15 +317,15 @@ export function createApi(store: Store, opts: { pruneEveryMs?: number } = {}) {
   crud("teachbacks", "teachbacks");
   api.post("/projects/:pid/teachbacks", async (c) => {
     const p = project(c);
-    const req = await body<{ files?: string[]; text?: string }>(c);
-    return startJob(c, "teachback", p, (l) => l.teachback(p, { files: req.files ?? [], text: req.text ?? "" }));
+    const req = await body<{ files?: string[]; text?: string; diff?: DiffSpec }>(c);
+    return startJob(c, "teachback", p, (l) => l.teachback(p, { files: req.files ?? [], text: req.text ?? "", diff: req.diff }));
   });
 
   crud("threads", "threads");
   api.post("/projects/:pid/threads", async (c) => {
     const p = project(c);
-    const req = await body<{ files?: string[]; text?: string }>(c);
-    return startJob(c, "tutor", p, (l) => l.startThread(p, { files: req.files ?? [], text: req.text ?? "" }));
+    const req = await body<{ files?: string[]; text?: string; diff?: DiffSpec }>(c);
+    return startJob(c, "tutor", p, (l) => l.startThread(p, { files: req.files ?? [], text: req.text ?? "", diff: req.diff }));
   });
   api.post("/projects/:pid/threads/:id/messages", async (c) => {
     const p = project(c);

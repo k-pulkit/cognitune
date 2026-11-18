@@ -45,8 +45,8 @@ const HUNT_LEVELS = [
 ] as const;
 
 /**
- * The "do something with these files" panel. `files` is the context; `diff` makes the lens and
- * quiz about a change; `practiceFile` is the open file for the one-file activities.
+ * The "do something with these files" panel. `files` is the context; `diff` makes the lens, quiz,
+ * teach-back and tutor about a change; `practiceFile` is the open file for the one-file activities.
  */
 export function ActionPanel({
   files, diff, practiceFile, onRemove, onSetFiles,
@@ -306,7 +306,7 @@ export function ActionPanel({
               />
               <p className="mt-1 text-xs text-muted">Graded 1-5 against the code: what you got right, what you missed, what is wrong. 4+ counts as understood.</p>
             </section>
-            <Button variant="primary" className="w-full" icon={<GraduationCap className="h-4 w-4" />} disabled={noFiles || job.busy || text.trim().length < 20} onClick={() => one("teachbacks", { files, text }, "teach")}>
+            <Button variant="primary" className="w-full" icon={<GraduationCap className="h-4 w-4" />} disabled={noFiles || job.busy || text.trim().length < 20} onClick={() => one("teachbacks", { files, text, diff }, "teach")}>
               Grade my explanation
             </Button>
           </>
@@ -324,7 +324,7 @@ export function ActionPanel({
               />
               <p className="mt-1 text-xs text-muted">The tutor answers with a question or a hint first, and gives more each turn. Ask it to just tell you any time.</p>
             </section>
-            <Button variant="primary" className="w-full" icon={<MessageCircleQuestion className="h-4 w-4" />} disabled={noFiles || job.busy || !text.trim()} onClick={() => one("threads", { files, text }, "tutor")}>
+            <Button variant="primary" className="w-full" icon={<MessageCircleQuestion className="h-4 w-4" />} disabled={noFiles || job.busy || !text.trim()} onClick={() => one("threads", { files, text, diff }, "tutor")}>
               Ask the tutor
             </Button>
           </>

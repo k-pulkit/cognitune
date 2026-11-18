@@ -23,6 +23,9 @@ export const del = <T>(path: string) => api<T>(path, { method: "DELETE" });
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+/** Jobs a mounted page is polling and will handle itself; the status bar announces only the others. */
+export const watchedJobs = new Set<string>();
+
 /**
  * Start a model job and poll it. `elapsed` drives the progress text; on success every query is
  * refreshed (lists, progress) and `onDone` gets the finished job.
@@ -46,9 +49,13 @@ export function useJob() {
     async (path: string, body: unknown, onDone?: (j: Job) => void) => {
       setError(null);
       setElapsed(0);
+      let id: string | undefined;
       try {
         let j = await post<Job>(path, body);
+        id = j.id;
+        watchedJobs.add(id);
         setJob(j);
+        void qc.invalidateQueries({ queryKey: ["project-jobs"] });
         while (j.status === "running") {
           await sleep(1000);
           if (!alive.current) return;
@@ -63,6 +70,8 @@ export function useJob() {
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));
         setJob(null);
+      } finally {
+        if (id) watchedJobs.delete(id);
       }
     },
     [qc],

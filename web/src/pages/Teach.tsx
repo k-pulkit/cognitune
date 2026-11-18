@@ -88,7 +88,7 @@ export function TeachPage() {
                 className="mt-2"
                 icon={<GraduationCap className="h-4 w-4" />}
                 disabled={job.busy || again.trim().length < 20}
-                onClick={() => job.run(`/projects/${project.id}/teachbacks`, { files: t.files, text: again }, (j) => { setAgain(null); nav(`/p/${project.id}/teach/${j.resultId}`); })}
+                onClick={() => job.run(`/projects/${project.id}/teachbacks`, { files: t.files, text: again, diff: t.diff }, (j) => { setAgain(null); nav(`/p/${project.id}/teach/${j.resultId}`); })}
               >
                 Grade this one
               </Button>

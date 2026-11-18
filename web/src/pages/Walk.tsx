@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import clsx from "clsx";
 import { useQuery } from "@tanstack/react-query";
 import { Lightbulb } from "lucide-react";
-import { ArrowRight, Check, Footprints, Trash2 } from "lucide-react";
+import { ArrowRight, Check, Footprints, RotateCcw, Trash2 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import type { FileContent, Walk } from "@core/types";
 import { get, relTime, useJob } from "@/lib/api";
@@ -32,8 +32,11 @@ export function WalkPage() {
   const [at, setAt] = useState<number | null>(null);
   const i = at ?? firstOpen;
   const [answer, setAnswer] = useState("");
+  /** Re-answering a graded block: the earlier answer and feedback stay visible above the box. */
+  const [retry, setRetry] = useState(false);
   useEffect(() => {
     setAnswer("");
+    setRetry(false);
   }, [i]);
   const block = useMemo(() => {
     const cur = w?.blocks[i];
@@ -95,14 +98,19 @@ export function WalkPage() {
             </div>
           )}
           <div className="mt-5 rounded-lg border border-accent/25 bg-accent/5 p-3 text-[15.5px] font-medium">{b.question}</div>
-          {b.verdict ? (
-            <div className="mt-4 space-y-2">
+          {b.verdict && (
+            <div className={clsx("mt-4 space-y-2", retry && "opacity-70")}>
+              {retry && <div className="text-xs font-semibold uppercase tracking-wide text-muted">Your last answer</div>}
               <div className="whitespace-pre-wrap rounded-lg bg-raised px-3 py-2 text-sm">{b.answer || <span className="text-muted">(no answer)</span>}</div>
               {b.feedback && <p className="reading">{b.feedback}</p>}
+              {b.verdict !== "right" && !retry && !job.busy && (
+                <Button size="sm" icon={<RotateCcw className="h-3.5 w-3.5" />} onClick={() => setRetry(true)}>Try again</Button>
+              )}
             </div>
-          ) : (
+          )}
+          {(!b.verdict || retry) && (
             <>
-              <textarea className="input mt-4 min-h-[88px]" placeholder="Your answer, from the block on the right" value={answer} onChange={(e) => setAnswer(e.target.value)} />
+              <textarea className="input mt-4 min-h-[88px]" placeholder={retry ? "Answer again, in your own words (don't copy the feedback)" : "Your answer, from the block on the right"} value={answer} onChange={(e) => setAnswer(e.target.value)} autoFocus={retry} />
               <Button
                 variant="primary"
                 className="mt-3"
@@ -110,7 +118,10 @@ export function WalkPage() {
                 disabled={job.busy || !answer.trim()}
                 onClick={() => {
                   setAt(i); // stay on this block to read the feedback
-                  job.run(`/projects/${project.id}/walks/${w.id}/blocks/${i}`, { answer });
+                  job.run(`/projects/${project.id}/walks/${w.id}/blocks/${i}`, { answer }, () => {
+                    setRetry(false);
+                    setAnswer("");
+                  });
                 }}
               >
                 Check

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import clsx from "clsx";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, Eye, Layers, PauseCircle, Plus } from "lucide-react";
+import { CheckCircle2, ExternalLink, Eye, Layers, PauseCircle, Plus } from "lucide-react";
 import { Link } from "react-router-dom";
 import type { Card, Rating } from "@core/types";
 import { get, patch, post } from "@/lib/api";
@@ -133,7 +133,16 @@ export function ReviewPage() {
                     </button>
                   ))}
                 </div>
-                <div className="mt-3 flex justify-end">
+                <div className="mt-3 flex items-center justify-end gap-4">
+                  {(card.source?.lensId || card.source?.quizId) && (
+                    <Link
+                      className="mr-auto inline-flex items-center gap-1 text-xs text-muted hover:text-accent"
+                      to={card.source.lensId ? `/p/${project.id}/lens/${card.source.lensId}` : `/p/${project.id}/quiz/${card.source.quizId}`}
+                      title="Open what this card was made from"
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" /> From {card.source.lensId ? "a lens" : "a quiz"}
+                    </Link>
+                  )}
                   <button
                     className="inline-flex items-center gap-1 text-xs text-muted hover:text-ink"
                     title="Stop showing this card"

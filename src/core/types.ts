@@ -363,6 +363,8 @@ export interface Teachback {
   files: string[];
   fileHashes: Record<string, string>;
   text: string;
+  /** Set when explaining a change (from the Changes page). */
+  diff?: DiffSpec;
   grade?: { score: number; right: string[]; missing: string[]; wrong: string[]; summary: string };
 }
 
@@ -380,6 +382,8 @@ export interface Thread {
   createdAt: string;
   title: string;
   files: string[];
+  /** Set when the chat is about a change (from the Changes page); every turn sees the diff. */
+  diff?: DiffSpec;
   messages: ChatMessage[];
 }
 

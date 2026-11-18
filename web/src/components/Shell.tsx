@@ -1,13 +1,15 @@
 import clsx from "clsx";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
-  BarChart3, BookOpen, HelpCircle, Command, Compass, FolderGit2, GitCompare, Home, Layers, Map as MapIcon, Monitor, Moon, Route, Settings, Sun, Sunrise,
+  BarChart3, BookOpen, CheckCircle2, HelpCircle, Command, Compass, FolderGit2, GitCompare, Home, Layers, Map as MapIcon, Monitor, Moon, Route, Settings, Sun,
+  Sunrise, X,
 } from "lucide-react";
 import { NavLink, Outlet, useNavigate, useParams } from "react-router-dom";
 import { sectionFor } from "@/pages/Help";
-import type { AgentInfo, Card, Project } from "@core/types";
-import { get } from "@/lib/api";
+import type { AgentInfo, Card, Job, JobKind, Project } from "@core/types";
+import { get, watchedJobs } from "@/lib/api";
+import { Spinner } from "./ui";
 import { useTheme, type ThemePref } from "@/lib/theme";
 import { Palette, ShortcutHelp } from "./Palette";
 
@@ -45,6 +47,70 @@ function NavItem({ to, icon, label, end, badge }: { to: string; icon: React.Reac
 }
 
 const NEXT: Record<ThemePref, ThemePref> = { system: "light", light: "dark", dark: "system" };
+
+const JOB_NAME: Record<JobKind, string> = {
+  lens: "lens", quiz: "quiz", grade: "grading", practice: "practice", review: "review", teachback: "teach-back", tutor: "tutor reply",
+  walk: "walkthrough", walkcheck: "check", hunt: "bug hunt", huntgrade: "grading", path: "path",
+};
+/** Where a finished job's result opens; kinds without a page of their own are left out. */
+const RESULT_PAGE: Partial<Record<JobKind, string>> = {
+  lens: "lens", quiz: "quiz", practice: "practice", teachback: "teach", tutor: "tutor", walk: "walk", hunt: "hunt", path: "paths",
+};
+
+/**
+ * Running jobs in the status bar, so leaving a page mid-job is safe. Polls only while something
+ * runs. A job that finishes with no page left to open its result shows a "ready" link instead.
+ */
+function JobsStatus({ pid }: { pid: string }) {
+  const nav = useNavigate();
+  const q = useQuery({
+    queryKey: ["project-jobs", pid],
+    queryFn: async () => (await get<{ running: Job[] }>(`/projects/${pid}`)).running,
+    refetchInterval: (s) => (s.state.data?.length ? 2000 : false),
+  });
+  const running = q.data ?? [];
+  const seen = useRef(new Set<string>());
+  const [ready, setReady] = useState<Job[]>([]);
+  useEffect(() => {
+    const now = new Set(running.map((j) => j.id));
+    const gone = [...seen.current].filter((id) => !now.has(id) && !watchedJobs.has(id));
+    seen.current = now;
+    for (const id of gone) {
+      void get<Job>(`/jobs/${id}`).then((j) => {
+        if (j.status === "done" && j.resultId && RESULT_PAGE[j.kind]) setReady((r) => [...r.filter((x) => x.id !== j.id), j]);
+      }).catch(() => {});
+    }
+  }, [q.dataUpdatedAt]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const last = ready[ready.length - 1];
+  if (running.length) {
+    const j = running[0];
+    const secs = Math.max(0, Math.round((Date.now() - Date.parse(j.startedAt)) / 1000));
+    return (
+      <span className="flex items-center gap-1.5 px-1.5" title={running.map((x) => JOB_NAME[x.kind]).join(", ")}>
+        <span className="[&>svg]:h-3 [&>svg]:w-3"><Spinner className="text-accent" /></span>
+        {running.length === 1 ? `${JOB_NAME[j.kind]} running · ${secs}s` : `${running.length} jobs running`}
+      </span>
+    );
+  }
+  if (!last) return null;
+  return (
+    <span className="flex items-center">
+      <button
+        className="flex items-center gap-1.5 px-1.5 text-good hover:bg-raised"
+        onClick={() => {
+          setReady((r) => r.filter((x) => x.id !== last.id));
+          nav(`/p/${pid}/${RESULT_PAGE[last.kind]}/${last.resultId}`);
+        }}
+      >
+        <CheckCircle2 className="h-3 w-3" /> {JOB_NAME[last.kind]} ready · open{ready.length > 1 ? ` (+${ready.length - 1})` : ""}
+      </button>
+      <button className="px-1 hover:bg-raised hover:text-ink" title="Dismiss" onClick={() => setReady((r) => r.filter((x) => x.id !== last.id))}>
+        <X className="h-3 w-3" />
+      </button>
+    </span>
+  );
+}
 
 /** App frame: a slim rail on the left, the page on the right. */
 export function Shell() {
@@ -117,6 +183,7 @@ export function Shell() {
           <span className={clsx("h-2 w-2 rounded-full", ready === undefined ? "bg-line" : ready ? "bg-good" : "bg-bad")} />
           {modelText}
         </NavLink>
+        {pid && <JobsStatus pid={pid} />}
         <div className="flex-1" />
         <button
           onClick={() => setPalette(true)}

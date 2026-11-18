@@ -303,10 +303,13 @@ export class Learn {
 
   // ---- quiz ------------------------------------------------------------
 
-  async quiz(project: Project, req: { files: string[]; diff?: DiffSpec; lensId?: string; count?: number; weak?: boolean }): Promise<Quiz> {
+  async quiz(
+    project: Project, req: { files: string[]; diff?: DiffSpec; lensId?: string; count?: number; weak?: boolean; weakIds?: string[] },
+  ): Promise<Quiz> {
     const ws = new Workspace(project);
     const lens = req.lensId ? this.store.get(project.id, "lenses", req.lensId) : undefined;
-    const weak = req.weak ? openMisconceptions(this.store, project.id).slice(0, 6) : [];
+    const pick = req.weakIds?.length ? new Set(req.weakIds) : undefined;
+    const weak = req.weak ? openMisconceptions(this.store, project.id).filter((m) => !pick || pick.has(m.id)).slice(0, 6) : [];
     if (req.weak && !weak.length) throw new Error("no open weak spots: nothing to aim at yet");
     const weakFiles = weak.map((m) => m.file).filter((f): f is string => !!f);
     const files = [...new Set((req.files.length ? req.files : lens?.files ?? weakFiles).map((f) => ws.guard(f)))];
@@ -470,15 +473,17 @@ export class Learn {
 
   // ---- teach-back ------------------------------------------------------
 
-  async teachback(project: Project, req: { files: string[]; text: string }): Promise<Teachback> {
+  async teachback(project: Project, req: { files: string[]; text: string; diff?: DiffSpec }): Promise<Teachback> {
     const ws = new Workspace(project);
     const files = req.files.map((f) => ws.guard(f));
     if (!files.length) throw new Error("pick at least one file");
     const text = (req.text ?? "").trim().slice(0, 20_000);
     if (text.length < 20) throw new Error("write a few sentences first");
-    const raw = await this.ask<Record<string, unknown>>(ws, ["teachback"], P.teachbackSystem(), P.teachbackPrompt(text, this.bundle(ws, files)));
+    const raw = await this.ask<Record<string, unknown>>(
+      ws, ["teachback"], P.teachbackSystem(), P.teachbackPrompt(text, this.bundle(ws, files), this.diffText(ws, req.diff, files)),
+    );
     const t: Teachback = {
-      id: newId(), projectId: project.id, createdAt: now(), files, fileHashes: this.hashes(ws, files), text,
+      id: newId(), projectId: project.id, createdAt: now(), files, fileHashes: this.hashes(ws, files), text, diff: req.diff,
       grade: {
         score: Math.min(5, Math.max(1, num(raw.score) ?? 1)),
         summary: str(raw.summary, 800),
@@ -492,13 +497,13 @@ export class Learn {
 
   // ---- tutor -------------------------------------------------------------
 
-  async startThread(project: Project, req: { files: string[]; text: string }): Promise<Thread> {
+  async startThread(project: Project, req: { files: string[]; text: string; diff?: DiffSpec }): Promise<Thread> {
     const ws = new Workspace(project);
     const files = req.files.map((f) => ws.guard(f));
     if (!files.length) throw new Error("pick at least one file");
     const text = (req.text ?? "").trim();
     if (!text) throw new Error("ask a question first");
-    const t: Thread = { id: newId(), projectId: project.id, createdAt: now(), title: text.split("\n")[0].slice(0, 80), files, messages: [] };
+    const t: Thread = { id: newId(), projectId: project.id, createdAt: now(), title: text.split("\n")[0].slice(0, 80), files, diff: req.diff, messages: [] };
     return this.tutorTurn(project, t, text, false);
   }
 
@@ -515,7 +520,10 @@ export class Learn {
     // The hint ladder climbs one step per tutor turn, and starts again after a "tell me".
     const since = t.messages.slice(t.messages.map((m) => m.hintLevel === 4).lastIndexOf(true) + 1);
     const level = Math.min(3, since.filter((m) => m.role === "tutor").length + 1);
-    const raw = await this.ask<{ reply?: unknown }>(ws, ["tutor"], P.tutorSystem(level, tell), P.tutorPrompt(t.messages, this.bundle(ws, t.files), this.notes(ws, t.files)));
+    const raw = await this.ask<{ reply?: unknown }>(
+      ws, ["tutor"], P.tutorSystem(level, tell),
+      P.tutorPrompt(t.messages, this.bundle(ws, t.files), this.notes(ws, t.files), this.diffText(ws, t.diff, t.files)),
+    );
     t.messages.push({ role: "tutor", text: str(raw.reply, 8000), at: now(), hintLevel: tell ? 4 : level });
     // Bounded: keep the opening question and the newest turns.
     if (t.messages.length > THREAD_MESSAGE_CAP) t.messages = [t.messages[0], ...t.messages.slice(-(THREAD_MESSAGE_CAP - 1))];

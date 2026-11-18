@@ -114,7 +114,7 @@ export function JobProgress({ kind, elapsed }: { kind: string; elapsed: number }
           <div key={s} className={clsx("h-1 flex-1 rounded-full transition-colors", i <= at ? "bg-accent" : "bg-line")} />
         ))}
       </div>
-      <p className="mt-2 text-xs text-muted">Model calls take 20 seconds to 2 minutes. You can keep reading code meanwhile.</p>
+      <p className="mt-2 text-xs text-muted">Model calls take 20 seconds to 2 minutes. You can leave this page: it keeps running, and the status bar says when it is ready.</p>
     </div>
   );
 }

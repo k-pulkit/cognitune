@@ -77,7 +77,10 @@ export function TodayPage() {
             ) : (
               <p className="mt-3 text-sm text-muted">None open. Wrong answers in quizzes, teach-backs and walkthroughs show up here.</p>
             )}
-            <Button className="mt-4" size="sm" disabled={!t.weak.length || job.busy} onClick={() => go([], "weak")}>Quiz my weak spots</Button>
+            <div className="mt-4 flex items-center gap-3">
+              <Button size="sm" disabled={!t.weak.length || job.busy} onClick={() => go([], "weak")}>Quiz my weak spots</Button>
+              {t.weak.length > 0 && <Link to={`${p}/library?tab=weak`} className="text-xs text-muted hover:text-ink">manage</Link>}
+            </div>
           </section>
 
           <section className="card p-5">

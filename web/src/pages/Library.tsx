@@ -1,18 +1,20 @@
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  BookA, Bug, Compass, Download, Footprints, GraduationCap, Hammer, Layers, ListChecks, MessageCircleQuestion, PauseCircle, PlayCircle, Search, StickyNote, Trash2,
+  BookA, Bug, Compass, Target, Download, Footprints, GraduationCap, Hammer, Layers, ListChecks, MessageCircleQuestion, PauseCircle, PlayCircle, Search,
+  StickyNote, Trash2, X,
 } from "lucide-react";
-import { Link, useSearchParams } from "react-router-dom";
-import type { Card, GlossaryTerm, Hunt, Lens, Note, Practice, Quiz, Teachback, Thread, Walk } from "@core/types";
-import { del, get, patch, relTime } from "@/lib/api";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import type { Card, GlossaryTerm, Hunt, Lens, Misconception, Note, Practice, Quiz, Teachback, Thread, Walk } from "@core/types";
+import { del, get, patch, relTime, useJob } from "@/lib/api";
 import { useProject } from "@/lib/project";
 import { shortPath } from "@/lib/path";
 import { CardDialog } from "@/components/CardDialog";
-import { Badge, Empty, Score, Tabs, untilText } from "@/components/ui";
+import { Badge, Button, Empty, ErrorNote, JobProgress, Score, Tabs, untilText } from "@/components/ui";
 
-type Tab = "lenses" | "quizzes" | "practice" | "teachbacks" | "walks" | "hunts" | "threads" | "cards" | "glossary" | "notes";
-const TABS: Tab[] = ["lenses", "quizzes", "practice", "teachbacks", "walks", "hunts", "threads", "cards", "glossary", "notes"];
+type Tab = "lenses" | "quizzes" | "practice" | "teachbacks" | "walks" | "hunts" | "threads" | "cards" | "weak" | "glossary" | "notes";
+const TABS: Tab[] = ["lenses", "quizzes", "practice", "teachbacks", "walks", "hunts", "threads", "cards", "weak", "glossary", "notes"];
+const FROM: Record<string, string> = { quiz: "quiz miss", teachback: "teach-back", walk: "walk check", hunt: "bug hunt" };
 
 /** Everything made for this project, newest first, plus the glossary and your notes. */
 export function LibraryPage() {
@@ -35,7 +37,20 @@ export function LibraryPage() {
   const threads = list<Thread>("threads");
   const cards = list<Card>("cards");
   const notes = list<Note>("notes");
-  const glossary = useQuery({ queryKey: ["glossary", project.id], queryFn: () => get<GlossaryTerm[]>(`${base}/glossary`), enabled: tab === "glossary" });
+  const weak = list<Misconception>("misconceptions");
+  const nav = useNavigate();
+  const job = useJob();
+  const [quizzing, setQuizzing] = useState<string | null>(null);
+  const quizWeak = (ids: string[], key: string) => {
+    setQuizzing(key);
+    job.run(`${base}/quizzes`, { files: [], weak: true, weakIds: ids }, (j) => nav(`${p}/quiz/${j.resultId}`));
+  };
+  const dismiss = async (id: string) => {
+    await del(`${base}/misconceptions/${id}`);
+    qc.invalidateQueries({ queryKey: ["misconceptions", project.id] });
+    qc.invalidateQueries({ queryKey: ["today", project.id] });
+  };
+  const glossary =useQuery({ queryKey: ["glossary", project.id], queryFn: () => get<GlossaryTerm[]>(`${base}/glossary`), enabled: tab === "glossary" });
 
   const match = useMemo(() => {
     const words = q.toLowerCase().split(/\s+/).filter(Boolean);
@@ -86,6 +101,7 @@ export function LibraryPage() {
             { value: "hunts", label: "Bug hunts", icon: <Bug className="h-4 w-4" />, count: hunts.data?.length },
             { value: "threads", label: "Tutor", icon: <MessageCircleQuestion className="h-4 w-4" />, count: threads.data?.length },
             { value: "cards", label: "Cards", icon: <Layers className="h-4 w-4" />, count: cards.data?.length },
+            { value: "weak", label: "Weak spots", icon: <Target className="h-4 w-4" />, count: weak.data?.length },
             { value: "glossary", label: "Glossary", icon: <BookA className="h-4 w-4" /> },
             { value: "notes", label: "Notes", icon: <StickyNote className="h-4 w-4" />, count: notes.data?.length },
           ]}
@@ -94,6 +110,20 @@ export function LibraryPage() {
       </div>
       <div className="min-h-0 flex-1 overflow-auto p-8">
         <div className="mx-auto max-w-[72rem]">
+        {tab === "weak" && !!weak.data?.length && (
+          <div className="mb-4">
+            <div className="flex items-center gap-3">
+              <p className="flex-1 text-[14px] text-muted">
+                Wrong beliefs picked up from your answers. Answer a question on one correctly and it goes away; dismiss one the grader got wrong.
+              </p>
+              <Button size="sm" variant="primary" icon={<Target className="h-3.5 w-3.5" />} disabled={job.busy} onClick={() => quizWeak(weak.data!.slice(0, 6).map((m) => m.id), "all")}>
+                Quiz me on {weak.data.length > 6 ? "the top 6" : "all of them"}
+              </Button>
+            </div>
+            {job.busy && job.job && quizzing === "all" && <div className="mt-3"><JobProgress kind="quiz" elapsed={job.elapsed} /></div>}
+            {job.error && <div className="mt-3"><ErrorNote error={job.error} onClose={job.clearError} /></div>}
+          </div>
+        )}
         <div className="grid gap-3 md:grid-cols-2">
           {tab === "lenses" && lenses.data?.filter((l) => match(l.title, l.summary, l.kind, ...l.files)).map((l) => (
             <Link key={l.id} to={`${p}/lens/${l.id}`} className={tile}>
@@ -196,6 +226,26 @@ export function LibraryPage() {
               {c.file && <div className="mt-2 truncate font-mono text-[12px] text-muted">{rel(c.file)}{c.line ? `:${c.line}` : ""}</div>}
             </div>
           ))}
+          {tab === "weak" && weak.data?.filter((m) => match(m.text, m.file)).map((m) => (
+            <div key={m.id} className="card flex flex-col p-4">
+              <div className="flex items-center gap-2">
+                <Badge tone="bad">{FROM[m.from] ?? m.from}</Badge>
+                {m.seen > 1 && <Badge tone="warn">seen {m.seen}×</Badge>}
+                {when(m.createdAt)}
+              </div>
+              <p className="mt-2 text-[14.5px] leading-snug">{m.text}</p>
+              {m.file && (
+                <Link to={`${p}/explore`} onClick={() => setOpenFile(m.file!, m.line)} className="mt-2 truncate font-mono text-[12px] text-muted hover:text-accent">
+                  {rel(m.file)}{m.line ? `:${m.line}` : ""}
+                </Link>
+              )}
+              <div className="mt-3 flex items-center gap-2 pt-1">
+                <Button size="sm" icon={<Target className="h-3.5 w-3.5" />} disabled={job.busy} onClick={() => quizWeak([m.id], m.id)}>Quiz me on this</Button>
+                <Button size="sm" variant="ghost" icon={<X className="h-3.5 w-3.5" />} onClick={() => dismiss(m.id)} title="The grader got this wrong, or it no longer applies">Dismiss</Button>
+              </div>
+              {job.busy && job.job && quizzing === m.id && <div className="mt-3"><JobProgress kind="quiz" elapsed={job.elapsed} /></div>}
+            </div>
+          ))}
           {tab === "notes" && notes.data?.filter((n) => match(n.text, n.file)).map((n) => (
             <Link key={n.id} to={`${p}/explore`} onClick={() => n.file && setOpenFile(n.file, n.line)} className={tile}>
               <div className="flex items-center gap-2">
@@ -238,6 +288,7 @@ export function LibraryPage() {
         {tab === "hunts" && hunts.data?.length === 0 && empty(<Bug className="h-6 w-6" />, "No bug hunts yet", "Open a file in Explore and pick Bug hunt.")}
         {tab === "threads" && threads.data?.length === 0 && empty(<MessageCircleQuestion className="h-6 w-6" />, "No tutor chats yet", "Ask the tutor from Explore or from a missed quiz question.")}
         {tab === "cards" && cards.data?.length === 0 && empty(<Layers className="h-6 w-6" />, "No cards yet", "Quiz misses become cards on their own. You can also make one from a lens concept or a code line.")}
+        {tab === "weak" && weak.data?.length === 0 && empty(<Target className="h-6 w-6" />, "No weak spots", "Wrong answers in quizzes, teach-backs and walks show up here as the belief behind them.")}
         {tab === "notes" && notes.data?.length === 0 && empty(<StickyNote className="h-6 w-6" />, "No notes yet", "In Explore, click a line and add a note from the Notes tab.")}
         </div>
       </div>
