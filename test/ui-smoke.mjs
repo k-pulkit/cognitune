@@ -301,10 +301,11 @@ await page.getByText("Most depended on").waitFor({ timeout: 30000 });
 const nodes = page.locator("svg g.cursor-pointer");
 await nodes.first().waitFor({ timeout: 30000 });
 ok((await nodes.count()) > 2, "map draws the import graph");
-// Folders are squares; clicking one makes it the scope.
-await page.locator("svg g.cursor-pointer:has(rect)").first().click();
+// Folders show their file count; clicking one makes it the scope.
+await page.locator("svg g.cursor-pointer:has(text[dy])").first().click();
 await page.waitForURL(/[?&]in=/);
-await nodes.first().waitFor({ timeout: 30000 });
+// The old map is swapped for a placeholder while the new one is laid out; wait for the new one.
+await page.waitForFunction(() => !document.body.innerText.includes("Drawing the map") && document.querySelectorAll("svg g.cursor-pointer").length > 0, null, { timeout: 30000 });
 ok((await nodes.count()) > 0, "clicking a folder drills into it");
 await shot("20-map");
 await page.goto(`${P}/paths`);

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { FileCode2, Folder, GitBranch, Map as MapIcon, RefreshCw } from "lucide-react";
+import { FileCode2, Folder, GitBranch, Map as MapIcon, Maximize, Minus, Plus, RefreshCw } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import type { FileLevel, FileProgress, GitRepo, Graph } from "@core/types";
 import { get, relTime } from "@/lib/api";
@@ -8,7 +8,9 @@ import { useProject } from "@/lib/project";
 import { graphAt, LEAF_MAX, type ScopedEdge, type ScopedNode } from "@/lib/graphScope";
 import { rollup, under } from "@/lib/rollup";
 import type { LayoutIn, LayoutOut } from "@/lib/layout.worker";
+import { CodePane } from "@/components/CodePane";
 import { ScopeBar } from "@/components/Scope";
+import { Split } from "@/components/Split";
 import { Badge, Button, Empty } from "@/components/ui";
 
 const FILL: Record<FileLevel, string> = {
@@ -28,6 +30,7 @@ function fillOf(n: ScopedNode): string {
   return touched ? FILL.seen : FILL.new;
 }
 
+const labelOf = (n: ScopedNode) => (n.kind === "file" ? n.label.split("/").pop()! : `${n.label}/`);
 const radius = (n: ScopedNode) => (n.kind === "file" ? Math.min(16, 5 + Math.sqrt(n.fanIn) * 2.5) : Math.min(34, 10 + Math.sqrt(n.files) * 2.2));
 
 /** Lay the nodes out in a worker; null while it works. A newer request makes older replies stale. */
@@ -45,7 +48,7 @@ function useLayout(nodes: ScopedNode[], edges: ScopedEdge[]) {
     if (!worker.current || !nodes.length) return;
     const id = ++seq.current;
     setOut(null);
-    const msg: LayoutIn = { id, nodes: nodes.map((n) => ({ id: n.id, r: radius(n) })), links: edges.map((e) => ({ source: e.from, target: e.to, weight: e.weight })) };
+    const msg: LayoutIn = { id, nodes: nodes.map((n) => ({ id: n.id, r: radius(n), w: labelOf(n).length * 3.4 })), links: edges.map((e) => ({ source: e.from, target: e.to, weight: e.weight })) };
     worker.current.postMessage(msg);
   }, [nodes, edges]);
   return out?.pos ?? null;
@@ -59,7 +62,7 @@ function Placeholder({ text }: { text: string }) {
     <div className="relative h-full w-full bg-panel">
       <svg className="h-full w-full animate-pulse" viewBox="-260 -180 520 360">
         {lines.map(([a, b], i) => <line key={i} x1={dots[a][0]} y1={dots[a][1]} x2={dots[b][0]} y2={dots[b][1]} stroke="rgb(var(--muted) / 0.18)" strokeWidth={1.5} />)}
-        {dots.map(([x, y, r], i) => <rect key={i} x={x - r} y={y - r} width={r * 2} height={r * 2} rx={i % 2 ? r : 6} fill="rgb(var(--muted) / 0.14)" />)}
+        {dots.map(([x, y, r], i) => <rect key={i} x={x - r} y={y - r} width={r * 2} height={r * 2} rx={r} fill="rgb(var(--muted) / 0.14)" />)}
       </svg>
       <div className="absolute inset-0 grid place-items-center">
         <div className="rounded-full bg-raised/90 px-4 py-1.5 text-[13px] text-muted shadow-soft">{text}</div>
@@ -106,10 +109,25 @@ export function MapPage() {
 
   const [hover, setHover] = useState<string | null>(null);
   const [view, setView] = useState({ x: 0, y: 0, k: 1 });
-  const drag = useRef<{ x: number; y: number; moved: boolean } | null>(null);
+  const drag = useRef<{ x: number; y: number; node: string | null; moved: boolean } | null>(null);
+  /** Nodes the user dragged somewhere else; they win over the layout until the scope changes. */
+  const [placed, setPlaced] = useState<Record<string, [number, number]>>({});
+  const justDragged = useRef(false);
+  /** A file shown in the code pane beside the map (Ctrl/Cmd+click opens Explore instead). */
+  const [shown, setShown] = useState<string | null>(null);
+  const wrapRef = useRef<HTMLDivElement | null>(null);
+  const [size, setSize] = useState({ w: 900, h: 600 });
   useEffect(() => {
-    // A new scope: forget the old zoom, and the hovered node (it is not on screen any more).
+    const el = wrapRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([e]) => setSize({ w: e.contentRect.width, h: e.contentRect.height }));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [pos, shown]);
+  useEffect(() => {
+    // A new scope: forget the old zoom, moved nodes, and the hovered node (it is not on screen any more).
     setView({ x: 0, y: 0, k: 1 });
+    setPlaced({});
     setHover(null);
   }, [scope]);
 
@@ -118,7 +136,8 @@ export function MapPage() {
     setSelected([path]);
     nav(`/p/${project.id}/explore`);
   };
-  const act = (n: ScopedNode) => (n.kind === "file" ? open(n.id) : goTo(n.id));
+  const act = (n: ScopedNode, e?: { ctrlKey: boolean; metaKey: boolean }) =>
+    n.kind !== "file" ? goTo(n.id) : e?.ctrlKey || e?.metaKey ? open(n.id) : setShown(n.id);
 
   const bar = (
     <ScopeBar className="rounded-none border-x-0 border-t-0" root={root} rootLabel={project.name} scope={scope} repos={repos} repoRows={repoRows} onScope={goTo}>
@@ -147,7 +166,7 @@ export function MapPage() {
   const hubs = nodes.filter((n) => n.fanIn > 0).sort((a, b) => b.fanIn - a.fanIn || b.files - a.files).slice(0, 12);
   // A small view labels everything; a busy one only its biggest nodes, plus whatever is hovered.
   const labelled = new Set((nodes.length <= 40 ? nodes : [...nodes].sort((a, b) => b.fanIn + b.files - (a.fanIn + a.files)).slice(0, 14)).map((n) => n.id));
-  const nameOf = (n: ScopedNode) => (n.kind === "file" ? n.label.split("/").pop()! : n.label);
+  const nameOf = labelOf;
   const dirs = nodes.filter((n) => n.kind !== "file").length;
   const fileNodes = nodes.length - dirs;
   const imports = (sg?.edges ?? []).reduce((s, e) => s + e.weight, 0);
@@ -160,47 +179,61 @@ export function MapPage() {
     const pts = nodes.map((n) => pos[n.id] ?? [0, 0]);
     const xs = pts.map((p) => p[0]);
     const ys = pts.map((p) => p[1]);
-    const pad = 70;
-    const w = Math.max(Math.max(...xs) - Math.min(...xs) + pad * 2, 420);
-    const h = Math.max(Math.max(...ys) - Math.min(...ys) + pad * 2, 300);
+    const pad = 90;
+    const cw = Math.max(...xs) - Math.min(...xs) + pad * 2;
+    const ch = Math.max(...ys) - Math.min(...ys) + pad * 2;
     const cx = (Math.max(...xs) + Math.min(...xs)) / 2;
     const cy = (Math.max(...ys) + Math.min(...ys)) / 2;
-    const box = { x: cx - w / 2, y: cy - h / 2, w, h };
+    // 1 map unit = 1 pixel at zoom 1; a big graph is shrunk to fit, a small one is never blown up.
+    // Not below 70% to start with: labels would crowd. Zoom out (or scroll) to see the rest.
+    const K = Math.max(0.7, Math.min(1, size.w / cw, size.h / ch)) * view.k;
+    const vbW = size.w / K;
+    const vbH = size.h / K;
+    // Labels keep their on-screen size when the map is shrunk to fit; zooming in still enlarges them.
+    const ts = 1 / Math.min(K, 1);
+    const zoom = (f: number) => setView((v) => ({ ...v, k: Math.min(6, Math.max(0.2, v.k * f)) }));
+    const at = (id: string): [number, number] => placed[id] ?? pos[id] ?? [0, 0];
     const maxW = Math.max(1, ...(sg?.edges ?? []).map((e) => e.weight));
     canvas = (
-      <div className="relative h-full bg-panel">
+      <div ref={wrapRef} className="relative h-full bg-panel">
         <svg
           className="h-full w-full cursor-grab active:cursor-grabbing"
-          viewBox={`${box.x + view.x} ${box.y + view.y} ${box.w / view.k} ${box.h / view.k}`}
-          onWheel={(e) => setView((v) => ({ ...v, k: Math.min(8, Math.max(0.3, v.k * (e.deltaY < 0 ? 1.15 : 1 / 1.15))) }))}
-          onMouseDown={(e) => (drag.current = { x: e.clientX, y: e.clientY, moved: false })}
-          onMouseUp={() => (drag.current = null)}
+          viewBox={`${cx - vbW / 2 + view.x} ${cy - vbH / 2 + view.y} ${vbW} ${vbH}`}
+          onWheel={(e) => zoom(e.deltaY < 0 ? 1.15 : 1 / 1.15)}
+          onMouseDown={(e) => (drag.current = { x: e.clientX, y: e.clientY, node: null, moved: false })}
+          onMouseUp={() => {
+            justDragged.current = !!drag.current?.moved;
+            drag.current = null;
+          }}
           onMouseLeave={() => (drag.current = null)}
           onMouseMove={(e) => {
-            if (!drag.current) return;
-            const el = e.currentTarget.getBoundingClientRect();
-            const s = box.w / view.k / el.width;
-            const dx = (e.clientX - drag.current.x) * s;
-            const dy = (e.clientY - drag.current.y) * s;
-            drag.current = { x: e.clientX, y: e.clientY, moved: true };
-            setView((v) => ({ ...v, x: v.x - dx, y: v.y - dy }));
+            const d = drag.current;
+            if (!d) return;
+            const dx = (e.clientX - d.x) / K;
+            const dy = (e.clientY - d.y) / K;
+            if (!d.moved && Math.hypot(e.clientX - d.x, e.clientY - d.y) < 3) return; // a click, not a drag
+            drag.current = { ...d, x: e.clientX, y: e.clientY, moved: true };
+            if (d.node) {
+              const id = d.node;
+              setPlaced((m) => { const [x, y] = m[id] ?? pos[id] ?? [0, 0]; return { ...m, [id]: [x + dx, y + dy] }; });
+            } else setView((v) => ({ ...v, x: v.x - dx, y: v.y - dy }));
           }}
         >
           <defs>
-            <marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+            <marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse">
               <path d="M0,0 L10,5 L0,10 z" fill="rgb(var(--muted) / 0.55)" />
             </marker>
-            <marker id="arrow-on" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+            <marker id="arrow-on" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse">
               <path d="M0,0 L10,5 L0,10 z" fill="rgb(var(--accent))" />
             </marker>
           </defs>
           {(sg?.edges ?? []).map((e) => {
             const a = byId.get(e.from)!;
             const b = byId.get(e.to)!;
-            const [x1, y1] = pos[a.id] ?? [0, 0];
-            const [x2, y2] = pos[b.id] ?? [0, 0];
+            const [x1, y1] = at(a.id);
+            const [x2, y2] = at(b.id);
             const d = Math.hypot(x2 - x1, y2 - y1) || 1;
-            const rb = radius(b) + 3;
+            const rb = radius(b) + (b.kind === "file" ? 3 : 6);
             const on = hover === a.id || hover === b.id;
             return (
               <line key={`${e.from}>${e.to}`} x1={x1} y1={y1} x2={x2 - ((x2 - x1) / d) * rb} y2={y2 - ((y2 - y1) / d) * rb}
@@ -212,20 +245,31 @@ export function MapPage() {
             );
           })}
           {nodes.map((n) => {
-            const [x, y] = pos[n.id] ?? [0, 0];
+            const [x, y] = at(n.id);
             const r = radius(n);
             const dim = hover && n.id !== hover && !near.has(n.id);
             return (
               <g key={n.id} transform={`translate(${x},${y})`} opacity={dim ? 0.25 : 1} className="cursor-pointer"
                 onMouseEnter={() => setHover(n.id)} onMouseLeave={() => setHover(null)}
-                onClick={() => !drag.current?.moved && act(n)}>
+                onMouseDown={(e) => {
+                  e.stopPropagation();
+                  drag.current = { x: e.clientX, y: e.clientY, node: n.id, moved: false };
+                }}
+                onClick={(e) => {
+                  if (justDragged.current) justDragged.current = false;
+                  else act(n, e);
+                }}>
+                {n.id === shown && <circle r={r + 6} fill="none" stroke="rgb(var(--accent))" strokeWidth={2} />}
                 {n.kind === "file"
                   ? <circle r={r} fill={n.counts.new ? FILL.new : fillOf(n)} stroke="rgb(var(--panel))" strokeWidth={1.5} />
-                  : <rect x={-r} y={-r} width={r * 2} height={r * 2} rx={7} fill={fillOf(n)} stroke={n.kind === "repo" ? "rgb(var(--accent) / 0.7)" : "rgb(var(--panel))"} strokeWidth={n.kind === "repo" ? 2 : 1.5} />}
-                {n.kind !== "file" && <text textAnchor="middle" dy="0.35em" fontSize={10} className="fill-ink font-mono" opacity={0.7}>{n.files}</text>}
+                  : <>
+                      <circle r={r + 3} fill="none" stroke={n.kind === "repo" ? "rgb(var(--accent) / 0.75)" : "rgb(var(--ink) / 0.2)"} strokeWidth={n.kind === "repo" ? 2.5 : 1.5} />
+                      <circle r={r} fill={fillOf(n)} stroke="rgb(var(--panel))" strokeWidth={1.5} />
+                    </>}
+                {n.kind !== "file" && <text textAnchor="middle" dy="0.35em" fontSize={10 * Math.min(ts, r / 9)} className="fill-ink font-mono" opacity={0.7}>{n.files}</text>}
                 {(labelled.has(n.id) || n.id === hover) && (
-                  <text y={-r - 6} textAnchor="middle" className="fill-ink font-mono" fontSize={11} paintOrder="stroke" stroke="rgb(var(--panel))" strokeWidth={3} strokeLinejoin="round">
-                    {nameOf(n)}{n.kind !== "file" ? "/" : ""}
+                  <text y={-r - 6 * ts} textAnchor="middle" className="fill-ink font-mono" fontSize={11.5 * ts} paintOrder="stroke" stroke="rgb(var(--panel))" strokeWidth={3 * ts} strokeLinejoin="round">
+                    {nameOf(n)}
                   </text>
                 )}
               </g>
@@ -233,12 +277,18 @@ export function MapPage() {
           })}
         </svg>
         <div className="pointer-events-none absolute bottom-3 left-3 flex flex-wrap items-center gap-2 text-[12px] text-muted">
-          <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-[3px] border border-muted/50" />folder (number = files)</span>
+          <span className="flex items-center gap-1"><span className="h-3 w-3 rounded-full border-2 border-ink/25" />folder (number = files)</span>
           <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full border border-muted/50" />file</span>
           {(["new", "seen", "understood", "fading", "stale"] as FileLevel[]).map((l) => (
             <span key={l} className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full" style={{ background: FILL[l] }} />{l === "new" ? "not yet" : l}</span>
           ))}
-          <span>· thicker arrow = more imports · click a folder to go in · scroll to zoom</span>
+          <span>· thicker arrow = more imports · click a folder to go in, a file to read it (Ctrl+click: Explore) · drag a dot to move it</span>
+        </div>
+        <div className="absolute right-3 top-3 flex flex-col overflow-hidden rounded-md border border-line bg-panel shadow-soft">
+          <button className="grid h-8 w-8 place-items-center text-muted hover:bg-raised hover:text-ink" title="Zoom in" onClick={() => zoom(1.25)}><Plus className="h-4 w-4" /></button>
+          <button className="grid h-8 w-8 place-items-center border-y border-line text-muted hover:bg-raised hover:text-ink" title="Zoom out" onClick={() => zoom(1 / 1.25)}><Minus className="h-4 w-4" /></button>
+          <button className="grid h-8 w-8 place-items-center text-muted hover:bg-raised hover:text-ink" title="Fit and put dragged dots back"
+            onClick={() => { setView({ x: 0, y: 0, k: 1 }); setPlaced({}); }}><Maximize className="h-3.5 w-3.5" /></button>
         </div>
         {hover && byId.get(hover) && (
           <div className="absolute left-3 top-3 rounded-md bg-raised px-2 py-1 font-mono text-xs">
@@ -253,6 +303,11 @@ export function MapPage() {
     <div className="flex h-full flex-col">
       {bar}
       <div className="flex min-h-0 flex-1">
+        {shown ? (
+          <Split id="map-code" side="right" initial={520} min={320} max={900} className="h-full w-full" left={canvas}
+            right={<CodePane file={shown} onClose={() => setShown(null)} />} />
+        ) : (
+        <>
         <div className="min-w-0 flex-1">{canvas}</div>
         <aside className="w-[300px] shrink-0 overflow-auto border-l border-line bg-panel p-4">
           <h1 className="text-base font-semibold">Map</h1>
@@ -267,7 +322,7 @@ export function MapPage() {
           <ol className="space-y-1">
             {hubs.map((n) => (
               <li key={n.id}>
-                <button className="flex w-full items-center gap-2 rounded-md px-2 py-1 text-left hover:bg-raised" onMouseEnter={() => setHover(n.id)} onMouseLeave={() => setHover(null)} onClick={() => act(n)}>
+                <button className="flex w-full items-center gap-2 rounded-md px-2 py-1 text-left hover:bg-raised" onMouseEnter={() => setHover(n.id)} onMouseLeave={() => setHover(null)} onClick={(e) => act(n, e)}>
                   {n.kind === "repo" ? <GitBranch className="h-3.5 w-3.5 shrink-0 text-accent" /> : n.kind === "dir" ? <Folder className="h-3.5 w-3.5 shrink-0 text-muted" /> : <FileCode2 className="h-3.5 w-3.5 shrink-0 text-muted" />}
                   <span className="min-w-0 flex-1 truncate font-mono text-[12.5px]" title={n.label}>{n.label}</span>
                   <Badge>{n.fanIn}</Badge>
@@ -276,6 +331,8 @@ export function MapPage() {
             ))}
           </ol>
         </aside>
+        </>
+        )}
       </div>
     </div>
   );

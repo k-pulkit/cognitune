@@ -305,8 +305,9 @@ const GROUPS: Group[] = [
         title: "Map: how files connect",
         what: "Which parts of the code import which. At a folder of many repos each repo is one node; inside a repo, folders; then files.",
         steps: [
-          "Open Map. Square nodes are folders (the number is how many code files they hold), circles are files. A thicker arrow carries more imports.",
-          "Click a folder to go into it; the bar at the top goes back up, and its repo picker jumps straight to a repo. Click a file to open it in Explore.",
+          "Open Map. Ringed circles are folders (the number is how many code files they hold), small dots are files. A thicker arrow carries more imports.",
+          "Click a folder to go into it; the bar at the top goes back up, and its repo picker jumps straight to a repo. Click a file to read it in a pane beside the map; Ctrl/Cmd+click opens it in Explore.",
+          "Drag a dot to move it out of the way. Use + and − (or scroll) to zoom; the fit button resets the view and puts dragged dots back.",
           "A folder of 8 code files or fewer shows its files directly, so you never drill in for two files.",
           "Colours show your level: grey not yet, blue seen, green understood, amber fading or stale.",
           "The map is read once and kept. Press Refresh after imports change.",
