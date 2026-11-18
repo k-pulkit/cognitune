@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.3.2 (2026-11-18)
+
+Map:
+
+- All nodes are circles: a folder has a ring and its file count, a file is a small dot.
+- A calmer layout: spacing leaves room for each label, and arrowheads keep a fixed size however
+  thick the arrow.
+- Text keeps its real size: the map draws 1:1 in pixels, so a small graph is no longer blown up, and
+  labels stay readable when a big one is shrunk to fit.
+- Drag a dot to move it; + / - / fit buttons (fit also puts dragged dots back).
+- Click a file to read its code in a pane beside the map; Ctrl/Cmd+click opens it in Explore.
+
 ## 0.3.1 (2026-11-18)
 
 New:
