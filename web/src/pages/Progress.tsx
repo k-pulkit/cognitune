@@ -152,7 +152,7 @@ export function ProgressPage() {
           </div>
         </td>
         <td className="px-4 py-2"><CoverageBar counts={r.counts} total={r.total} className="w-32" /></td>
-        <td className="px-4 py-2 text-right text-[12.5px] tabular-nums text-muted">
+        <td className="whitespace-nowrap px-4 py-2 text-right text-[12.5px] tabular-nums text-muted">
           {ORDER.slice(0, 3).map((l) => r.counts[l] > 0 && <span key={l} className={clsx("mr-2", l === "understood" ? "text-good" : "text-warn")}>{r.counts[l]} {l}</span>)}
           <span>{touched(r)} / {r.total} files</span>
         </td>
@@ -219,7 +219,7 @@ export function ProgressPage() {
               )}
             </div>
             <table className="w-full table-fixed text-sm">
-              <colgroup><col /><col className="w-40" /><col className="w-72" /><col className="w-28" /></colgroup>
+              <colgroup><col /><col className="w-36" /><col className="w-[22rem]" /><col className="w-24" /></colgroup>
               <tbody>
                 {words.length
                   ? matches.map((f) => <Row key={f.path} r={{ path: f.path, label: relTo(f.path), kind: "file", total: 1, counts: { new: 0, seen: 0, understood: 0, fading: 0, stale: 0, [f.level]: 1 }, lastRetrieval: f.lastRetrieval, file: f }} />)
