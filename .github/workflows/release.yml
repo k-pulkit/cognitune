@@ -58,11 +58,33 @@ jobs:
           body_path: release-notes.md
           generate_release_notes: false
           files: extension/cognitune.vsix
-      - name: Publish to the VS Code Marketplace
-        # Trusted publishing: the Marketplace's policy for publisher k-pulkit names this repo and release.yml.
-        run: npx --no-install vsce publish --oidc --packagePath extension/cognitune.vsix
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vsix
+          path: extension/cognitune.vsix
+          retention-days: 7
       - name: Publish to Open VSX
         # Open VSX takes the first version only with a token; set the repo variable PUBLISH_OPENVSX=true
         # once that is done and trusted publishing is registered there.
         if: vars.PUBLISH_OPENVSX == 'true'
         run: npx --no-install ovsx publish extension/cognitune.vsix --trusted-publishing
+
+  marketplace:
+    # Its own job so it can run in the "production" environment, which the Marketplace's trusted
+    # publishing policy for k-pulkit requires. npm stays in the job above, with no environment, as its
+    # own trusted publisher is set up. Add a protection rule to "production" to approve each release.
+    needs: publish
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: vsix
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Publish to the VS Code Marketplace
+        run: npx --yes @vscode/vsce@4.1.0 publish --oidc --packagePath cognitune.vsix

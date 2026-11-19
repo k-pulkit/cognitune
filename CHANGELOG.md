@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.8 (2026-11-19)
+
+Release check, no feature changes:
+
+- The Marketplace publish runs in its own release job, in the `production` environment that its trusted
+  publishing policy requires.
+
 ## 0.3.7 (2026-11-19)
 
 Release check, no feature changes:
