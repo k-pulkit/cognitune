@@ -5,7 +5,7 @@ on:
       - 'v*'
 
 permissions:
-  id-token: write # required for npm trusted publishing (OIDC)
+  id-token: write # trusted publishing (OIDC): npm, VS Code Marketplace, Open VSX
   contents: write # required to attach release notes to the GitHub Release
 
 jobs:
@@ -45,6 +45,11 @@ jobs:
             echo "$PKG@$VER is not live -- failing for real"
             exit 1
           fi
+      - name: Build the VS Code extension
+        # The same app, server bundled in; version and changelog copied from package.json/CHANGELOG.md.
+        run: |
+          npm run build:ext
+          cd extension && npx --no-install vsce package --no-dependencies -o cognitune.vsix
       - name: Extract this version's changelog section
         run: |
           awk '/^## /{if (p) exit; p=1; print; next} p' CHANGELOG.md > release-notes.md
@@ -52,3 +57,12 @@ jobs:
         with:
           body_path: release-notes.md
           generate_release_notes: false
+          files: extension/cognitune.vsix
+      - name: Publish to the VS Code Marketplace
+        # Trusted publishing: the Marketplace's policy for publisher k-pulkit names this repo and release.yml.
+        run: npx --no-install vsce publish --oidc --packagePath extension/cognitune.vsix
+      - name: Publish to Open VSX
+        # Open VSX takes the first version only with a token; set the repo variable PUBLISH_OPENVSX=true
+        # once that is done and trusted publishing is registered there.
+        if: vars.PUBLISH_OPENVSX == 'true'
+        run: npx --no-install ovsx publish extension/cognitune.vsix --trusted-publishing

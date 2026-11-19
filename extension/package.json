@@ -2,8 +2,8 @@
   "name": "cognitune",
   "displayName": "cognitune",
   "description": "Understand the code you (or an AI) wrote: lenses that explain, quizzes that prove you got it, review that keeps it. In a panel beside your code.",
-  "version": "0.3.5",
-  "publisher": "cognitune",
+  "version": "0.3.6",
+  "publisher": "k-pulkit",
   "license": "MIT",
   "icon": "icon.png",
   "repository": {
@@ -33,7 +33,9 @@
     "workspace"
   ],
   "main": "./out/extension.cjs",
-  "activationEvents": [],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
   "contributes": {
     "commands": [
       {
@@ -97,7 +99,7 @@
       },
       {
         "command": "cognitune.lensPick",
-        "title": "More lenses\u2026",
+        "title": "More lenses…",
         "category": "cognitune",
         "icon": "$(list-unordered)"
       },
@@ -109,13 +111,13 @@
       },
       {
         "command": "cognitune.tutor",
-        "title": "Ask the tutor\u2026",
+        "title": "Ask the tutor…",
         "category": "cognitune",
         "icon": "$(comment-discussion)"
       },
       {
         "command": "cognitune.teach",
-        "title": "Teach it back\u2026",
+        "title": "Teach it back…",
         "category": "cognitune",
         "icon": "$(mortar-board)"
       },
@@ -136,6 +138,23 @@
         "title": "Practice",
         "category": "cognitune",
         "icon": "$(tools)"
+      },
+      {
+        "command": "cognitune.showLog",
+        "title": "Show log",
+        "category": "cognitune"
+      },
+      {
+        "command": "cognitune.stop",
+        "title": "Stop server",
+        "category": "cognitune",
+        "icon": "$(debug-stop)"
+      },
+      {
+        "command": "cognitune.restart",
+        "title": "Restart server",
+        "category": "cognitune",
+        "icon": "$(debug-restart)"
       }
     ],
     "menus": {
@@ -172,6 +191,16 @@
           "command": "cognitune.refresh",
           "when": "view == cognitune.actions",
           "group": "navigation"
+        },
+        {
+          "command": "cognitune.restart",
+          "when": "view == cognitune.actions",
+          "group": "server@1"
+        },
+        {
+          "command": "cognitune.stop",
+          "when": "view == cognitune.actions",
+          "group": "server@2"
         }
       ],
       "commandPalette": [

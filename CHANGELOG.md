@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.3.6 (2026-11-19)
+
+New: **cognitune for VS Code** (`k-pulkit.cognitune`, also attached to each GitHub Release as a `.vsix`).
+
+- Right-click files, a folder or the editor: **cognitune > Explain, Data flow, Failure modes, More lenses,
+  Quiz me, Ask the tutor, Teach it back, Walk me through, Bug hunt, Practice**. It starts right away on
+  those files, shows progress in a notification and opens the result in a panel beside your code.
+- A cognitune sidebar (activity bar icon) with Today, Explain / Quiz me on this file, Quiz me on
+  uncommitted changes and Review cards; "Quiz me on uncommitted changes" also sits in the Source Control
+  title bar.
+- A status bar item: server off / starting / ready, running jobs with a timer, and cards due.
+- Commands: Open, Stop server, Restart server. The extension reuses a cognitune server already running on
+  its port (`cognitune.port`, default 4711), else starts the one bundled inside it with VS Code's own Node.
+- In the panel, "open in editor" on a file opens it in VS Code at that line.
+
+The web app gets `?open=`, `?pick=` and `?repo=` on Explore and Changes for the extension; `npx cognitune`
+works as before.
+
 ## 0.3.5 (2026-11-18)
 
 Fixes:

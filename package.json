@@ -1,6 +1,6 @@
 {
   "name": "cognitune",
-  "version": "0.3.5",
+  "version": "0.3.6",
   "description": "Understand any codebase: lenses that explain code through one question, quizzes that prove you got it, practice that makes you write it back.",
   "license": "MIT",
   "type": "module",
@@ -62,7 +62,7 @@
     "@types/vscode": "1.90.0",
     "@uiw/react-codemirror": "4.23.7",
     "@vitejs/plugin-react": "4.3.4",
-    "@vscode/vsce": "4.0.0",
+    "@vscode/vsce": "4.1.0",
     "autoprefixer": "10.4.20",
     "clsx": "2.1.1",
     "concurrently": "9.1.0",

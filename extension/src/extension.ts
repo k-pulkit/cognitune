@@ -16,7 +16,6 @@ let out: vscode.OutputChannel;
 let child: ChildProcess | undefined;
 let panel: vscode.WebviewPanel | undefined;
 let status: vscode.StatusBarItem;
-let poll: NodeJS.Timeout | undefined;
 /** Project id per folder, so a second command for the same folder skips the API call. */
 const projectIds = new Map<string, string>();
 
@@ -94,7 +93,25 @@ function ensureServer(ctx: vscode.ExtensionContext): Promise<void> {
 }
 
 async function startServer(ctx: vscode.ExtensionContext): Promise<void> {
-  if (await alive()) return;
+  if (await alive()) {
+    state.server = "on";
+    return;
+  }
+  state.server = "starting";
+  render();
+  try {
+    await spawnServer(ctx);
+    state.server = "on";
+  } catch (e) {
+    state.server = "off";
+    throw e;
+  } finally {
+    render();
+    scheduleStatus();
+  }
+}
+
+async function spawnServer(ctx: vscode.ExtensionContext): Promise<void> {
   // Our server is still running, so it is busy, not gone: a big folder can keep it from
   // answering for a while. Wait for it; killing it here would drop work it is doing.
   if (child && child.exitCode === null) {
@@ -111,6 +128,13 @@ async function startServer(ctx: vscode.ExtensionContext): Promise<void> {
   child.stdout?.on("data", (d) => out.append(String(d)));
   child.stderr?.on("data", (d) => out.append(String(d)));
   const started = child;
+  // However it ends (Stop, a crash), the status bar should say so.
+  started.on("exit", () => {
+    if (child !== started) return;
+    child = undefined;
+    Object.assign(state, { server: "off", jobs: [] });
+    render();
+  });
   await new Promise<void>((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error("cognitune server did not start within 20s (see Output > cognitune)")), 20_000);
     const done = (err?: Error) => {
@@ -158,7 +182,7 @@ async function show(ctx: vscode.ExtensionContext, path: string) {
     return;
   }
   // asExternalUri maps the port when VS Code runs remote (WSL, SSH, containers); locally it is a no-op.
-  const origin = (await vscode.env.asExternalUri(vscode.Uri.parse(base()))).toString(true).replace(/\/$/, "");
+  origin = (await vscode.env.asExternalUri(vscode.Uri.parse(base()))).toString(true).replace(/\/$/, "");
   panel = vscode.window.createWebviewPanel("cognitune", "cognitune", { viewColumn: vscode.ViewColumn.Beside, preserveFocus: false }, {
     enableScripts: true,
     retainContextWhenHidden: true,
@@ -168,6 +192,28 @@ async function show(ctx: vscode.ExtensionContext, path: string) {
   panel.webview.html = page(origin, path);
   panel.onDidDispose(() => (panel = undefined));
   panel.webview.onDidReceiveMessage((m) => onAppMessage(m?.cognitune));
+}
+
+/** Where the panel's iframe points, so a restart can load it again. */
+let origin = "";
+
+const OUTSIDE = () =>
+  `The cognitune server on port ${port()} was started outside this window (a terminal or another VS Code window). Stop it there, or press Ctrl+C in its terminal.`;
+
+/** Stop the server this window started. Returns false if the running one is not ours. */
+async function stopServer(): Promise<boolean> {
+  const c = child;
+  if (!c || c.exitCode !== null) return !(await alive());
+  await new Promise<void>((resolve) => {
+    const hard = setTimeout(() => c.kill("SIGKILL"), 5000);
+    c.once("exit", () => {
+      clearTimeout(hard);
+      resolve();
+    });
+    c.kill();
+  });
+  out.appendLine("server stopped");
+  return true;
 }
 
 /** The webview: one full-size iframe, and a relay between it and the extension. */
@@ -209,25 +255,95 @@ async function onAppMessage(m: { type?: string; path?: unknown; line?: unknown }
   }
 }
 
-/** Status bar: review cards due in the current project; click to review. */
-function watchDue(ctx: vscode.ExtensionContext, id: string) {
-  const update = async () => {
+/** Job kinds as the status bar names them. */
+const KIND: Record<string, string> = {
+  lens: "Lens", quiz: "Quiz", grade: "Grading", practice: "Practice", review: "Review", teachback: "Teach-back",
+  tutor: "Tutor", walk: "Walkthrough", walkcheck: "Checking", hunt: "Bug hunt", huntgrade: "Grading", path: "Path",
+};
+
+/**
+ * The status bar item: whether the server is up, model jobs running (from the app or from here),
+ * and review cards due. It only watches: looking at it never starts a server.
+ */
+const state: { server: "off" | "starting" | "on"; pid?: string; due?: number; jobs: { kind: string; startedAt: string }[] } = { server: "off", jobs: [] };
+let tick: NodeJS.Timeout | undefined;
+let lastDue = 0;
+
+function render() {
+  const n = state.jobs.length;
+  if (state.server === "starting") {
+    status.text = "$(loading~spin) cognitune";
+    status.tooltip = "Starting the cognitune server…";
+    status.command = { title: "Log", command: "cognitune.showLog" };
+  } else if (state.server === "on" && n) {
+    const j = state.jobs[0];
+    const secs = Math.max(0, Math.round((Date.now() - Date.parse(j.startedAt)) / 1000));
+    status.text = `$(loading~spin) cognitune · ${KIND[j.kind] ?? j.kind} ${secs}s${n > 1 ? ` +${n - 1}` : ""}`;
+    status.tooltip = `Running: ${state.jobs.map((x) => KIND[x.kind] ?? x.kind).join(", ")}. The result opens when it is done.`;
+    status.command = { title: "Open", command: "cognitune.open" };
+  } else if (state.server === "on") {
+    const due = state.due ?? 0;
+    status.text = due ? `$(mortar-board) cognitune · ${due} due` : "$(mortar-board) cognitune";
+    status.tooltip = `Ready on 127.0.0.1:${port()}. ${due ? `${due} review card${due === 1 ? "" : "s"} due. Click to review.` : "Click to open."}`;
+    status.command = { title: due ? "Review" : "Open", command: due ? "cognitune.review" : "cognitune.open" };
+  } else {
+    status.text = "$(circle-slash) cognitune";
+    status.tooltip = "The cognitune server is not running. Click to start it.";
+    status.command = { title: "Open", command: "cognitune.open" };
+  }
+  status.show();
+}
+
+/** Ask the server how things are: up or not, running jobs, and (every few minutes) cards due. */
+async function refreshStatus() {
+  if (state.server === "starting") return render();
+  if (!(await alive())) {
+    Object.assign(state, { server: "off", jobs: [] });
+    return render();
+  }
+  state.server = "on";
+  // Follow this folder's project if it already is one; never add it just for the status bar.
+  if (!state.pid) {
+    const root = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
     try {
-      const due = await fetchJson<unknown[]>(`/api/projects/${id}/cards/due`);
-      actions.due = due.length;
-      actions.refresh();
-      status.text = due.length ? `$(mortar-board) ${due.length} due` : "$(mortar-board) cognitune";
-      status.tooltip = due.length ? `${due.length} review card${due.length === 1 ? "" : "s"} due. Click to review.` : "Open cognitune";
-      status.command = { title: "Review", command: "cognitune.review" };
-      status.show();
+      const known = (await fetchJson<{ id: string; root: string }[]>("/api/projects")).find((p) => p.root === root);
+      if (known) state.pid = known.id;
     } catch {
-      status.hide(); // server gone; the next command starts it again
+      /* next round */
     }
-  };
-  if (poll) clearInterval(poll);
-  void update();
-  poll = setInterval(update, 5 * 60_000);
-  ctx.subscriptions.push({ dispose: () => poll && clearInterval(poll) });
+  }
+  if (state.pid) {
+    try {
+      const p = await fetchJson<{ running?: { kind: string; startedAt: string }[] }>(`/api/projects/${state.pid}`);
+      state.jobs = p.running ?? [];
+      if (Date.now() - lastDue > 5 * 60_000 || state.due === undefined) {
+        lastDue = Date.now();
+        state.due = (await fetchJson<unknown[]>(`/api/projects/${state.pid}/cards/due`)).length;
+        actions.due = state.due;
+        actions.refresh();
+      }
+    } catch {
+      /* next round */
+    }
+  }
+  render();
+}
+
+/** Check often while something is moving (a job's timer, a start), rarely when idle. */
+function scheduleStatus() {
+  if (tick) clearTimeout(tick);
+  const busy = state.server === "starting" || state.jobs.length > 0;
+  tick = setTimeout(async () => {
+    await refreshStatus();
+    scheduleStatus();
+  }, busy ? 1000 : 30_000);
+}
+
+/** The project the status bar follows; cards due are read again right away. */
+function watchDue(_ctx: vscode.ExtensionContext, id: string) {
+  if (state.pid !== id) state.due = undefined;
+  state.pid = id;
+  void refreshStatus().then(scheduleStatus);
 }
 
 /** Run a command body with the server up and the folder's project open; errors become a message. */
@@ -287,6 +403,7 @@ async function runJob(ctx: vscode.ExtensionContext, id: string, what: string, pa
         timeoutMs: 30_000,
       });
       const t0 = Date.now();
+      void refreshStatus().then(scheduleStatus);
       while (j.status === "running" && !cancel.isCancellationRequested) {
         await new Promise((r) => setTimeout(r, 1500));
         j = await fetchJson<Job>(`/api/jobs/${j.id}`);
@@ -307,6 +424,28 @@ export function activate(ctx: vscode.ExtensionContext) {
   ctx.subscriptions.push(out, status);
 
   const reg = (name: string, fn: (arg?: unknown) => Promise<void>) => ctx.subscriptions.push(vscode.commands.registerCommand(name, fn));
+
+  reg("cognitune.showLog", async () => out.show());
+  reg("cognitune.stop", async () => {
+    if (!(await stopServer())) return void vscode.window.showInformationMessage(OUTSIDE());
+    panel?.dispose(); // its app would only show errors now
+    Object.assign(state, { server: "off", jobs: [] });
+    render();
+  });
+  reg("cognitune.restart", async () => {
+    try {
+      if (!(await stopServer())) return void vscode.window.showInformationMessage(OUTSIDE());
+      await vscode.window.withProgress({ location: vscode.ProgressLocation.Window, title: "cognitune" }, () => ensureServer(ctx));
+      // A new html string (new nonce) reloads the iframe, so the app reconnects to the new server.
+      if (panel) panel.webview.html = page(origin, state.pid ? `/p/${state.pid}/today` : "/");
+      void vscode.window.setStatusBarMessage("cognitune: server restarted", 3000);
+    } catch (e) {
+      void vscode.window.showErrorMessage(`cognitune: ${(e as Error).message}`, "Show log").then((a) => a && out.show());
+    }
+  });
+  // Show the state from the start (a server left running from a terminal counts), then keep watching.
+  if (vscode.workspace.workspaceFolders?.length) void refreshStatus().then(scheduleStatus);
+  ctx.subscriptions.push({ dispose: () => tick && clearTimeout(tick) });
 
   const view = vscode.window.createTreeView("cognitune.actions", { treeDataProvider: actions });
   lastEditor = fileEditor();

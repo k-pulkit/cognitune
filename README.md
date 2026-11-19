@@ -23,12 +23,32 @@
 AI makes code faster to write and easier to not understand.
 **cognitune turns the model around: it does not write code for you. It teaches you the code you have, then checks that you got it.**
 
-## Try it in a minute
+## Two ways to run it
+
+**In the browser**, from any terminal:
 
 ```bash
 npx cognitune --demo        # a sample repo with canned answers. No model, no login.
 npx cognitune ./my-repo     # your own code, with the coding CLI you already use
 ```
+
+**In VS Code**: install [cognitune from the Marketplace](https://marketplace.visualstudio.com/items?itemName=k-pulkit.cognitune),
+or the `.vsix` attached to each [release](https://github.com/k-pulkit/cognitune/releases). Right-click files or a
+folder, choose **cognitune > Explain**, **Quiz me** or **Ask the tutor**, and the result opens in a panel beside your
+code. The sidebar and status bar show what is due and what is running.
+
+<p align="center">
+  <img alt="Right-click a file: the cognitune menu with Explain, Data flow, Quiz me, Ask the tutor" src="https://raw.githubusercontent.com/k-pulkit/cognitune/main/assets/screenshots/vscode-menu.png" height="330">
+  <img alt="A data-flow lens open in VS Code beside the Explorer, with the status bar" src="https://raw.githubusercontent.com/k-pulkit/cognitune/main/assets/screenshots/vscode.png" height="330">
+  <br>
+  <sub>Right-click, pick <b>Explain</b> or <b>Data flow</b>, and the lens opens in a panel. Real output on the demo repo, in VS Code connected to WSL.</sub>
+</p>
+
+Both run the same app with the same data, so progress made in one shows in the other.
+
+> [!NOTE]
+> Built and tested on Windows with VS Code connected to WSL (Ubuntu). macOS, a Linux desktop, and VS Code over
+> SSH or in a container should work the same way, but have not been tried yet. Reports welcome.
 
 - **No new account, no key.** It runs Claude Code, Codex or Copilot with that CLI's own login.
 - **Read-only.** It works from the files you tick, and cognitune never writes to your folders.
