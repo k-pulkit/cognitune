@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import clsx from "clsx";
 import { useQuery } from "@tanstack/react-query";
 import { GitCompare } from "lucide-react";
@@ -32,9 +33,12 @@ export function ChangesPage() {
   const { project, rel } = useProject();
   const repos = useQuery({ queryKey: ["repos", project.id, project.contexts], queryFn: () => get<GitRepo[]>(`/projects/${project.id}/repos`) });
   const repoKey = `cognitune.repo.${project.id}`;
+  // ?repo=<path>: "Quiz me on uncommitted changes" from VS Code's source control view names the repo.
+  const [params, setParams] = useSearchParams();
+  const wantRepo = params.get("repo");
   const [spec, setSpec] = useState<DiffSpec>(() => {
-    let repo: string | undefined;
-    try {
+    let repo: string | undefined = wantRepo || undefined;
+    if (!repo) try {
       repo = sessionStorage.getItem(repoKey) || undefined;
     } catch {
       /* ignore */
@@ -62,6 +66,14 @@ export function ChangesPage() {
     // Refs differ per repo, so start again from HEAD vs the working tree.
     setSpec({ repo: path, base: "HEAD", head: "" });
   };
+
+  // The same command again while this page is open, maybe for another repo.
+  useEffect(() => {
+    if (!wantRepo) return;
+    pickRepo(wantRepo);
+    setParams({}, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wantRepo]);
 
   const ready = !!repo && spec.repo === repo.path;
   const q = (extra: string) => `/projects/${project.id}/${extra}${extra.includes("?") ? "&" : "?"}repo=${encodeURIComponent(spec.repo ?? "")}`;

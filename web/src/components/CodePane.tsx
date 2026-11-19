@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { FileContent } from "@core/types";
 import { get } from "@/lib/api";
 import { langOf } from "@/lib/path";
+import { embedded, toEditor } from "@/lib/embed";
 import { useProject } from "@/lib/project";
 import { CodeView } from "./CodeView";
 import { Empty, ErrorNote, Spinner } from "./ui";
@@ -34,6 +35,10 @@ export function CodePane({
         <>
           <div className="flex items-center gap-2 border-b border-line px-4 py-2 font-mono text-[13px] text-muted">
             <span className="min-w-0 flex-1 truncate">{title ?? rel(file)}{line ? `:${line}` : ""}</span>
+            {/* Inside VS Code: open the real file at this line. Not for a given text (a bug-hunt copy). */}
+            {embedded && text === undefined && (
+              <button className="text-xs hover:text-ink" title="Open this file in the editor" onClick={() => toEditor({ type: "reveal", path: file, line: line ?? undefined })}>open in editor</button>
+            )}
             {onClose && <button className="text-xs hover:text-ink" onClick={onClose}>close</button>}
           </div>
           <div className="min-h-0 flex-1 overflow-auto">

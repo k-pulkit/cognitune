@@ -1,8 +1,10 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CheckSquare, FolderPlus, Layers, Square, X } from "lucide-react";
+import { CheckSquare, ExternalLink, FolderPlus, Layers, Square, X } from "lucide-react";
 import type { FileContent, FileProgress, Note, TreeNode } from "@core/types";
 import { get, patch } from "@/lib/api";
+import { embedded, toEditor } from "@/lib/embed";
 import { useProject } from "@/lib/project";
 import { shortPath } from "@/lib/path";
 import { ActionPanel } from "@/components/ActionPanel";
@@ -14,11 +16,25 @@ import { Split } from "@/components/Split";
 import { Badge, Button, Empty, ErrorNote, Spinner } from "@/components/ui";
 import { Compass } from "lucide-react";
 
+/** More files than this from one "Lens these files" would not fit a model's context anyway. */
+const MAX_PICK = 200;
+
 export function ExplorePage() {
   const { project, selected, setSelected, toggle, openFile, setOpenFile, focusLine, rel } = useProject();
   const qc = useQueryClient();
   const [addingCtx, setAddingCtx] = useState(false);
   const [carding, setCarding] = useState(false);
+  // ?open=<path>&line=<n>: "Lens this file" in VS Code. The file becomes the only context, so the
+  // lens on the right is about it; the param is then dropped so a reload doesn't redo it.
+  const [params, setParams] = useSearchParams();
+  const want = params.get("open");
+  const wantLine = Number(params.get("line")) || undefined;
+  useEffect(() => {
+    if (!want) return;
+    setOpenFile(want, wantLine);
+    setSelected([]);
+    setParams({}, { replace: true });
+  }, [want, wantLine, setOpenFile, setSelected, setParams]);
   const notes = useQuery({
     queryKey: ["notes", project.id, openFile],
     queryFn: () => get<Note[]>(`/projects/${project.id}/notes?file=${encodeURIComponent(openFile!)}`),
@@ -29,6 +45,27 @@ export function ExplorePage() {
     [notes.data],
   );
   const tree = useQuery({ queryKey: ["tree", project.id, project.contexts], queryFn: () => get<TreeNode[]>(`/projects/${project.id}/tree`) });
+  // ?pick=<path>&pick=...: "Lens these files" in VS Code. Folders become the files under them
+  // (as the tree lists them, so ignored files stay out); the picks replace the ticked files.
+  const picks = params.getAll("pick");
+  const pickKey = picks.join("\n");
+  useEffect(() => {
+    if (!pickKey || !tree.data) return;
+    const want = new Set(pickKey.split("\n"));
+    const files: string[] = [];
+    const walk = (nodes: TreeNode[], inside: boolean) => {
+      for (const n of nodes) {
+        const hit = inside || want.has(n.path);
+        if (n.kind === "file") {
+          if (hit) files.push(n.path);
+        } else walk(n.children ?? [], hit);
+      }
+    };
+    walk(tree.data, false);
+    setSelected(files.slice(0, MAX_PICK));
+    if (files[0]) setOpenFile(files[0]);
+    setParams({}, { replace: true });
+  }, [pickKey, tree.data, setSelected, setOpenFile, setParams]);
   const progress = useQuery({ queryKey: ["progress", project.id], queryFn: () => get<FileProgress[]>(`/projects/${project.id}/progress`) });
   const file = useQuery({
     queryKey: ["file", project.id, openFile],
@@ -98,6 +135,10 @@ export function ExplorePage() {
             {file.data && <Badge>{file.data.lang}</Badge>}
             {levels.get(openFile) && levels.get(openFile) !== "new" && (
               <Badge tone={levels.get(openFile) === "understood" ? "good" : levels.get(openFile) === "stale" ? "warn" : "muted"}>{levels.get(openFile)}</Badge>
+            )}
+            {embedded && (
+              <Button size="sm" variant="ghost" icon={<ExternalLink className="h-3.5 w-3.5" />} title="Open this file in the editor, at the clicked line"
+                onClick={() => toEditor({ type: "reveal", path: openFile, line: focusLine ?? undefined })} />
             )}
             <Button size="sm" variant="ghost" icon={<Layers className="h-3.5 w-3.5" />} title="Make a review card about this file (click a line first to pin it)" onClick={() => setCarding(true)}>
               Card

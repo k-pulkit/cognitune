@@ -10,6 +10,7 @@ import { HelpPage } from "@/pages/Help";
 import { createBrowserRouter, Navigate, Outlet, RouterProvider, useParams } from "react-router-dom";
 import { Shell } from "./components/Shell";
 import { Empty, Button } from "./components/ui";
+import { EmbedBridge } from "./lib/embed";
 import { ProjectProvider } from "./lib/project";
 import { ProjectsPage } from "./pages/Projects";
 import { ExplorePage } from "./pages/Explore";
@@ -56,7 +57,7 @@ function ProjectRoute() {
 
 const router = createBrowserRouter([
   {
-    element: <Shell />,
+    element: <><Shell /><EmbedBridge /></>,
     children: [
       { path: "/", element: <ProjectsPage /> },
       { path: "/settings", element: <SettingsPage /> },

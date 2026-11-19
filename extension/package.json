@@ -1,0 +1,281 @@
+{
+  "name": "cognitune",
+  "displayName": "cognitune",
+  "description": "Understand the code you (or an AI) wrote: lenses that explain, quizzes that prove you got it, review that keeps it. In a panel beside your code.",
+  "version": "0.3.5",
+  "publisher": "cognitune",
+  "license": "MIT",
+  "icon": "icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/k-pulkit/cognitune.git"
+  },
+  "homepage": "https://github.com/k-pulkit/cognitune#readme",
+  "bugs": {
+    "url": "https://github.com/k-pulkit/cognitune/issues"
+  },
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Education",
+    "Other"
+  ],
+  "keywords": [
+    "learning",
+    "code understanding",
+    "quiz",
+    "spaced repetition",
+    "claude",
+    "onboarding"
+  ],
+  "extensionKind": [
+    "workspace"
+  ],
+  "main": "./out/extension.cjs",
+  "activationEvents": [],
+  "contributes": {
+    "commands": [
+      {
+        "command": "cognitune.open",
+        "title": "Open",
+        "category": "cognitune",
+        "icon": "$(home)"
+      },
+      {
+        "command": "cognitune.lensFile",
+        "title": "Open this file in cognitune",
+        "category": "cognitune",
+        "icon": {
+          "light": "media/lens-light.svg",
+          "dark": "media/lens-dark.svg"
+        }
+      },
+      {
+        "command": "cognitune.lensSelection",
+        "title": "Open in cognitune",
+        "category": "cognitune",
+        "icon": {
+          "light": "media/lens-light.svg",
+          "dark": "media/lens-dark.svg"
+        }
+      },
+      {
+        "command": "cognitune.quizChanges",
+        "title": "Quiz me on uncommitted changes",
+        "category": "cognitune",
+        "icon": "$(git-compare)"
+      },
+      {
+        "command": "cognitune.review",
+        "title": "Review due cards",
+        "category": "cognitune"
+      },
+      {
+        "command": "cognitune.refresh",
+        "title": "Refresh",
+        "category": "cognitune",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "cognitune.explain",
+        "title": "Explain",
+        "category": "cognitune",
+        "icon": "$(lightbulb)"
+      },
+      {
+        "command": "cognitune.flow",
+        "title": "Data flow",
+        "category": "cognitune",
+        "icon": "$(arrow-swap)"
+      },
+      {
+        "command": "cognitune.failure",
+        "title": "Failure modes",
+        "category": "cognitune",
+        "icon": "$(warning)"
+      },
+      {
+        "command": "cognitune.lensPick",
+        "title": "More lenses\u2026",
+        "category": "cognitune",
+        "icon": "$(list-unordered)"
+      },
+      {
+        "command": "cognitune.quiz",
+        "title": "Quiz me",
+        "category": "cognitune",
+        "icon": "$(checklist)"
+      },
+      {
+        "command": "cognitune.tutor",
+        "title": "Ask the tutor\u2026",
+        "category": "cognitune",
+        "icon": "$(comment-discussion)"
+      },
+      {
+        "command": "cognitune.teach",
+        "title": "Teach it back\u2026",
+        "category": "cognitune",
+        "icon": "$(mortar-board)"
+      },
+      {
+        "command": "cognitune.walk",
+        "title": "Walk me through",
+        "category": "cognitune",
+        "icon": "$(debug-step-over)"
+      },
+      {
+        "command": "cognitune.hunt",
+        "title": "Bug hunt",
+        "category": "cognitune",
+        "icon": "$(bug)"
+      },
+      {
+        "command": "cognitune.practice",
+        "title": "Practice",
+        "category": "cognitune",
+        "icon": "$(tools)"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "cognitune.lensFile",
+          "when": "resourceScheme == file",
+          "group": "navigation@90"
+        }
+      ],
+      "editor/context": [
+        {
+          "submenu": "cognitune.menu",
+          "group": "z_cognitune",
+          "when": "resourceScheme == file"
+        }
+      ],
+      "explorer/context": [
+        {
+          "submenu": "cognitune.menu",
+          "group": "z_cognitune",
+          "when": "resourceScheme == file"
+        }
+      ],
+      "scm/title": [
+        {
+          "command": "cognitune.quizChanges",
+          "when": "scmProvider == git",
+          "group": "navigation@90"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "cognitune.refresh",
+          "when": "view == cognitune.actions",
+          "group": "navigation"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "cognitune.refresh",
+          "when": "false"
+        },
+        {
+          "command": "cognitune.lensSelection",
+          "when": "false"
+        }
+      ],
+      "cognitune.menu": [
+        {
+          "command": "cognitune.explain",
+          "group": "1_lens@1"
+        },
+        {
+          "command": "cognitune.flow",
+          "group": "1_lens@2"
+        },
+        {
+          "command": "cognitune.failure",
+          "group": "1_lens@3"
+        },
+        {
+          "command": "cognitune.lensPick",
+          "group": "1_lens@4"
+        },
+        {
+          "command": "cognitune.quiz",
+          "group": "2_check@1"
+        },
+        {
+          "command": "cognitune.tutor",
+          "group": "2_check@2"
+        },
+        {
+          "command": "cognitune.teach",
+          "group": "2_check@3"
+        },
+        {
+          "command": "cognitune.walk",
+          "group": "3_one@1",
+          "when": "!explorerResourceIsFolder && !listMultiSelection"
+        },
+        {
+          "command": "cognitune.hunt",
+          "group": "3_one@2",
+          "when": "!explorerResourceIsFolder && !listMultiSelection"
+        },
+        {
+          "command": "cognitune.practice",
+          "group": "3_one@3"
+        },
+        {
+          "command": "cognitune.lensFile",
+          "group": "4_open@1",
+          "when": "!explorerResourceIsFolder && !listMultiSelection"
+        },
+        {
+          "command": "cognitune.lensSelection",
+          "group": "4_open@2",
+          "when": "listMultiSelection || explorerResourceIsFolder"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "cognitune",
+      "properties": {
+        "cognitune.port": {
+          "type": "number",
+          "default": 4711,
+          "description": "Port of the cognitune server. A server already running there (e.g. started with `npx cognitune`) is reused; otherwise the bundled one starts on it."
+        }
+      }
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "cognitune",
+          "title": "cognitune",
+          "icon": "media/activity.svg"
+        }
+      ]
+    },
+    "views": {
+      "cognitune": [
+        {
+          "id": "cognitune.actions",
+          "name": "Actions",
+          "icon": "media/activity.svg"
+        }
+      ]
+    },
+    "submenus": [
+      {
+        "id": "cognitune.menu",
+        "label": "cognitune",
+        "icon": {
+          "light": "media/lens-light.svg",
+          "dark": "media/lens-dark.svg"
+        }
+      }
+    ]
+  }
+}
