@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.7 (2026-11-19)
+
+Release check, no feature changes:
+
+- The VS Code extension now publishes to the Marketplace from the release workflow (trusted publishing),
+  on the same tag as npm.
+
 ## 0.3.6 (2026-11-19)
 
 New: **cognitune for VS Code** (`k-pulkit.cognitune`, also attached to each GitHub Release as a `.vsix`).
