@@ -164,14 +164,17 @@ export function createApi(store: Store, opts: { pruneEveryMs?: number } = {}) {
     const p = project(c);
     const req = await body<{
       files: string[]; kind: string; question?: string; diff?: DiffSpec; sketch?: string; traceInput?: string; depth?: "overview" | "standard" | "deep";
+      steer?: string;
     }>(c);
     return startJob(c, "lens", p, (l) => l.lens(p, { ...req, files: req.files ?? [] }));
   });
-  api.post("/projects/:pid/lenses/:id/refresh", (c) => {
+  /** Refresh (the code changed) or rework (a steer, maybe another depth): a new lens replaces this one. */
+  api.post("/projects/:pid/lenses/:id/refresh", async (c) => {
     const p = project(c);
     const id = c.req.param("id");
     if (!store.get(p.id, "lenses", id)) return fail(c, 404, "lens not found");
-    return startJob(c, "lens", p, (l) => l.lens(p, { files: [], kind: "", refreshOf: id }));
+    const req = await body<{ steer?: string; depth?: "overview" | "standard" | "deep" }>(c);
+    return startJob(c, "lens", p, (l) => l.lens(p, { files: [], kind: "", refreshOf: id, steer: req.steer, depth: req.depth, rework: req.steer !== undefined || !!req.depth }));
   });
   api.post("/projects/:pid/lenses/:id/more", async (c) => {
     const p = project(c);

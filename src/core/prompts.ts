@@ -62,8 +62,43 @@ export const LENS_KINDS: LensKind[] = [
   },
 ];
 
+/** How lenses cite code, so the page can turn each citation into a link that opens the file at that line. */
+const CITE = `Cite code as \`relative/path/file.ext:12\` or \`relative/path/file.ext:12-20\`, in backticks, with the
+path as the input gives it. After naming a file once in a paragraph you may write \`:12-20\` for the same file.
+In a step's body, \`:12\` and "line 12" mean that step's own file. Elsewhere (summary, intuition, gotchas) always
+name the file. Never cite a line you did not see.`;
+
+/**
+ * How every explanation reads (lenses and walkthroughs). The reader should follow it on the first read,
+ * without re-reading a sentence or decoding shorthand.
+ */
+const READABLE = `How it must read:
+- Plain, full sentences. No clipped shorthand, no dropped words, no arrows or symbols standing in for verbs.
+- One idea at a time. Finish it before starting the next; a paragraph holds one idea.
+- Start with a concrete example using real names and values from the code, then give the general rule.
+- Do not invent labels or abbreviations ("R1", "P4", "step 3", "the X path"). Say the thing by name each time.
+- Explain a term in a few words the first time it is used.
+- Leave out edge cases and alternatives that do not change the answer.
+- Short paragraphs over nested bullets. Use a list only for real sequences or parallel options.
+- At most two code citations per sentence; put the rest in the next sentence or leave them out.`;
+
+/**
+ * How a lens is organised, for every kind: answer first, steps grouped under the parts of the answer,
+ * side findings kept out of the steps.
+ */
+const SHAPE = `Shape of the lesson:
+- Answer the question first. If it asks to decide or compare ("can we", "should we", "which", "when do we need"),
+  give "verdict": the decision and the conditions it depends on, as a small markdown table (When | Do, or Option |
+  Use it when | Watch out) of 2-5 rows, or 2-3 sentences if there are no conditions. Otherwise leave it empty.
+- Group the steps into 2-4 PARTS when there are 5 or more steps. A part's name is a short heading that is a piece
+  of the answer ("How the window is chosen today", "What a fixed window replaces", "What still needs target
+  state"), not a file name. Parts follow the question; inside a part, build understanding (data shapes first).
+- A fact that is true and useful but does not help answer the question (a stale docstring, a risk elsewhere)
+  goes in "alsoNoticed", one sentence each with its citation, not in a step.`;
+
 const STYLE = `Write for a capable engineer who is new to this code. Plain, short sentences. Name real
 files and line numbers from the input (the numbers before "|"). Never invent code that is not in the input.
+${CITE}
 Return ONLY one JSON object inside a single \`\`\`json fence. No text outside the fence.`;
 
 export type LensDepth = "overview" | "standard" | "deep";
@@ -74,7 +109,7 @@ const DEPTH: Record<LensDepth, { steps: string; words: number; note: string; con
     note: "The reader wants the big picture in 3 minutes. Skip details that do not change the mental model.",
   },
   standard: {
-    steps: "5-8", words: 120, concepts: "3-6", gotchas: "2-5",
+    steps: "5-7", words: 120, concepts: "3-6", gotchas: "2-5",
     note: "The reader wants to be able to change this code safely after reading. Give one concrete example with real values in the steps that carry logic.",
   },
   deep: {
@@ -113,14 +148,16 @@ How to teach (this matters more than coverage):
   Use **bold** at most once per field, for the one phrase that matters.
 - One idea per step. The step title is that idea as a CLAIM the reader learns ("Layer 1 only sees manifests, so
   code edits never bust it"), not a label ("Layer 1").
-- Steps go in the order that builds understanding (entry point and data shapes first), not file order. Each
-  step's "explain" connects to the step before.
+- Steps follow the question (see Shape), not file order. Each step connects to the step before.
 - Each step points at a SHORT line range (3-25 lines) that shows the idea; the page shows those lines next to
   your text, so do not repeat the code.
 - If you have file tools, you may open other files in the repo (callers, the types it uses, its tests) to explain
   how this code is used. Cite them with real paths. If you cannot see something, leave it out instead of
   guessing or saying you did not look.
 Name real files and line numbers from the input (the numbers before "|"). Never invent code.
+${CITE}
+${READABLE}
+${SHAPE}
 Return ONLY one JSON object inside a single \`\`\`json fence. No text outside the fence.
 
 JSON shape:
@@ -128,7 +165,8 @@ JSON shape:
   "title": "short title, max 8 words",
   "tldr": "ONE sentence: the mental model that answers the question",
   "whyItMatters": "1-2 sentences: what goes wrong for someone who does not know this",
-  "summary": "markdown, at most 3 short sentences: the answer in plain words, expanding the tldr. If there is more to say, it belongs in the steps",
+  "summary": "markdown, at most 3 short sentences: the answer in plain words, expanding the tldr, no table. If there is more to say, it belongs in the steps",
+  "verdict": "markdown or empty: the decision table, only for a decide/compare question (see Shape)",
   "concepts": [{"term": "name", "explain": "1-2 plain sentences", "example": "a tiny concrete example or analogy", "file": "relative/path", "line": 12}],  // ${d.concepts} items, only terms the reader needs first
   "intuition": "markdown: the core idea with toy data walked through as numbered steps, and/or a small mermaid diagram (\`\`\`mermaid fenced, max 12 nodes, flowchart or sequenceDiagram, short sentence-case labels, never ALL CAPS; prefer flowchart TD when it has more than 5 nodes)",
   "deepDives": [{
@@ -136,9 +174,11 @@ JSON shape:
     "file": "relative/path", "startLine": 10, "endLine": 24, "line": 12,   // line = the single key line
     "body": "markdown, up to ${d.words} words, in short paragraphs: why this part exists and how it works; connect to the previous step",
     "pitfall": "optional: a mistake people make here, or what breaks if you change it",
-    "check": {"q": "a short question the reader should now be able to answer", "a": "the answer, 1-2 sentences"}
-  }],  // ${d.steps} items, in teaching order
-  "gotchas": ["surprising behaviour, edge cases or traps, 1 sentence each, with the line"],   // ${d.gotchas} items
+    "check": {"q": "a short question the reader should now be able to answer", "a": "the answer, 1-2 sentences"},
+    "part": "the part of the answer this step belongs to (same text for every step in the part), or empty"
+  }],  // ${d.steps} items, in the order of the parts
+  "gotchas": ["surprising behaviour, edge cases or traps, 1 sentence each, with the citation"],   // ${d.gotchas} items
+  "alsoNoticed": ["a useful fact that does not answer the question, 1 sentence with its citation"],   // 0-5 items
   "nextSteps": [{"file": "relative/path", "why": "what reading it next will teach"}]       // 1-3 items, files that exist
 }`;
 }
@@ -149,8 +189,8 @@ JSON shape:
 
 export const SCREENS: Record<LensDepth, { size: string; steps: string; paras: string; concepts: string; gotchas: string }> = {
   overview: { size: "about 1.5 screens", steps: "3-4", paras: "1-2 short paragraphs", concepts: "2-4", gotchas: "1-3" },
-  standard: { size: "at least 3 screens", steps: "6-9", paras: "2-3 paragraphs", concepts: "4-6", gotchas: "3-5" },
-  deep: { size: "5 to 6 screens, a long blog post", steps: "11-15", paras: "3-5 paragraphs", concepts: "5-9", gotchas: "5-8" },
+  standard: { size: "about 3 screens", steps: "5-7", paras: "2-3 paragraphs", concepts: "4-6", gotchas: "3-5" },
+  deep: { size: "about 4 to 5 screens, a long blog post", steps: "7-9", paras: "3-4 paragraphs", concepts: "5-8", gotchas: "4-6" },
 };
 
 const TEACH = `How to teach (this matters more than coverage):
@@ -163,7 +203,9 @@ const TEACH = `How to teach (this matters more than coverage):
   line between them, a bullet list when there are 3+ parallel items. Never one long block of text.
 - Every field is markdown. Put identifiers, file names, functions, fields and values in \`backticks\`.
   Use **bold** at most once per field.
-- Name real files and line numbers from the input (the numbers before "|"). Never invent code.`;
+- Name real files and line numbers from the input (the numbers before "|"). Never invent code.
+${CITE}
+${READABLE}`;
 
 export function lensPlanSystem(x: { depth?: LensDepth; trace?: boolean } = {}): string {
   const d = SCREENS[x.depth ?? "standard"];
@@ -174,10 +216,12 @@ Read all the code first. If you have file tools, open callers, the types it uses
 covers how this code is really used.
 
 Target size of the finished page: ${d.size}. Choose the number of steps for that size (${d.steps} steps).
-Do not cut short: for a longer page, cover every branch, early return, fallback, error path and default, not only
-the happy path, and give each its own step. Teach in the order that builds understanding (entry point and data
-shapes first), not file order. Each step is ONE idea, titled as a CLAIM the reader learns ("Layer 1 only sees
-manifests, so code edits never bust it"), not a label.
+Cover what the question needs: the branches, fallbacks, error paths and defaults that change the answer, not
+every line. A step that does not help answer the question is a candidate for "alsoNoticed" instead. Each step is
+ONE idea, titled as a CLAIM the reader learns ("Layer 1 only sees manifests, so code edits never bust it"), not a
+label. Keep titles short (under 14 words) so the outline can be skimmed.
+
+${SHAPE}
 
 ${TEACH}
 ${STYLE}
@@ -188,6 +232,7 @@ JSON shape:
   "tldr": "ONE sentence: the mental model that answers the question",
   "whyItMatters": "1-2 sentences: what goes wrong for someone who does not know this",
   "reader": "who this is for and what they can do after reading, 1 sentence",
+  "verdict": "markdown or empty: the decision table, only for a decide/compare question (see Shape)",
   "concepts": [{"term": "name", "note": "what to explain and the line it shows up at", "file": "relative/path", "line": 12}],  // ${d.concepts} terms the reader needs first
   "intuition": {"example": "a toy input with real values to walk through, and the numbered stages it goes through", "diagram": "what a mermaid diagram should show (flowchart TD or sequenceDiagram, max 12 nodes), or empty"},
   "steps": [{
@@ -198,9 +243,11 @@ JSON shape:
     "edge": "the edge case, ordering rule or failure path that touches this part, or empty",
     "why": "why it is built this way and what a change would break",
     "pitfall": "a real mistake or breaking change to warn about, or empty",
-    "check": "an idea for a question that needs reasoning, not recall"
+    "check": "an idea for a question that needs reasoning, not recall",
+    "part": "the part of the answer this step belongs to (same text for every step in it), or empty if under 5 steps"
   }],
-  "gotchas": ["a trap, 1 sentence, with the line"],   // ${d.gotchas}
+  "gotchas": ["a trap, 1 sentence, with the citation"],   // ${d.gotchas}
+  "alsoNoticed": ["a useful fact that does not answer the question, 1 sentence with its citation"],   // 0-5
   "nextSteps": [{"file": "relative/path", "why": "what reading it next will teach"}]   // 2-3 real files
 }`;
 }
@@ -221,7 +268,7 @@ ${STYLE}
 
 JSON shape:
 {
-${extra ? extra + "\n" : ""}  "summary": "markdown, at most 3 short sentences: the answer in plain words, expanding the tldr",
+${extra ? extra + "\n" : ""}  "summary": "markdown, at most 3 short sentences: the answer in plain words, expanding the tldr. No table: the plan's verdict is shown right below it",
   "concepts": [{"term": "name", "explain": "1-2 plain sentences", "example": "a tiny concrete example or analogy", "file": "relative/path", "line": 12}],  // the planner's terms, ${d.concepts} items
   "intuition": "markdown: the core idea walked through with the planner's toy input as numbered stages${x.depth === "overview" ? "" : ", AND a mermaid diagram (```mermaid fenced, max 12 nodes, short sentence-case labels, flowchart TD when more than 5 nodes)"}",
   "gotchas": ["surprising behaviour or trap, 1 sentence each, with the line"],   // ${d.gotchas} items, from the plan
@@ -249,11 +296,14 @@ JSON shape:
 { "steps": [{"index": 3, "body": "markdown", "pitfall": "...", "check": {"q": "...", "a": "..."}}] }   // one item per requested step, same "index" as in the plan (0-based)`;
 }
 
-export function lensWritePrompt(question: string, plan: unknown, files: string, x: { steps?: [number, number]; titles?: string[]; extras?: LensExtras } = {}): string {
+export function lensWritePrompt(
+  question: string, plan: unknown, files: string, x: { steps?: [number, number]; titles?: string[]; extras?: LensExtras; steer?: string } = {},
+): string {
   const e = x.extras;
+  const steer = x.steer ?? e?.steer;
   return `QUESTION: ${question}
 
-${e?.sketch ? `SKETCH (the learner's own take, written before the lesson):\n${e.sketch}\n\n` : ""}${
+${steer ? `READER'S STEER (follow it in how you write):\n${steer}\n\n` : ""}${e?.sketch ? `SKETCH (the learner's own take, written before the lesson):\n${e.sketch}\n\n` : ""}${
     e?.traceInput !== undefined ? `TRACE INPUT: ${e.traceInput || "(pick a small, typical input that exercises the main path)"}\n\n` : ""
   }PLAN (from the planner; follow it):
 ${JSON.stringify(plan, null, 1)}
@@ -289,6 +339,10 @@ export interface LensExtras {
   history?: string;
   /** Refresh: what the old lens said, so the new one can say what changed. */
   previous?: string;
+  /** The refresh is a rework the reader asked for, not a code change: "previous" is what to improve on. */
+  rework?: boolean;
+  /** The reader's extra instruction for this lesson. */
+  steer?: string;
   notes?: string;
 }
 
@@ -310,9 +364,11 @@ export function lensSystem(x: { sketch?: boolean; trace?: boolean; depth?: LensD
 export function lensPrompt(question: string, files: string, x: LensExtras = {}): string {
   return `QUESTION: ${question}
 
-${x.sketch ? `SKETCH (the learner's own take, written before reading your lesson):\n${x.sketch}\n\n` : ""}${
+${x.steer ? `READER'S STEER (follow it; where it conflicts with the default shape or size, the steer wins):\n${x.steer}\n\n` : ""}${x.sketch ? `SKETCH (the learner's own take, written before reading your lesson):\n${x.sketch}\n\n` : ""}${
     x.traceInput !== undefined ? `TRACE INPUT: ${x.traceInput || "(pick a small, typical input that exercises the main path)"}\n\n` : ""
-  }${x.previous ? `AN EARLIER LESSON ON THIS CODE SAID (the code has changed since; say what is different now):\n${x.previous}\n\n` : ""}${
+  }${x.previous ? (x.rework
+    ? `THE EARLIER VERSION OF THIS LESSON (the reader asked for a rework; write a better one as the steer asks, do not copy it):\n${x.previous}\n\n`
+    : `AN EARLIER LESSON ON THIS CODE SAID (the code has changed since; say what is different now):\n${x.previous}\n\n`) : ""}${
     x.history ? `GIT HISTORY (newest first):\n${x.history}\n\n` : ""
   }${x.diff ? `THE CHANGE (unified diff):\n${x.diff}\n\n` : ""}${x.notes ? `THE LEARNER'S NOTES:\n${x.notes}\n\n` : ""}CODE:
 ${files}`;
@@ -510,6 +566,7 @@ Each block is a range of whole lines (1-based, inclusive, from the numbers befor
 boilerplate (imports, logging). why: why this block matters and how it connects to the previous one (1-2 sentences).
 question: one check question about the block's behaviour or reason, answerable from the block in 1-2 sentences.
 Do not put the answer in the question.
+${READABLE}
 ${STYLE}
 
 JSON shape:
@@ -527,6 +584,7 @@ For each block decide what the writer must teach and which concrete example will
 values ("push(3) on an empty queue"), a small usage snippet, or a before/after. Plan a question that asks the
 learner to PREDICT or REASON about a concrete case ("what does it return for ...? why?"), never one that asks
 them to paraphrase the code.
+${READABLE}
 ${STYLE}
 
 JSON shape:
@@ -552,6 +610,7 @@ For each block write:
   before/after). The snippet may be illustrative calling code, but it must match the real names and signatures.
 - "question": one check question about a concrete case the learner must predict or reason about, answerable in 1-3
   sentences from the block and your text. Do not put the answer in the question.
+${READABLE}
 ${STYLE}
 
 JSON shape:

@@ -1,6 +1,7 @@
 import { type CSSProperties, createContext, memo, useContext, useEffect, useId, useMemo, useState } from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { type CodeRef, linkifyCode, parseCodeHref } from "@/lib/lines";
 import { useIsDark } from "@/lib/theme";
 
 let shikiPromise: Promise<typeof import("shiki")> | null = null;
@@ -140,6 +141,9 @@ const BASE: Components = {
     return <pre>{c}</pre>;
   },
   a: function Link({ href, children: c }) {
+    const code = useContext(CodeClick);
+    const target = code && parseCodeHref(href);
+    if (target) return <CodeLink target={target} open={code!.open}>{c}</CodeLink>;
     const onLineClick = useContext(LineClick);
     const ref = onLineClick && /^codeline:(\d+)-(\d+)$/.exec(href ?? "");
     if (ref) return <button type="button" className="codeline" onClick={() => onLineClick(Number(ref[1]), Number(ref[2]))}>{c}</button>;
@@ -149,27 +153,55 @@ const BASE: Components = {
 
 const keepUrl = (url: string) => url;
 
+/**
+ * Code citations in the text become links (see linkifyCode): `resolve` turns a cited path into a
+ * real file, `current` is the file a bare line means, `open` handles a click (the event says if
+ * Ctrl/Cmd was held).
+ */
+export interface CodeLinks {
+  resolve: (path: string) => string | undefined;
+  current?: string;
+  open: (ref: CodeRef, e: React.MouseEvent) => void;
+}
+const CodeClick = createContext<CodeLinks | undefined>(undefined);
+
+function CodeLink({ target, open, children: c }: { target: CodeRef; open: CodeLinks["open"]; children: React.ReactNode }) {
+  const at = target.from === target.to ? `line ${target.from}` : `lines ${target.from}-${target.to}`;
+  return (
+    <button type="button" className="codeline" title={`${target.file.split("/").pop()}, ${at}`} onClick={(e) => open(target, e)}>
+      {c}
+    </button>
+  );
+}
+
 export const Markdown = memo(function Markdown({
-  children, className, onLineClick,
+  children, className, onLineClick, code,
 }: {
   children: string;
   className?: string;
   /** Jump the code pane to a line range named in the text (see linkifyLines). */
   onLineClick?: (from: number, to: number) => void;
+  /** Turn code citations into links (lens pages). */
+  code?: CodeLinks;
 }) {
-  const md = useMemo(() => arrows(children), [children]);
+  const md = useMemo(
+    () => (code ? linkifyCode(arrows(children), code.resolve, code.current) : arrows(children)),
+    [children, code],
+  );
   return (
     <div className={className ? `prose-g ${className}` : "prose-g"}>
       <LineClick.Provider value={onLineClick}>
-        <ReactMarkdown
-          remarkPlugins={PLUGINS}
-          // react-markdown's default urlTransform drops unknown schemes (it would silently empty
-          // out our codeline: links); only loosen it where that pseudo-scheme is actually in use.
-          urlTransform={onLineClick ? keepUrl : undefined}
-          components={BASE}
-        >
-          {md}
-        </ReactMarkdown>
+        <CodeClick.Provider value={code}>
+          <ReactMarkdown
+            remarkPlugins={PLUGINS}
+            // react-markdown's default urlTransform drops unknown schemes (it would silently empty
+            // out our codeline: and code: links); only loosen it where those are actually in use.
+            urlTransform={onLineClick || code ? keepUrl : undefined}
+            components={BASE}
+          >
+            {md}
+          </ReactMarkdown>
+        </CodeClick.Provider>
       </LineClick.Provider>
     </div>
   );
@@ -177,18 +209,28 @@ export const Markdown = memo(function Markdown({
 
 const INLINE: Components = {
   p: ({ children: c }) => <>{c}{" "}</>,
-  a: ({ href, children: c }) => <a href={href} target="_blank" rel="noreferrer">{c}</a>,
+  a: function InlineLink({ href, children: c }) {
+    const code = useContext(CodeClick);
+    const target = code && parseCodeHref(href);
+    if (target) return <CodeLink target={target} open={code!.open}>{c}</CodeLink>;
+    return <a href={href} target="_blank" rel="noreferrer">{c}</a>;
+  },
 };
 
 /**
  * Markdown for one short field (a summary, a concept, a check question): `code`, **bold**,
  * *italic* and links render; paragraphs become plain text runs so it can sit inside a sentence.
  */
-export const Inline = memo(function Inline({ children, className }: { children: string; className?: string }) {
-  const md = useMemo(() => arrows(children), [children]);
+export const Inline = memo(function Inline({ children, className, code }: { children: string; className?: string; code?: CodeLinks }) {
+  const md = useMemo(
+    () => (code ? linkifyCode(arrows(children), code.resolve, code.current) : arrows(children)),
+    [children, code],
+  );
   return (
     <span className={className ? `md-inline ${className}` : "md-inline"}>
-      <ReactMarkdown remarkPlugins={PLUGINS} components={INLINE}>{md}</ReactMarkdown>
+      <CodeClick.Provider value={code}>
+        <ReactMarkdown remarkPlugins={PLUGINS} components={INLINE} urlTransform={code ? keepUrl : undefined}>{md}</ReactMarkdown>
+      </CodeClick.Provider>
     </span>
   );
 });

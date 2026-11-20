@@ -68,6 +68,8 @@ export function ActionPanel({
   const [tab, setTab] = useState<Activity>(() => (ACTIVITIES.some((a) => a.id === params.get("do")) ? (params.get("do") as Activity) : "lens"));
   const [kind, setKind] = useState(diff ? "change" : "explain");
   const [question, setQuestion] = useState("");
+  /** Extra instruction for how the lens is written, on top of the lens kind or question. */
+  const [steer, setSteer] = useState("");
   const [sketchFirst, setSketchFirst] = useState(false);
   const [sketch, setSketch] = useState("");
   const [traceInput, setTraceInput] = useState("");
@@ -106,6 +108,7 @@ export function ActionPanel({
       {
         files, kind: question.trim() ? "custom" : kind, question: question.trim() || undefined, diff,
         sketch: sketchFirst ? sketch.trim() || undefined : undefined,
+        steer: steer.trim() || undefined,
         traceInput: kind === "trace" ? traceInput : undefined,
         depth,
       },
@@ -241,6 +244,16 @@ export function ActionPanel({
                 value={question}
                 onChange={(e) => setQuestion(e.target.value)}
               />
+            </section>
+            <section>
+              <div className="label">Steer it (optional)</div>
+              <textarea
+                className="input min-h-[52px] resize-y"
+                placeholder="e.g. Focus on how the window is chosen; skip the audit model. Use a table for the options."
+                value={steer}
+                onChange={(e) => setSteer(e.target.value)}
+              />
+              <p className="mt-1 text-[12px] text-muted">How to write it, not what to ask: focus, skip, length, format. Kept when the lens is refreshed.</p>
             </section>
             <section className="rounded-lg border border-line p-3">
               <label className="flex cursor-pointer items-center gap-2 text-[14px] font-medium">

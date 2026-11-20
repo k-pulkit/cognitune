@@ -80,6 +80,8 @@ export interface DeepDive {
   body: string;
   pitfall?: string;
   check?: { q: string; a: string };
+  /** The part of the answer this step belongs to; consecutive steps with one part sit under one heading. */
+  part?: string;
 }
 
 export interface Lens {
@@ -112,6 +114,12 @@ export interface Lens {
   trace?: Trace;
   /** Questions asked after reading, each answered on top of the lens (oldest first). */
   followUps?: LensFollowUp[];
+  /** Markdown: the decision, for a "can we / should we / which" question; often a small When | Do table. */
+  verdict?: string;
+  /** True and useful facts that do not answer the question; shown folded at the end. */
+  alsoNoticed?: string[];
+  /** The reader's extra instruction for how to write it ("focus on X", "shorter"); kept on refresh. */
+  steer?: string;
 }
 
 export interface LensFollowUp {

@@ -11,6 +11,7 @@ export function lensMarkdown(l: Lens, ws: Workspace): string {
   if (l.tldr) out.push(`**TL;DR:** ${l.tldr}`, "");
   if (l.whyItMatters) out.push(`*Why it matters:* ${l.whyItMatters}`, "");
   if (l.summary) out.push(l.summary, "");
+  if (l.verdict) out.push("## The answer", "", l.verdict, "");
   if (l.sketch) {
     out.push("## Your take first", "", l.sketch, "");
     if (l.differences?.length) out.push("### Differences", "", ...l.differences.map((d) => `- ${d}`), "");
@@ -26,9 +27,14 @@ export function lensMarkdown(l: Lens, ws: Workspace): string {
     out.push("");
   }
   const dives = (list: typeof l.deepDives, h: string) => {
+    let part: string | undefined;
     for (const d of list) {
+      // A part heading over each run of steps that share one; steps then sit a level lower.
+      if (d.part && d.part !== part) out.push(`${h} ${d.part}`, "");
+      part = d.part;
+      const sub = d.part ? `${h}#` : h;
       const where = d.file ? ` (${ws.rel(d.file)}${d.startLine ? `:${d.startLine}-${d.endLine}` : d.line ? `:${d.line}` : ""})` : "";
-      out.push(`${h} ${d.title}${where}`, "", d.body, "");
+      out.push(`${sub} ${d.title}${where}`, "", d.body, "");
       if (d.pitfall) out.push(`> **Pitfall:** ${d.pitfall}`, "");
       if (d.check) out.push(`<details><summary>Check yourself: ${d.check.q}</summary>\n\n${d.check.a}\n</details>`, "");
     }
@@ -38,6 +44,7 @@ export function lensMarkdown(l: Lens, ws: Workspace): string {
     dives(l.deepDives, "###");
   }
   if (l.gotchas?.length) out.push("## Gotchas", "", ...l.gotchas.map((g) => `- ${g}`), "");
+  if (l.alsoNoticed?.length) out.push("## Also noticed", "", ...l.alsoNoticed.map((a) => `- ${a}`), "");
   if (l.followUps?.length) {
     out.push("## Follow-ups", "");
     for (const f of l.followUps) {

@@ -127,14 +127,19 @@ export class Learn {
     req: {
       files: string[]; kind: string; question?: string; diff?: DiffSpec; sketch?: string; traceInput?: string; refreshOf?: string;
       depth?: P.LensDepth;
+      /** Extra instruction from the reader. On a refresh, undefined keeps the old lens's steer. */
+      steer?: string;
+      /** A refresh asked for by the reader (steer or depth), not because the code changed. */
+      rework?: boolean;
     },
   ): Promise<Lens> {
     const ws = new Workspace(project);
     const old = req.refreshOf ? this.store.get(project.id, "lenses", req.refreshOf) : undefined;
     if (req.refreshOf && !old) throw new Error("lens not found");
     const r = old
-      ? { files: old.files, kind: old.kind, question: old.question, diff: old.diff, sketch: undefined, traceInput: old.trace?.input, depth: old.depth }
+      ? { files: old.files, kind: old.kind, question: old.question, diff: old.diff, sketch: undefined, traceInput: old.trace?.input, depth: req.depth ?? old.depth }
       : req;
+    const steer = ((old && req.steer === undefined ? old.steer : req.steer) ?? "").trim().slice(0, 2000) || undefined;
     const depth: P.LensDepth = r.depth === "overview" || r.depth === "deep" ? r.depth : "standard";
     const files = r.files.map((f) => ws.guard(f));
     if (!files.length) throw new Error("pick at least one file");
@@ -149,6 +154,8 @@ export class Learn {
       traceInput: trace ? (r.traceInput ?? "").trim() : undefined,
       history: kind?.id === "history" ? ws.history(files[0], max / 2) : undefined,
       previous: old ? `${old.summary}\n${old.deepDives.map((d) => `- ${d.title}`).join("\n")}` : undefined,
+      rework: !!req.rework,
+      steer,
       notes: this.notes(ws, files),
     };
     const tasks: TaskName[] = ["lens", ...(sketch ? ["lensSketch" as const] : []), ...(trace ? ["lensTrace" as const] : [])];
@@ -167,7 +174,8 @@ export class Learn {
       files,
       diff: r.diff,
       title: str(raw.title, 120) || question,
-      summary: str(raw.summary),
+      // The verdict's table shows right under the summary; a summary that repeats it loses the table.
+      summary: str(raw.verdict) ? str(raw.summary).split("\n").filter((ln) => !ln.trim().startsWith("|")).join("\n").trim() : str(raw.summary),
       concepts: arr(raw.concepts).map((c) => {
         const o = c as Record<string, unknown>;
         return {
@@ -180,6 +188,8 @@ export class Learn {
       tldr: str(raw.tldr, 400) || undefined,
       whyItMatters: str(raw.whyItMatters, 800) || undefined,
       gotchas: strs(raw.gotchas, 400, 8),
+      verdict: str(raw.verdict, 4000) || undefined,
+      alsoNoticed: strs(raw.alsoNoticed, 600, 6),
       nextSteps: arr(raw.nextSteps).map((n) => {
         const o = n as Record<string, unknown>;
         return { file: ws.absFromRel(str(o.file, 500)) ?? "", why: str(o.why, 400) };
@@ -187,6 +197,7 @@ export class Learn {
       depth,
       fileHashes: this.hashes(ws, files),
       sketch,
+      steer,
       differences: sketch ? strs(raw.differences) : undefined,
       trace: trace ? cleanTrace(raw.trace, ws) : undefined,
     };
@@ -270,7 +281,7 @@ export class Learn {
       ),
       ...ranges.map((r) => () => this.ask<{ steps: Record<string, unknown>[] }>(
         ws, ["lensSteps"], P.lensStepsSystem({ depth: x.depth }),
-        P.lensWritePrompt(x.question, plan, code, { steps: r, titles: planned.slice(0, r[0]).map((st) => str(st.title, 200)) }), { cache: x.cache },
+        P.lensWritePrompt(x.question, plan, code, { steps: r, titles: planned.slice(0, r[0]).map((st) => str(st.title, 200)), steer: x.extras.steer }), { cache: x.cache },
       )),
     ];
     const [intro, ...written] = (await inParallel(jobs, 3)) as [Record<string, unknown>, ...{ steps: Record<string, unknown>[] }[]];
@@ -284,7 +295,7 @@ export class Learn {
       const w = bodies.get(i) ?? {};
       const covers = strs(st.covers, 400, 12);
       return {
-        title: st.title, file: st.file, line: st.line, startLine: st.startLine, endLine: st.endLine,
+        title: st.title, file: st.file, line: st.line, startLine: st.startLine, endLine: st.endLine, part: st.part,
         // If a part never came back, fall back to the plan's own notes so the step is not empty.
         body: str(w.body, 12_000) || covers.map((c) => `- ${c}`).join("\n") || str(st.why, 800),
         pitfall: w.pitfall ?? (str(st.pitfall, 800) || undefined),
@@ -293,7 +304,7 @@ export class Learn {
     });
     return {
       ...intro,
-      title: plan.title, tldr: plan.tldr, whyItMatters: plan.whyItMatters,
+      title: plan.title, tldr: plan.tldr, whyItMatters: plan.whyItMatters, verdict: plan.verdict, alsoNoticed: plan.alsoNoticed,
       concepts: arr(intro.concepts).length ? intro.concepts : arr(plan.concepts).map((c) => ({ ...(c as object), explain: str((c as Record<string, unknown>).note) })),
       gotchas: arr(intro.gotchas).length ? intro.gotchas : plan.gotchas,
       nextSteps: arr(intro.nextSteps).length ? intro.nextSteps : plan.nextSteps,
@@ -708,6 +719,7 @@ function cleanDive(o: Record<string, unknown>, ws: Workspace) {
     title: str(o.title, 200), file, line: line ?? startLine, startLine, endLine, body: str(o.body, 12_000),
     pitfall: str(o.pitfall, 800) || undefined,
     check: q && a ? { q, a } : undefined,
+    part: str(o.part, 120) || undefined,
   };
 }
 

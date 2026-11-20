@@ -3,7 +3,7 @@ import clsx from "clsx";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import {
   AlertTriangle, ArrowLeft, ArrowRight, BookOpen, ChevronLeft, ChevronRight, CornerDownRight, Download, Eye, FileCode2, GitCompareArrows, Layers,
-  Lightbulb, ListChecks, Maximize2, MessageSquarePlus, PenLine, RefreshCw, Sparkles, Trash2, TriangleAlert,
+  Lightbulb, ListChecks, Maximize2, MessageSquarePlus, PenLine, RefreshCw, Sparkles, Trash2, TriangleAlert, Wand2,
 } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import type { Card, DeepDive, FileContent, Lens } from "@core/types";
@@ -13,7 +13,8 @@ import { shortPath } from "@/lib/path";
 import { CardDialog } from "@/components/CardDialog";
 import { CodePane } from "@/components/CodePane";
 import { CodeView } from "@/components/CodeView";
-import { Inline, Markdown } from "@/components/Markdown";
+import { type CodeLinks, Inline, Markdown } from "@/components/Markdown";
+import { embedded, toEditor } from "@/lib/embed";
 import { Split } from "@/components/Split";
 import { Tracer } from "@/components/Tracer";
 import { Badge, Button, Empty, ErrorNote, JobProgress, Modal, Segmented, Spinner } from "@/components/ui";
@@ -25,6 +26,21 @@ function range(d: DeepDive): [number, number] | null {
   if (d.startLine && d.endLine) return [d.startLine, d.endLine];
   if (d.line) return [Math.max(1, d.line - 3), d.line + 6];
   return null;
+}
+
+/**
+ * The file a lens cites: an exact path (absolute, or relative to the project), else the one known file
+ * with that base name or path tail. Ambiguous or unknown names stay plain text: a wrong link is worse.
+ */
+function resolveCited(path: string, known: string[], root: string): string | undefined {
+  const p = path.replace(/^\.\//, "");
+  if (known.includes(p)) return p;
+  const abs = `${root}/${p}`;
+  if (known.includes(abs)) return abs;
+  const hits = known.filter((f) => f.endsWith(`/${p}`));
+  if (hits.length === 1) return hits[0];
+  // A relative path to a file the lens never listed (a caller the model opened): trust a full path.
+  return !hits.length && p.includes("/") && !p.startsWith("/") ? abs : undefined;
 }
 
 /** A section heading, like a blog post's h2. */
@@ -53,8 +69,10 @@ export function LensPage() {
   const refresh = useJob();
   const more = useJob();
   const [ask, setAsk] = useState("");
+  /** The rework panel: null = closed, else the steer being written. */
+  const [rework, setRework] = useState<{ steer: string; depth: "overview" | "standard" | "deep" } | null>(null);
   const [withTicked, setWithTicked] = useState(true);
-  const [view, setView] = useState<{ file: string; line?: number } | null>(null);
+  const [view, setView] = useState<{ file: string; line?: number; to?: number } | null>(null);
   const [card, setCard] = useState<Partial<Card> | null>(null);
   const [mode, setMode] = useState<"all" | "step">("all");
   const [step, setStep] = useState(0);
@@ -75,6 +93,22 @@ export function LensPage() {
   });
   const fileText = useMemo(() => new Map(diveFiles.map((f, i) => [f, texts[i]?.data])), [diveFiles, texts]);
 
+  // Code citations in the prose become links: click shows the file in the pane on the right;
+  // inside VS Code, Ctrl/Cmd+click opens it in the editor instead.
+  const known = useMemo(
+    () => (l ? [...new Set([...l.files, ...diveFiles, ...(l.nextSteps ?? []).map((n) => n.file), ...l.concepts.flatMap((c) => (c.file ? [c.file] : []))])] : []),
+    [l, diveFiles],
+  );
+  const codeBase = useMemo<CodeLinks>(() => ({
+    resolve: (p) => resolveCited(p, known, project.root),
+    open: (ref, e) => {
+      if (embedded && (e.ctrlKey || e.metaKey)) toEditor({ type: "reveal", path: ref.file, line: ref.from });
+      else setView({ file: ref.file, line: ref.from, to: ref.to });
+    },
+  }), [known, project.root]);
+  // Outside a step, a bare line means the lens's file only when there is just one.
+  const code = useMemo<CodeLinks>(() => ({ ...codeBase, current: l?.files.length === 1 ? l.files[0] : undefined }), [codeBase, l]);
+
   if (lens.isLoading) return <div className="p-8"><Spinner /></div>;
   if (!l) return <Empty title="Lens not found" />;
 
@@ -93,6 +127,13 @@ export function LensPage() {
       void lens.refetch();
     });
   const dives = l.deepDives;
+  // Runs of steps that share a part name (older lenses have none).
+  const parts = dives.reduce<{ name: string; from: number; to: number }[]>((acc, d, i) => {
+    const last = acc[acc.length - 1];
+    if (d.part && last?.name === d.part && last.to === i - 1) last.to = i;
+    else if (d.part) acc.push({ name: d.part, from: i, to: i });
+    return acc;
+  }, []);
   const shownDives = mode === "all" ? dives.map((d, i) => [d, i] as const) : dives[step] ? [[dives[step], step] as const] : [];
   // Blog layout: text sits in a centred reading column (.lens > *), figures, cards and code
   // break out wider (.wide). See .lens in index.css.
@@ -107,12 +148,45 @@ export function LensPage() {
           {l.depth && l.depth !== "standard" && <Badge>{l.depth}</Badge>}
           {l.diff && <Badge tone="warn">change {l.diff.base}..{l.diff.head || "working tree"}</Badge>}
           <span className="text-[13px] text-muted">{relTime(l.createdAt)}</span>
-          <a href={`/api/projects/${project.id}/lenses/${l.id}/export`} className="ml-auto inline-flex items-center gap-1 rounded-md px-2 py-1 text-[13px] text-muted hover:bg-raised hover:text-ink" title="Download as markdown">
+          <button
+            className="ml-auto inline-flex items-center gap-1 rounded-md px-2 py-1 text-[13px] text-muted hover:bg-raised hover:text-ink"
+            title="Write this lens again with an extra instruction"
+            onClick={() => setRework(rework ? null : { steer: l.steer ?? "", depth: l.depth ?? "standard" })}
+          >
+            <Wand2 className="h-3.5 w-3.5" /> Rework
+          </button>
+          <a href={`/api/projects/${project.id}/lenses/${l.id}/export`} className=" inline-flex items-center gap-1 rounded-md px-2 py-1 text-[13px] text-muted hover:bg-raised hover:text-ink" title="Download as markdown">
             <Download className="h-3.5 w-3.5" /> .md
           </a>
         </div>
         <h1 className="mt-4 text-[36px] font-bold leading-[1.1] tracking-[-0.02em]">{l.title}</h1>
         <p className="mt-3 text-[16.5px] leading-relaxed text-muted">{l.question}</p>
+        {l.steer && !rework && <p className="mt-1 text-[13.5px] text-muted"><span className="font-medium">Steer:</span> {l.steer}</p>}
+        {rework && (
+          <div className="mt-5 rounded-md border border-line p-4">
+            <div className="flex items-center gap-2 text-[15px] font-semibold"><Wand2 className="h-4 w-4 text-accent" /> Rework this lens</div>
+            <p className="mt-1 text-[13px] text-muted">Same question and files, written again with your steer. The new lens replaces this one; follow-ups are not carried over.</p>
+            <textarea
+              className="input mt-3 min-h-[72px] resize-y text-[14px]"
+              placeholder="e.g. Lead with the decision. Fewer steps, and leave out the audit model. Explain merge with one example."
+              value={rework.steer}
+              onChange={(e) => setRework({ ...rework, steer: e.target.value })}
+              autoFocus
+            />
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <Segmented value={rework.depth} onChange={(depth) => setRework({ ...rework, depth })}
+                options={[{ value: "overview", label: "Overview" }, { value: "standard", label: "Standard" }, { value: "deep", label: "Deep" }]} />
+              <Button variant="primary" size="sm" icon={<Wand2 className="h-3.5 w-3.5" />} disabled={refresh.busy || (!rework.steer.trim() && rework.depth === (l.depth ?? "standard"))}
+                onClick={() => refresh.run(`/projects/${project.id}/lenses/${l.id}/refresh`, { steer: rework.steer.trim(), depth: rework.depth }, (j) => {
+                  setRework(null);
+                  nav(`/p/${project.id}/lens/${j.resultId}`, { replace: true });
+                })}>
+                Rework lens
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setRework(null)}>Cancel</Button>
+            </div>
+          </div>
+        )}
         <div className="mt-4 flex flex-wrap gap-2">
           {l.files.slice(0, 6).map((f) => (
             <button key={f} onClick={() => show(f)} title={rel(f)} className="inline-flex max-w-full items-center gap-1 rounded-md bg-ink/5 px-2 py-1 font-mono text-[12px] text-muted hover:text-accent">
@@ -138,12 +212,18 @@ export function LensPage() {
         {/* The one idea, as a pull quote */}
         <div className="mt-10 border-l-[3px] border-accent py-1 pl-5">
           <div className="text-[11.5px] font-semibold uppercase tracking-[0.08em] text-accent">The idea in one sentence</div>
-          <p className="read-lead mt-2"><Inline>{l.tldr || l.summary}</Inline></p>
+          <p className="read-lead mt-2"><Inline code={code}>{l.tldr || l.summary}</Inline></p>
         </div>
         {l.whyItMatters && (
-          <p className="read mt-6"><strong>Why it matters.</strong> <Inline>{l.whyItMatters}</Inline></p>
+          <p className="read mt-6"><strong>Why it matters.</strong> <Inline code={code}>{l.whyItMatters}</Inline></p>
         )}
-        {l.tldr && l.summary && <div className="mt-5"><Markdown>{l.summary}</Markdown></div>}
+        {l.tldr && l.summary && <div className="mt-5"><Markdown code={code}>{l.summary}</Markdown></div>}
+        {l.verdict && (
+          <div className="mt-6 rounded-md border border-accent/30 bg-accent/5 px-5 py-4">
+            <div className="text-[11.5px] font-semibold uppercase tracking-[0.08em] text-accent">The answer</div>
+            <div className="mt-2"><Markdown code={code}>{l.verdict}</Markdown></div>
+          </div>
+        )}
 
         {l.sketch && (
           <div className="mt-8 rounded-md bg-raised/70 p-6">
@@ -151,7 +231,7 @@ export function LensPage() {
             <p className="read mt-3 italic text-muted">“{l.sketch}”</p>
             {l.differences && l.differences.length > 0 && (
               <ul className="read mt-4 space-y-2">
-                {l.differences.map((d, i) => <li key={i} className="flex gap-2.5"><span className="mt-0.5 text-accent">→</span><span><Inline>{d}</Inline></span></li>)}
+                {l.differences.map((d, i) => <li key={i} className="flex gap-2.5"><span className="mt-0.5 text-accent">→</span><span><Inline code={code}>{d}</Inline></span></li>)}
               </ul>
             )}
           </div>
@@ -165,6 +245,7 @@ export function LensPage() {
                 <ConceptCard
                   key={c.term}
                   c={c}
+                  code={codeBase}
                   onShow={() => show(c.file, c.line)}
                   onCard={() => setCard({ kind: "concept", front: `What is "${c.term}" in this code, and why does it matter?`, back: c.explain, file: c.file ?? l.files[0], source: { lensId: l.id } })}
                 />
@@ -183,7 +264,7 @@ export function LensPage() {
         {l.intuition && (
           <>
             <H2 icon={<Lightbulb className="h-5 w-5" />}>The intuition</H2>
-            <Markdown>{l.intuition}</Markdown>
+            <Markdown code={code}>{l.intuition}</Markdown>
           </>
         )}
 
@@ -202,9 +283,17 @@ export function LensPage() {
                 ))}
               </div>
             )}
+            {mode === "all" && parts.length > 1 && (
+              <ol className="read mb-10 space-y-1 text-muted">
+                {parts.map((p, k) => (
+                  <li key={k}><span className="font-medium text-ink">{k + 1}. {p.name}</span> · steps {p.from + 1}{p.to > p.from ? `–${p.to + 1}` : ""}</li>
+                ))}
+              </ol>
+            )}
             <ol className="space-y-12 [&>li+li]:border-t [&>li+li]:border-line [&>li+li]:pt-10">
               {shownDives.map(([d, i]) => (
-                <Step key={i} d={d} n={i + 1} text={d.file ? fileText.get(d.file) : undefined} rel={rel} onShow={show} />
+                <Step key={i} d={d} n={i + 1} text={d.file ? fileText.get(d.file) : undefined} rel={rel} onShow={show} code={codeBase}
+                  part={d.part && (mode === "step" || i === 0 || dives[i - 1].part !== d.part) ? `${parts.findIndex((p) => p.from <= i && i <= p.to) + 1}. ${d.part}` : undefined} />
               ))}
             </ol>
             {mode === "step" && (
@@ -223,9 +312,18 @@ export function LensPage() {
           <>
             <H2 icon={<TriangleAlert className="h-5 w-5" />}>Gotchas</H2>
             <ul className="read space-y-3">
-              {l.gotchas.map((g, i) => <li key={i} className="flex gap-3"><span className="mt-[0.55em] h-1.5 w-1.5 shrink-0 rounded-full bg-warn" /><span><Inline>{g}</Inline></span></li>)}
+              {l.gotchas.map((g, i) => <li key={i} className="flex gap-3"><span className="mt-[0.55em] h-1.5 w-1.5 shrink-0 rounded-full bg-warn" /><span><Inline code={code}>{g}</Inline></span></li>)}
             </ul>
           </>
+        )}
+
+        {l.alsoNoticed && l.alsoNoticed.length > 0 && (
+          <details className="mt-12 rounded-md border border-line px-5 py-3">
+            <summary className="cursor-pointer text-[15px] font-semibold">Also noticed <span className="font-normal text-muted">· {l.alsoNoticed.length}, not part of the answer</span></summary>
+            <ul className="read mt-3 space-y-2">
+              {l.alsoNoticed.map((a, i) => <li key={i} className="flex gap-3"><span className="mt-[0.55em] h-1.5 w-1.5 shrink-0 rounded-full bg-muted" /><span><Inline code={code}>{a}</Inline></span></li>)}
+            </ul>
+          </details>
         )}
 
         {l.nextSteps && l.nextSteps.length > 0 && (
@@ -264,11 +362,11 @@ export function LensPage() {
                       </div>
                     )}
                   </div>
-                  <div className="mt-5"><Markdown>{f.answer}</Markdown></div>
+                  <div className="mt-5"><Markdown code={code}>{f.answer}</Markdown></div>
                   {f.deepDives.length > 0 && (
                     <ol className="mt-10 space-y-12 [&>li+li]:border-t [&>li+li]:border-line [&>li+li]:pt-10">
                       {f.deepDives.map((d, i) => (
-                        <Step key={i} d={d} n={i + 1} text={d.file ? fileText.get(d.file) : undefined} rel={rel} onShow={show} />
+                        <Step key={i} d={d} n={i + 1} text={d.file ? fileText.get(d.file) : undefined} rel={rel} onShow={show} code={codeBase} />
                       ))}
                     </ol>
                   )}
@@ -337,7 +435,7 @@ export function LensPage() {
 
   return (
     <Split id="lens-file" collapsible startCollapsed openSignal={view} side="right" initial={520} min={320} max={900} className="h-full" left={doc}
-      right={<CodePane file={view?.file} line={view?.line} empty="Click a file, a step or a line link to see the whole file here." />} />
+      right={<CodePane file={view?.file} line={view?.line} marks={view?.line && view.to && view.to > view.line ? [{ from: view.line, to: view.to, cls: "hl" }] : undefined} empty="Click a file, a step or a line link to see the whole file here." />} />
   );
 }
 
@@ -346,12 +444,13 @@ export function LensPage() {
 type Concept = Lens["concepts"][number];
 
 /** A concept card. It lifts on hover; a long one is clipped, and the expand button (or a click on the text) pops it out to read. */
-function ConceptCard({ c, onShow, onCard }: { c: Concept; onShow: () => void; onCard: () => void }) {
+function ConceptCard({ c, onShow, onCard, code: base }: { c: Concept; onShow: () => void; onCard: () => void; code: CodeLinks }) {
   const [open, setOpen] = useState(false);
+  const code = useMemo<CodeLinks>(() => ({ ...base, current: c.file }), [base, c.file]);
   const long = c.explain.length + (c.example?.length ?? 0) > 340;
   const body = (clip: boolean) => (
     <>
-      <p className={clsx("read-sm mt-2", clip && "line-clamp-5")}><Inline>{c.explain}</Inline></p>
+      <p className={clsx("read-sm mt-2", clip && "line-clamp-5")}><Inline code={code}>{c.explain}</Inline></p>
       {c.example && (
         <div className={clsx("read-sm mt-3 rounded-lg bg-raised/70 px-3.5 py-2.5 text-muted", clip && "max-h-[9.5rem] overflow-hidden")}>
           <div className="mb-1 text-[11.5px] font-semibold uppercase tracking-[0.08em] text-ink/70">Example</div>
@@ -440,14 +539,19 @@ function blockStart(lines: string[], start: number, key: number): number {
 }
 
 /** One walkthrough step: the claim, why, its own lines of code, a pitfall, and a question to check yourself. */
-function Step({ d, n, text, rel, onShow }: {
+function Step({ d, n, text, rel, onShow, code: base, part }: {
   d: DeepDive;
   n: number;
   text?: FileContent;
   rel: (p: string) => string;
   onShow: (file?: string, line?: number) => void;
+  code: CodeLinks;
+  /** Set on the first step of a part: the part's heading. */
+  part?: string;
 }) {
   const [answer, setAnswer] = useState(false);
+  // In a step, "line 12" and `:12` mean the step's own file.
+  const code = useMemo<CodeLinks>(() => ({ ...base, current: d.file }), [base, d.file]);
   const r = range(d);
   const snippet = useMemo(() => {
     if (!text || !r) return null;
@@ -463,12 +567,13 @@ function Step({ d, n, text, rel, onShow }: {
   const keyMark = useMemo(() => (d.line ? [{ from: d.line, to: d.line, cls: "hl" }] : []), [d.line]);
   return (
     <li className="lens-step">
+      {part && <div className="lens-part text-[12px] font-semibold uppercase tracking-[0.08em] text-accent">{part}</div>}
       <div className="min-w-0">
         <div className="flex items-baseline gap-3">
           <span className="font-mono text-[13px] font-semibold tabular-nums text-accent/80">{String(n).padStart(2, "0")}</span>
           <h3 className="text-[18px] font-semibold leading-[1.3] tracking-tight">{d.title}</h3>
         </div>
-        <div className="mt-3"><Markdown>{d.body}</Markdown></div>
+        <div className="mt-3"><Markdown code={code}>{d.body}</Markdown></div>
       </div>
       {snippet && d.file && (
         <div className="min-w-0 overflow-hidden rounded-md border border-line bg-panel">
@@ -484,14 +589,14 @@ function Step({ d, n, text, rel, onShow }: {
       {d.pitfall && (
         <p className="read-sm flex gap-2.5 rounded-r-lg border-l-[3px] border-warn bg-warn/5 px-4 py-3">
           <AlertTriangle className="mt-[0.25em] h-4 w-4 shrink-0 text-warn" />
-          <span><strong>Pitfall.</strong> <Inline>{d.pitfall}</Inline></span>
+          <span><strong>Pitfall.</strong> <Inline code={code}>{d.pitfall}</Inline></span>
         </p>
       )}
       {d.check && (
         <div className="read-sm rounded-r-lg border-l-[3px] border-accent bg-accent/5 px-4 py-3">
-          <p><strong className="text-accent">Check yourself.</strong> <Inline>{d.check.q}</Inline></p>
+          <p><strong className="text-accent">Check yourself.</strong> <Inline code={code}>{d.check.q}</Inline></p>
           {answer ? (
-            <p className="mt-3 border-t border-line/70 pt-3 text-ink/85"><Inline>{d.check.a}</Inline></p>
+            <p className="mt-3 border-t border-line/70 pt-3 text-ink/85"><Inline code={code}>{d.check.a}</Inline></p>
           ) : (
             <button className="mt-2 inline-flex items-center gap-1.5 font-sans text-[13px] text-muted hover:text-ink" onClick={() => setAnswer(true)}>
               <Eye className="h-3.5 w-3.5" /> Think first, then show the answer
