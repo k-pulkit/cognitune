@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.4.0 (2026-11-20)
+
+Lenses that are easier to follow, and that you can steer.
+
+New:
+
+- **Clickable code citations in every lens**, old ones included: `file.sql:58`, a bare `:148-169` after a file is
+  named, "lines 65-79" inside a step, and file names open the file in the side pane with the range highlighted.
+  In VS Code, Ctrl/Cmd+click opens it in the editor.
+- **Answer first.** For "can we / should we / which" questions a lens opens with **The answer**: a short table of
+  options and when each holds.
+- **Parts.** Steps are grouped under 2-4 headings that follow your question, with an outline at the top of the
+  walkthrough.
+- **Also noticed.** True but off-topic findings (a stale comment, a risk elsewhere) fold away at the end instead of
+  becoming steps.
+- **Steer.** An optional instruction when you make a lens ("focus on X, skip Y, use a table"), kept when the lens is
+  refreshed.
+- **Rework** on any lens: write it again with a new steer and/or depth. The new lens replaces the old one.
+
+Changed:
+
+- Lenses and walkthroughs follow plain-explanation rules: full sentences, one idea at a time, a concrete example
+  before the rule, terms defined at first use, no invented labels, side cases left out.
+- Fewer, roomier steps: Deep has 7-9 (was 11-15), Standard 5-7 (was 6-9).
+- The markdown export includes the answer, the part headings and the "Also noticed" list.
+
 ## 0.3.8 (2026-11-19)
 
 Release check, no feature changes:
