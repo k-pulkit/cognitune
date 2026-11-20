@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.4.1 (2026-11-20)
+
+New:
+
+- **Activity** in the status bar: the running job's name and timer ("Rework · <lens title> · 12s"); click it for
+  this project's running and recent jobs, how long each took, and a link to the result. The VS Code status bar
+  shows the job's name too.
+- Pages pick up their job again: leave a lens, quiz, tutor, walkthrough, bug hunt or practice while it works and
+  come back, and the progress shows with the real elapsed time; a rework opens the new lens when it is done.
+
+Fixes:
+
+- Code links in short text (Also noticed, gotchas, check questions) sat in centred boxes on their own lines; they
+  are inline now, and a long path shows as its file name with the full path on hover.
+
 ## 0.4.0 (2026-11-20)
 
 Lenses that are easier to follow, and that you can steer.
