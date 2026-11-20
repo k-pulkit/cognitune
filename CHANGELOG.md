@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.4.2 (2026-11-20)
+
+Fixes:
+
+- Code reads like it does in VS Code: the bundled JetBrains Mono is used first (it used to fall back to whatever
+  monospace font was installed, often Cascadia Code), at 13.5px with 18px lines in the file pane, the diff, lens
+  snippets and the practice editor. The diff had 24px lines.
+- In VS Code, the Changes page has an "open in editor" button that opens the file at its first changed line.
+
 ## 0.4.1 (2026-11-20)
 
 New:

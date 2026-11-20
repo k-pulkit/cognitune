@@ -2,7 +2,7 @@
   "name": "cognitune",
   "displayName": "cognitune",
   "description": "Understand the code you (or an AI) wrote: lenses that explain, quizzes that prove you got it, review that keeps it. In a panel beside your code.",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "publisher": "k-pulkit",
   "license": "MIT",
   "icon": "icon.png",
