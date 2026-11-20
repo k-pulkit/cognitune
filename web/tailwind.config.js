@@ -16,7 +16,9 @@ export default {
       },
       fontFamily: {
         sans: ["system-ui", "-apple-system", "'Segoe UI'", "Ubuntu", "'Droid Sans'", "sans-serif"],
-        mono: ["'Cascadia Code'", "'Cascadia Mono'", "Consolas", "'JetBrains Mono Variable'", "ui-monospace", "monospace"],
+        // The bundled JetBrains Mono first, so code looks the same on every machine (and like a
+        // default VS Code setup); installed fonts are only a fallback.
+        mono: ["'JetBrains Mono Variable'", "'JetBrains Mono'", "'Cascadia Code'", "Consolas", "ui-monospace", "monospace"],
         // Long-form text (lessons, feedback, tutor replies); serif or sans is a reader's choice.
         read: ["var(--read-font)"],
       },

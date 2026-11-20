@@ -114,7 +114,7 @@ export function DiffView({ patch, mode, lang = "text" }: { patch: string; mode: 
 
   if (mode === "unified" || allOneSide) {
     return (
-      <div className="min-h-full py-1 font-mono text-[13.5px] leading-6">
+      <div className="code-text min-h-full py-1">
         {rows.map((r, i) =>
           r.kind === "hunk" ? (
             <div key={i} className="diff-hunk px-4">{r.text}</div>
@@ -183,7 +183,7 @@ function SplitDiff({ rows, hl }: { rows: Pair[]; hl: Map<Row, string> }) {
   );
 
   return (
-    <div ref={box} className="relative min-h-full font-mono text-[13.5px] leading-6">
+    <div ref={box} className="code-text relative min-h-full">
       <div className="grid py-1" style={{ gridTemplateColumns: `${pct}% ${100 - pct}%` }}>
         {rows.map((s, i) =>
           s.hunk ? (

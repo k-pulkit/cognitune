@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import clsx from "clsx";
 import { useQuery } from "@tanstack/react-query";
-import { GitCompare } from "lucide-react";
+import { ExternalLink, GitCompare } from "lucide-react";
 import type { DiffFile, DiffSpec, GitRepo } from "@core/types";
 import { get } from "@/lib/api";
 import { langOf } from "@/lib/path";
@@ -13,7 +13,9 @@ import { DiffView } from "@/components/DiffView";
 import { FileTree } from "@/components/FileTree";
 import { treeFromPaths } from "@/lib/tree";
 import { Split } from "@/components/Split";
-import { Empty, ErrorNote, Segmented, Spinner } from "@/components/ui";
+import { embedded, toEditor } from "@/lib/embed";
+
+import { Button, Empty, ErrorNote, Segmented, Spinner } from "@/components/ui";
 
 interface Refs {
   branches: string[];
@@ -27,6 +29,19 @@ const STATUS_TONE: Record<DiffFile["status"], string> = {
   modified: "text-warn",
   renamed: "text-accent",
 };
+
+/** The new-side line of the first added or changed line in a unified diff (for "open in editor"). */
+function firstChange(patch: string): number | undefined {
+  let line: number | undefined;
+  for (const l of patch.split("\n")) {
+    const h = /^@@ -\d+(?:,\d+)? \+(\d+)/.exec(l);
+    if (h) line = Number(h[1]);
+    else if (line === undefined || l.startsWith("\\")) continue;
+    else if (l.startsWith("+") || l.startsWith("-")) return line;
+    else line++;
+  }
+  return line;
+}
 
 /** A change between two refs (or the working tree): read the diff, then lens or quiz the change itself. */
 export function ChangesPage() {
@@ -181,6 +196,11 @@ export function ChangesPage() {
     <div className="flex h-full flex-col">
       <div className="flex items-center gap-2 border-b border-line bg-panel px-4 py-2">
         <div className="min-w-0 flex-1 truncate font-mono text-[14px]">{activeFile ? rel(activeFile.path) : ""}</div>
+        {/* Inside VS Code: open the file in the editor, at its first changed line. */}
+        {embedded && activeFile && activeFile.status !== "deleted" && (
+          <Button size="sm" variant="ghost" icon={<ExternalLink className="h-3.5 w-3.5" />} title="Open this file in the editor, at the first change"
+            onClick={() => toEditor({ type: "reveal", path: activeFile.path, line: firstChange(activeFile.patch) })} />
+        )}
         <Segmented value={mode} onChange={setMode} options={[{ value: "split", label: "Split" }, { value: "unified", label: "Unified" }]} />
       </div>
       <div className="min-h-0 flex-1 overflow-auto bg-panel">

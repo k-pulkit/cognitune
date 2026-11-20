@@ -43,6 +43,9 @@
 html, body, #root { height: 100%; }
 /* Long-form font: Source Serif 4 (optical sizes) or the system UI font, picked in Settings. */
 :root { --read-font: system-ui, -apple-system, "Segoe UI", Ubuntu, sans-serif; }
+/* One size for all code (file pane, diff, lens snippets, practice editor), like VS Code at 13.5px:
+   its default line height is 1.35x the font size, about 18px. */
+:root { --code-size: 13.5px; --code-line: 18px; }
 :root[data-read="serif"] { --read-font: Charter, 'Bitstream Charter', 'Source Serif 4 Variable', Georgia, serif; }
 body {
   @apply bg-bg text-ink font-sans antialiased;
@@ -77,8 +80,9 @@ body {
 /* Tokens stay transparent; the line span must keep its own background (key line, bug, hole, marks). */
 .shiki span:not(.line) { background-color: transparent !important; }
 .dark .shiki, .dark .shiki span { color: var(--shiki-dark); }
-.code-view pre { margin: 0; padding: 12px 0; font-size: 13px; line-height: 19px; counter-reset: line var(--line-start, 0); }
+.code-view pre { margin: 0; padding: 12px 0; font-size: var(--code-size); line-height: var(--code-line); counter-reset: line var(--line-start, 0); }
 .code-view code { display: block; min-width: max-content; }
+.code-text { font-family: theme(fontFamily.mono); font-size: var(--code-size); line-height: var(--code-line); }
 .code-view .line { display: inline-block; width: 100%; padding-right: 24px; }
 .code-view .line::before {
   counter-increment: line;
@@ -233,7 +237,8 @@ body {
 
 /* ---- codemirror fit ---- */
 .cm-theme, .cm-theme-light, .cm-theme-dark, .cm-editor { height: 100%; }
-.cm-editor { font-size: 13px; }
+.cm-editor { font-size: var(--code-size); }
+.cm-editor .cm-line { line-height: var(--code-line); }
 .cm-editor .cm-scroller { overflow: auto; }
 /* Practice: the lines still waiting to be written. */
 .cm-editor .cm-hole-line { background: rgb(var(--warn) / 0.14); box-shadow: inset 3px 0 0 rgb(var(--warn)); }
@@ -288,4 +293,4 @@ body {
 .lens-step-code .code-view pre, .lens-step-code .code-view code { white-space: normal; }
 .lens-step-code .code-view .line { display: block; white-space: pre-wrap; overflow-wrap: anywhere; padding-left: 4.25em; text-indent: -4.25em; }
 .lens-step-code .code-view .line::before { width: 2.75em; margin-right: 1.5em; }
-.lens-step-code .code-view pre { font-size: 13px; padding: 10px 0; }
+.lens-step-code .code-view pre { padding: 10px 0; }
