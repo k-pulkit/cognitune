@@ -252,6 +252,10 @@ export interface Job {
   resultId?: string;
   startedAt: string;
   endedAt?: string;
+  /** What it is about, for people: "Rework · Watermarks vs fixed windows", "Quiz · queue.ts +2". */
+  label?: string;
+  /** The id of the thing it works on (a lens being reworked, a quiz being graded), so its page can pick the job up again. */
+  target?: string;
 }
 
 /**

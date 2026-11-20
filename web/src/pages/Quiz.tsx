@@ -1,3 +1,4 @@
+import { ResumedJob } from "@/components/ResumedJob";
 import { useEffect, useMemo, useState } from "react";
 import clsx from "clsx";
 import { useQuery } from "@tanstack/react-query";
@@ -249,6 +250,7 @@ export function QuizPage() {
           </Button>
         </div>
         {job.busy && job.job && <div className="mt-3"><JobProgress kind="grade" elapsed={job.elapsed} /></div>}
+        <ResumedJob pid={project.id} target={id} className="mt-3" />
         {tutor.busy && tutor.job && <div className="mt-3"><JobProgress kind="tutor" elapsed={tutor.elapsed} /></div>}
         {tutor.error && <div className="mt-3"><ErrorNote error={tutor.error} onClose={tutor.clearError} /></div>}
         {card && <CardDialog initial={card} onClose={() => setCard(null)} />}

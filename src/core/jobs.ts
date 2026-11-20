@@ -33,8 +33,8 @@ export class Jobs {
     if (this.store && this.file) this.store.write(this.file, [...this.jobs.values()]);
   }
 
-  start(kind: JobKind, projectId: string, work: () => Promise<{ id: string }>): Job {
-    const job: Job = { id: newId(), kind, projectId, status: "running", startedAt: new Date().toISOString() };
+  start(kind: JobKind, projectId: string, work: () => Promise<{ id: string }>, meta: { label?: string; target?: string } = {}): Job {
+    const job: Job = { id: newId(), kind, projectId, status: "running", startedAt: new Date().toISOString(), ...meta };
     this.jobs.set(job.id, job);
     this.save();
     work()
@@ -53,6 +53,11 @@ export class Jobs {
 
   running(projectId: string): Job[] {
     return [...this.jobs.values()].filter((j) => j.projectId === projectId && j.status === "running");
+  }
+
+  /** One project's jobs, running and finished, newest first (the Activity list). */
+  recent(projectId: string, limit = 15): Job[] {
+    return [...this.jobs.values()].filter((j) => j.projectId === projectId).reverse().slice(0, limit);
   }
 
   /** Newest first. */

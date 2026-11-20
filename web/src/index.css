@@ -198,6 +198,14 @@ body {
   background: rgb(var(--ink) / 0.07);
 }
 
+/* Any code link is a button; keep it an inline run of text, not a centred, wrapping button box. */
+.codeline {
+  display: inline; text-align: left; white-space: normal; overflow-wrap: anywhere;
+  font: inherit; color: rgb(var(--accent)); background: none; border: 0; padding: 0; cursor: pointer;
+}
+.codeline code { color: rgb(var(--accent)); }
+.codeline:hover code, .codeline:hover { text-decoration: underline; }
+
 /* A "line 42" / "lines 64-71" reference in a tutor hint: jumps the code pane on click. */
 .prose-g .codeline {
   font-family: theme(fontFamily.mono); font-size: 0.85em; font-weight: 500;

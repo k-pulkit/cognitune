@@ -86,7 +86,9 @@ export function linkifyCode(md: string, resolve: (path: string) => string | unde
         if (f) {
           const file = resolve(f[1]);
           if (file) last = file;
-          return link(part, file, f[2] ? Number(f[2]) : undefined, f[3] ? Number(f[3]) : undefined) ?? part;
+          // A long path reads as its file name; the link's tooltip has the full path.
+          const label = f[1].includes("/") ? `\`${f[1].split("/").pop()}${inner.slice(f[1].length + (inner.startsWith("./") ? 2 : inner.startsWith("/") ? 1 : 0))}\`` : part;
+          return link(label, file, f[2] ? Number(f[2]) : undefined, f[3] ? Number(f[3]) : undefined) ?? part;
         }
         const l = SPAN_LINE.exec(inner);
         if (l) return link(part, last, Number(l[1]), l[2] ? Number(l[2]) : undefined) ?? part;

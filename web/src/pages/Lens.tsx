@@ -11,6 +11,7 @@ import { del, get, relTime, useJob } from "@/lib/api";
 import { useProject } from "@/lib/project";
 import { shortPath } from "@/lib/path";
 import { CardDialog } from "@/components/CardDialog";
+import { ResumedJob } from "@/components/ResumedJob";
 import { CodePane } from "@/components/CodePane";
 import { CodeView } from "@/components/CodeView";
 import { type CodeLinks, Inline, Markdown } from "@/components/Markdown";
@@ -207,6 +208,11 @@ export function LensPage() {
           </div>
         )}
         {refresh.busy && refresh.job && <div className="mt-3"><JobProgress kind="lens" elapsed={refresh.elapsed} /></div>}
+        {/* A rework, refresh or follow-up started before you left: a rework's result is a new lens, so go there. */}
+        <ResumedJob pid={project.id} target={l.id} className="mt-3" onDone={(j) => {
+          if (j.resultId && j.resultId !== l.id) nav(`/p/${project.id}/lens/${j.resultId}`, { replace: true });
+          else void lens.refetch();
+        }} />
         {refresh.error && <div className="mt-3"><ErrorNote error={refresh.error} onClose={refresh.clearError} /></div>}
 
         {/* The one idea, as a pull quote */}

@@ -1,3 +1,4 @@
+import { ResumedJob } from "@/components/ResumedJob";
 import { useEffect, useMemo, useRef, useState } from "react";
 import clsx from "clsx";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -354,6 +355,7 @@ export function PracticePage() {
       </div>
       <div className="space-y-2 border-t border-line p-3">
         {job.busy && job.job && <JobProgress kind="review" elapsed={job.elapsed} />}
+        <ResumedJob pid={project.id} target={id} />
         {job.error && <ErrorNote error={job.error} onClose={job.clearError} />}
         <Button variant="primary" size="lg" className="w-full" icon={<Send className="h-4 w-4" />} loading={job.busy} onClick={check}>
           Check my work

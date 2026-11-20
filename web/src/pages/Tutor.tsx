@@ -8,6 +8,7 @@ import { get, useJob } from "@/lib/api";
 import { shortPath } from "@/lib/path";
 import { useProject } from "@/lib/project";
 import { BackLink, useArchive } from "@/components/BackLink";
+import { ResumedJob } from "@/components/ResumedJob";
 import { CodePane } from "@/components/CodePane";
 import { Markdown } from "@/components/Markdown";
 import { linkifyLines } from "@/lib/lines";
@@ -83,6 +84,7 @@ export function TutorPage() {
           );
         })}
         {job.busy && job.job && <div className="mt-3"><JobProgress kind="tutor" elapsed={job.elapsed} /></div>}
+        <ResumedJob pid={project.id} target={id} className="mt-3" />
         {job.error && <div className="mt-3"><ErrorNote error={job.error} onClose={job.clearError} /></div>}
         <div ref={end} />
       </div>

@@ -6,6 +6,7 @@ import type { Hunt, HuntMark } from "@core/types";
 import { get, put, relTime, useJob } from "@/lib/api";
 import { useProject } from "@/lib/project";
 import { BackLink, useArchive } from "@/components/BackLink";
+import { ResumedJob } from "@/components/ResumedJob";
 import { CodePane } from "@/components/CodePane";
 import { Split } from "@/components/Split";
 import { Badge, Button, Empty, ErrorNote, JobProgress, PageHead, Score, Spinner } from "@/components/ui";
@@ -143,6 +144,7 @@ export function HuntPage() {
           </>
         )}
         {job.busy && job.job && <div className="mt-3"><JobProgress kind="huntgrade" elapsed={job.elapsed} /></div>}
+        <ResumedJob pid={project.id} target={id} className="mt-3" />
         {job.error && <div className="mt-3"><ErrorNote error={job.error} onClose={job.clearError} /></div>}
       </div>
     </div>

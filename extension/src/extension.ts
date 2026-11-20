@@ -265,7 +265,7 @@ const KIND: Record<string, string> = {
  * The status bar item: whether the server is up, model jobs running (from the app or from here),
  * and review cards due. It only watches: looking at it never starts a server.
  */
-const state: { server: "off" | "starting" | "on"; pid?: string; due?: number; jobs: { kind: string; startedAt: string }[] } = { server: "off", jobs: [] };
+const state: { server: "off" | "starting" | "on"; pid?: string; due?: number; jobs: { kind: string; startedAt: string; label?: string }[] } = { server: "off", jobs: [] };
 let tick: NodeJS.Timeout | undefined;
 let lastDue = 0;
 
@@ -278,8 +278,11 @@ function render() {
   } else if (state.server === "on" && n) {
     const j = state.jobs[0];
     const secs = Math.max(0, Math.round((Date.now() - Date.parse(j.startedAt)) / 1000));
-    status.text = `$(loading~spin) cognitune · ${KIND[j.kind] ?? j.kind} ${secs}s${n > 1 ? ` +${n - 1}` : ""}`;
-    status.tooltip = `Running: ${state.jobs.map((x) => KIND[x.kind] ?? x.kind).join(", ")}. The result opens when it is done.`;
+    // The label says what it is ("Rework · Watermarks vs..."); the bar shows its first part.
+    const name = (x: { kind: string; label?: string }) => x.label ?? KIND[x.kind] ?? x.kind;
+    const short = name(j).length > 40 ? `${name(j).slice(0, 39)}…` : name(j);
+    status.text = `$(loading~spin) cognitune · ${short} ${secs}s${n > 1 ? ` +${n - 1}` : ""}`;
+    status.tooltip = `Running:\n${state.jobs.map(name).join("\n")}\nThe result opens when it is done.`;
     status.command = { title: "Open", command: "cognitune.open" };
   } else if (state.server === "on") {
     const due = state.due ?? 0;
@@ -314,7 +317,7 @@ async function refreshStatus() {
   }
   if (state.pid) {
     try {
-      const p = await fetchJson<{ running?: { kind: string; startedAt: string }[] }>(`/api/projects/${state.pid}`);
+      const p = await fetchJson<{ running?: { kind: string; startedAt: string; label?: string }[] }>(`/api/projects/${state.pid}`);
       state.jobs = p.running ?? [];
       if (Date.now() - lastDue > 5 * 60_000 || state.due === undefined) {
         lastDue = Date.now();

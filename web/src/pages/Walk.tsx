@@ -8,6 +8,7 @@ import type { FileContent, Walk } from "@core/types";
 import { get, relTime, useJob } from "@/lib/api";
 import { useProject } from "@/lib/project";
 import { BackLink, useArchive } from "@/components/BackLink";
+import { ResumedJob } from "@/components/ResumedJob";
 import { CodePane } from "@/components/CodePane";
 import { CodeView } from "@/components/CodeView";
 import { Markdown } from "@/components/Markdown";
@@ -129,6 +130,7 @@ export function WalkPage() {
             </>
           )}
           {job.busy && job.job && <div className="mt-3"><JobProgress kind="walkcheck" elapsed={job.elapsed} /></div>}
+          <ResumedJob pid={project.id} target={id} className="mt-3" />
           {job.error && <div className="mt-3"><ErrorNote error={job.error} onClose={job.clearError} /></div>}
           <div className="mt-5 flex justify-end">
             {i < w.blocks.length - 1 && (

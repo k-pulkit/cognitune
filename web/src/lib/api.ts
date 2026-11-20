@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Job } from "@core/types";
 
 /** Thin fetch wrapper: JSON in, JSON out, server `{error}` becomes a thrown Error. */
@@ -86,4 +86,41 @@ export function relTime(iso: string): string {
   if (s < 3600) return `${Math.round(s / 60)} min ago`;
   if (s < 86400) return `${Math.round(s / 3600)} h ago`;
   return `${Math.round(s / 86400)} d ago`;
+}
+
+/**
+ * A job working on `target` (a lens being reworked, a quiz being graded) that this page did not start
+ * itself: typically one started before you left the page and came back. Returns it while it runs, with
+ * the real elapsed time; when it ends, `onDone` gets the finished job (done or failed).
+ */
+export function useJobOn(pid: string, target: string | undefined, onDone: (j: Job) => void) {
+  const q = useQuery({
+    queryKey: ["project-jobs", pid],
+    queryFn: async () => (await get<{ running: Job[] }>(`/projects/${pid}`)).running,
+    refetchInterval: (s) => (s.state.data?.length ? 2000 : false),
+  });
+  const job = target ? (q.data ?? []).find((j) => j.target === target && !watchedJobs.has(j.id)) : undefined;
+  const [elapsed, setElapsed] = useState(0);
+  const done = useRef(onDone);
+  done.current = onDone;
+  const last = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    if (!job) return;
+    const t0 = Date.parse(job.startedAt);
+    const tick = () => setElapsed(Math.max(0, Math.round((Date.now() - t0) / 1000)));
+    tick();
+    const t = setInterval(tick, 500);
+    return () => clearInterval(t);
+  }, [job?.id, job?.startedAt]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (job) {
+      last.current = job.id;
+      return;
+    }
+    const id = last.current;
+    if (!id) return;
+    last.current = undefined;
+    void get<Job>(`/jobs/${id}`).then((j) => done.current(j)).catch(() => {});
+  }, [job?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  return job ? { job, elapsed } : null;
 }

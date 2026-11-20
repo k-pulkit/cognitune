@@ -168,7 +168,7 @@ const CodeClick = createContext<CodeLinks | undefined>(undefined);
 function CodeLink({ target, open, children: c }: { target: CodeRef; open: CodeLinks["open"]; children: React.ReactNode }) {
   const at = target.from === target.to ? `line ${target.from}` : `lines ${target.from}-${target.to}`;
   return (
-    <button type="button" className="codeline" title={`${target.file.split("/").pop()}, ${at}`} onClick={(e) => open(target, e)}>
+    <button type="button" className="codeline" title={`${target.file}, ${at}`} onClick={(e) => open(target, e)}>
       {c}
     </button>
   );

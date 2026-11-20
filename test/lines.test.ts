@@ -67,3 +67,8 @@ it("in a step, 'lines N' stays on the step's file even after another file is nam
     { file: files[0], from: 9, to: 9 }, // a bare `:9` follows the file just named
   ]);
 });
+
+it("shows a long cited path as its file name", () => {
+  const out = linkifyCode("(`macros/get_latest_bronze_data.sql:55-91`)", resolve);
+  expect(out.startsWith("([`get_latest_bronze_data.sql:55-91`](code:")).toBe(true);
+});

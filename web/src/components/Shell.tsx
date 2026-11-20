@@ -3,12 +3,12 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import {
   BarChart3, BookOpen, CheckCircle2, HelpCircle, Command, Compass, FolderGit2, GitCompare, Home, Layers, Map as MapIcon, Monitor, Moon, Route, Settings, Sun,
-  Sunrise, X,
+  Sunrise, X, XCircle, History,
 } from "lucide-react";
 import { NavLink, Outlet, useNavigate, useParams } from "react-router-dom";
 import { sectionFor } from "@/pages/Help";
 import type { AgentInfo, Card, Job, JobKind, Project } from "@core/types";
-import { get, watchedJobs } from "@/lib/api";
+import { get, relTime, watchedJobs } from "@/lib/api";
 import { Spinner } from "./ui";
 import { useTheme, type ThemePref } from "@/lib/theme";
 import { Palette, ShortcutHelp } from "./Palette";
@@ -57,9 +57,76 @@ const RESULT_PAGE: Partial<Record<JobKind, string>> = {
   lens: "lens", quiz: "quiz", practice: "practice", teachback: "teach", tutor: "tutor", walk: "walk", hunt: "hunt", path: "paths",
 };
 
+/** Kinds that work on an existing thing: open that thing (a rework opens its lens, grading opens the quiz). */
+const TARGET_PAGE: Partial<Record<JobKind, string>> = {
+  lens: "lens", grade: "quiz", walkcheck: "walk", huntgrade: "hunt", review: "practice", tutor: "tutor", quiz: "lens",
+};
+
+/** "42s", "1m 42s". */
+function took(ms: number): string {
+  const s = Math.max(0, Math.round(ms / 1000));
+  return s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${s % 60}s`;
+}
+
+/** Where a job's row should go: its result, else the thing it worked on. */
+function jobLink(pid: string, j: Job): string | null {
+  if (j.status === "done" && j.resultId && RESULT_PAGE[j.kind]) return `/p/${pid}/${RESULT_PAGE[j.kind]}/${j.resultId}`;
+  if (j.target && TARGET_PAGE[j.kind]) return `/p/${pid}/${TARGET_PAGE[j.kind]}/${j.target}`;
+  return null;
+}
+
+/**
+ * Activity: this project's model jobs, running and recent, from any page. What each was, how long it
+ * took (or has been running), and a link to its result.
+ */
+function ActivityPanel({ pid, onClose }: { pid: string; onClose: () => void }) {
+  const nav = useNavigate();
+  const q = useQuery({
+    queryKey: ["activity", pid],
+    queryFn: () => get<Job[]>(`/projects/${pid}/jobs`),
+    refetchInterval: (s) => (s.state.data?.some((j) => j.status === "running") ? 1000 : 5000),
+  });
+  const list = q.data ?? [];
+  return (
+    <div className="absolute bottom-full left-0 z-50 mb-1 max-h-[60vh] w-[440px] overflow-auto rounded-md border border-line bg-panel py-1 text-[13px] text-ink shadow-lg">
+      <div className="flex items-center px-3 py-1.5 text-[11.5px] font-semibold uppercase tracking-[0.08em] text-muted">
+        Activity <span className="ml-auto font-normal normal-case tracking-normal">model jobs in this project</span>
+      </div>
+      {!list.length && <div className="px-3 py-3 text-muted">Nothing yet. Lenses, quizzes and the tutor show up here while they run.</div>}
+      {list.map((j) => {
+        const to = jobLink(pid, j);
+        const end = j.endedAt ? Date.parse(j.endedAt) : Date.now();
+        const dur = took(end - Date.parse(j.startedAt));
+        return (
+          <button
+            key={j.id}
+            disabled={!to}
+            onClick={() => { if (to) { onClose(); nav(to); } }}
+            className={clsx("flex w-full items-start gap-2.5 px-3 py-2 text-left", to ? "hover:bg-raised" : "cursor-default")}
+            title={j.error ?? j.label ?? JOB_NAME[j.kind]}
+          >
+            <span className="mt-0.5 shrink-0 [&>svg]:h-3.5 [&>svg]:w-3.5">
+              {j.status === "running" ? <Spinner className="text-accent" /> : j.status === "done" ? <CheckCircle2 className="text-good" /> : <XCircle className="text-bad" />}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate">{j.label ?? JOB_NAME[j.kind].replace(/^./, (c) => c.toUpperCase())}</span>
+              <span className="block truncate text-[12px] text-muted">
+                {j.status === "running" ? `running · ${dur}` : `${j.status === "done" ? "took" : "failed after"} ${dur} · ${relTime(j.endedAt ?? j.startedAt)}`}
+                {j.status === "failed" && j.error ? ` · ${j.error}` : ""}
+              </span>
+            </span>
+            {to && <span className="mt-0.5 shrink-0 text-[12px] text-accent">open</span>}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 /**
  * Running jobs in the status bar, so leaving a page mid-job is safe. Polls only while something
  * runs. A job that finishes with no page left to open its result shows a "ready" link instead.
+ * Clicking the activity button (or the running job) opens the Activity list.
  */
 function JobsStatus({ pid }: { pid: string }) {
   const nav = useNavigate();
@@ -71,6 +138,8 @@ function JobsStatus({ pid }: { pid: string }) {
   const running = q.data ?? [];
   const seen = useRef(new Set<string>());
   const [ready, setReady] = useState<Job[]>([]);
+  const [open, setOpen] = useState(false);
+  const box = useRef<HTMLSpanElement>(null);
   useEffect(() => {
     const now = new Set(running.map((j) => j.id));
     const gone = [...seen.current].filter((id) => !now.has(id) && !watchedJobs.has(id));
@@ -81,33 +150,54 @@ function JobsStatus({ pid }: { pid: string }) {
       }).catch(() => {});
     }
   }, [q.dataUpdatedAt]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Close the list on a click outside it or on Escape.
+  useEffect(() => {
+    if (!open) return;
+    const click = (e: MouseEvent) => { if (!box.current?.contains(e.target as Node)) setOpen(false); };
+    const key = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+    document.addEventListener("mousedown", click);
+    document.addEventListener("keydown", key);
+    return () => { document.removeEventListener("mousedown", click); document.removeEventListener("keydown", key); };
+  }, [open]);
 
   const last = ready[ready.length - 1];
-  if (running.length) {
-    const j = running[0];
-    const secs = Math.max(0, Math.round((Date.now() - Date.parse(j.startedAt)) / 1000));
-    return (
-      <span className="flex items-center gap-1.5 px-1.5" title={running.map((x) => JOB_NAME[x.kind]).join(", ")}>
-        <span className="[&>svg]:h-3 [&>svg]:w-3"><Spinner className="text-accent" /></span>
-        {running.length === 1 ? `${JOB_NAME[j.kind]} running · ${secs}s` : `${running.length} jobs running`}
-      </span>
-    );
-  }
-  if (!last) return null;
+  const j = running[0];
+  const secs = j ? Math.max(0, Math.round((Date.now() - Date.parse(j.startedAt)) / 1000)) : 0;
   return (
-    <span className="flex items-center">
+    <span ref={box} className="relative flex items-center">
       <button
-        className="flex items-center gap-1.5 px-1.5 text-good hover:bg-raised"
-        onClick={() => {
-          setReady((r) => r.filter((x) => x.id !== last.id));
-          nav(`/p/${pid}/${RESULT_PAGE[last.kind]}/${last.resultId}`);
-        }}
+        className={clsx("flex items-center gap-1.5 px-1.5 hover:bg-raised", open && "bg-raised text-ink")}
+        title={running.length ? running.map((x) => x.label ?? JOB_NAME[x.kind]).join("\n") : "Activity: running and recent model jobs"}
+        onClick={() => setOpen((o) => !o)}
       >
-        <CheckCircle2 className="h-3 w-3" /> {JOB_NAME[last.kind]} ready · open{ready.length > 1 ? ` (+${ready.length - 1})` : ""}
+        {running.length ? (
+          <>
+            <span className="[&>svg]:h-3 [&>svg]:w-3"><Spinner className="text-accent" /></span>
+            <span className="max-w-[340px] truncate">
+              {running.length === 1 ? `${j.label ?? JOB_NAME[j.kind]} · ${secs}s` : `${running.length} jobs running`}
+            </span>
+          </>
+        ) : (
+          <><History className="h-3 w-3" /> Activity</>
+        )}
       </button>
-      <button className="px-1 hover:bg-raised hover:text-ink" title="Dismiss" onClick={() => setReady((r) => r.filter((x) => x.id !== last.id))}>
-        <X className="h-3 w-3" />
-      </button>
+      {!running.length && last && (
+        <>
+          <button
+            className="flex items-center gap-1.5 px-1.5 text-good hover:bg-raised"
+            onClick={() => {
+              setReady((r) => r.filter((x) => x.id !== last.id));
+              nav(`/p/${pid}/${RESULT_PAGE[last.kind]}/${last.resultId}`);
+            }}
+          >
+            <CheckCircle2 className="h-3 w-3" /> {JOB_NAME[last.kind]} ready · open{ready.length > 1 ? ` (+${ready.length - 1})` : ""}
+          </button>
+          <button className="px-1 hover:bg-raised hover:text-ink" title="Dismiss" onClick={() => setReady((r) => r.filter((x) => x.id !== last.id))}>
+            <X className="h-3 w-3" />
+          </button>
+        </>
+      )}
+      {open && <ActivityPanel pid={pid} onClose={() => setOpen(false)} />}
     </span>
   );
 }

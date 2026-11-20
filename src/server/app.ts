@@ -56,12 +56,22 @@ export function createApi(store: Store, opts: { pruneEveryMs?: number } = {}) {
     return p;
   };
 
-  /** Start model work as a job. Fails fast when no model is set up. */
-  const startJob = (c: Context, kind: JobKind, p: Project, work: (l: Learn) => Promise<{ id: string }>) => {
+  /** Start model work as a job. Fails fast when no model is set up. `meta` names it for the Activity list. */
+  const startJob = (c: Context, kind: JobKind, p: Project, work: (l: Learn) => Promise<{ id: string }>, meta: { label?: string; target?: string } = {}) => {
     const a = agent();
     if (!a.agent) return fail(c, 503, a.info.detail);
     const learn = new Learn(store, a.agent);
-    return c.json(jobs.start(kind, p.id, () => work(learn)), 202);
+    return c.json(jobs.start(kind, p.id, () => work(learn), meta), 202);
+  };
+  /** "queue.ts", "queue.ts, worker.ts", "queue.ts +3". */
+  const filesLabel = (files: (string | undefined)[] = []) => {
+    const names = files.filter((f): f is string => !!f).map((f) => f.split("/").pop());
+    return names.length <= 2 ? names.join(", ") : `${names[0]} +${names.length - 1}`;
+  };
+  const clip = (t: string, n = 70) => (t.length > n ? `${t.slice(0, n - 1)}…` : t);
+  const titleOf = (pid: string, col: Collection, id: string) => {
+    const x = store.get(pid, col, id) as { title?: string; question?: string } | undefined;
+    return clip(x?.title || x?.question || "");
   };
 
   const body = async <T>(c: Context): Promise<T> => {
@@ -98,6 +108,7 @@ export function createApi(store: Store, opts: { pruneEveryMs?: number } = {}) {
   });
 
   api.get("/jobs", (c) => c.json(jobs.history()));
+  api.get("/projects/:pid/jobs", (c) => c.json(jobs.recent(project(c).id)));
   api.get("/storage", (c) => c.json(usage(store)));
   api.get("/storage/items", (c) => c.json(items(store)));
   api.post("/storage/remove", async (c) => {
@@ -166,7 +177,9 @@ export function createApi(store: Store, opts: { pruneEveryMs?: number } = {}) {
       files: string[]; kind: string; question?: string; diff?: DiffSpec; sketch?: string; traceInput?: string; depth?: "overview" | "standard" | "deep";
       steer?: string;
     }>(c);
-    return startJob(c, "lens", p, (l) => l.lens(p, { ...req, files: req.files ?? [] }));
+    return startJob(c, "lens", p, (l) => l.lens(p, { ...req, files: req.files ?? [] }), {
+      label: `Lens · ${clip(req.question?.trim() || req.kind || "lens")} · ${filesLabel(req.files)}`,
+    });
   });
   /** Refresh (the code changed) or rework (a steer, maybe another depth): a new lens replaces this one. */
   api.post("/projects/:pid/lenses/:id/refresh", async (c) => {
@@ -174,7 +187,10 @@ export function createApi(store: Store, opts: { pruneEveryMs?: number } = {}) {
     const id = c.req.param("id");
     if (!store.get(p.id, "lenses", id)) return fail(c, 404, "lens not found");
     const req = await body<{ steer?: string; depth?: "overview" | "standard" | "deep" }>(c);
-    return startJob(c, "lens", p, (l) => l.lens(p, { files: [], kind: "", refreshOf: id, steer: req.steer, depth: req.depth, rework: req.steer !== undefined || !!req.depth }));
+    const rework = req.steer !== undefined || !!req.depth;
+    return startJob(c, "lens", p, (l) => l.lens(p, { files: [], kind: "", refreshOf: id, steer: req.steer, depth: req.depth, rework }), {
+      label: `${rework ? "Rework" : "Refresh"} · ${titleOf(p.id, "lenses", id)}`, target: id,
+    });
   });
   api.post("/projects/:pid/lenses/:id/more", async (c) => {
     const p = project(c);
@@ -182,7 +198,9 @@ export function createApi(store: Store, opts: { pruneEveryMs?: number } = {}) {
     if (!store.get(p.id, "lenses", id)) return fail(c, 404, "lens not found");
     const req = await body<{ question?: string; files?: string[] }>(c);
     if (!req.question?.trim()) return fail(c, 400, "ask a question first");
-    return startJob(c, "lens", p, (l) => l.lensMore(p, id, { question: req.question!, files: req.files }));
+    return startJob(c, "lens", p, (l) => l.lensMore(p, id, { question: req.question!, files: req.files }), {
+      label: `Follow-up · ${titleOf(p.id, "lenses", id)}`, target: id,
+    });
   });
   api.get("/projects/:pid/lenses/:id/export", (c) => {
     const p = project(c);
@@ -202,14 +220,17 @@ export function createApi(store: Store, opts: { pruneEveryMs?: number } = {}) {
   api.post("/projects/:pid/quizzes", async (c) => {
     const p = project(c);
     const req = await body<{ files?: string[]; diff?: DiffSpec; lensId?: string; count?: number; weak?: boolean; weakIds?: string[] }>(c);
-    return startJob(c, "quiz", p, (l) => l.quiz(p, { ...req, files: req.files ?? [] }));
+    return startJob(c, "quiz", p, (l) => l.quiz(p, { ...req, files: req.files ?? [] }), {
+      label: req.weak ? "Quiz · weak spots" : req.lensId ? `Quiz · ${titleOf(p.id, "lenses", req.lensId)}` : `Quiz · ${filesLabel(req.files)}`,
+      target: req.lensId,
+    });
   });
   api.post("/projects/:pid/quizzes/:id/attempts", async (c) => {
     const p = project(c);
     const { answers } = await body<{ answers: Answer[] }>(c);
     const id = c.req.param("id");
     if (!store.get(p.id, "quizzes", id)) return fail(c, 404, "quiz not found");
-    return startJob(c, "grade", p, (l) => l.grade(p, id, answers ?? []));
+    return startJob(c, "grade", p, (l) => l.grade(p, id, answers ?? []), { label: `Grading · ${titleOf(p.id, "quizzes", id) || "quiz"}`, target: id });
   });
   api.delete("/projects/:pid/quizzes/:id", (c) => c.json({ ok: store.archive(project(c).id, "quizzes", c.req.param("id")) }));
   api.get("/projects/:pid/quizzes/:id/export", (c) => {
@@ -229,7 +250,7 @@ export function createApi(store: Store, opts: { pruneEveryMs?: number } = {}) {
   api.post("/projects/:pid/practice", async (c) => {
     const p = project(c);
     const req = await body<{ file?: string; level: number; files?: string[]; concept?: string }>(c);
-    return startJob(c, "practice", p, (l) => l.practice(p, req));
+    return startJob(c, "practice", p, (l) => l.practice(p, req), { label: `Practice · ${filesLabel(req.files?.length ? req.files : [req.file])}` });
   });
   api.put("/projects/:pid/practice/:id/attempt", async (c) => {
     const p = project(c);
@@ -241,7 +262,7 @@ export function createApi(store: Store, opts: { pruneEveryMs?: number } = {}) {
     const p = project(c);
     const id = c.req.param("id");
     if (!store.get(p.id, "practice", id)) return fail(c, 404, "practice not found");
-    return startJob(c, "review", p, (l) => l.review(p, id));
+    return startJob(c, "review", p, (l) => l.review(p, id), { label: "Checking your practice", target: id });
   });
   api.delete("/projects/:pid/practice/:id", (c) => c.json({ ok: store.archive(project(c).id, "practice", c.req.param("id")) }));
 
@@ -323,35 +344,35 @@ export function createApi(store: Store, opts: { pruneEveryMs?: number } = {}) {
   api.post("/projects/:pid/teachbacks", async (c) => {
     const p = project(c);
     const req = await body<{ files?: string[]; text?: string; diff?: DiffSpec }>(c);
-    return startJob(c, "teachback", p, (l) => l.teachback(p, { files: req.files ?? [], text: req.text ?? "", diff: req.diff }));
+    return startJob(c, "teachback", p, (l) => l.teachback(p, { files: req.files ?? [], text: req.text ?? "", diff: req.diff }), { label: `Teach-back · ${filesLabel(req.files)}` });
   });
 
   crud("threads", "threads");
   api.post("/projects/:pid/threads", async (c) => {
     const p = project(c);
     const req = await body<{ files?: string[]; text?: string; diff?: DiffSpec }>(c);
-    return startJob(c, "tutor", p, (l) => l.startThread(p, { files: req.files ?? [], text: req.text ?? "", diff: req.diff }));
+    return startJob(c, "tutor", p, (l) => l.startThread(p, { files: req.files ?? [], text: req.text ?? "", diff: req.diff }), { label: `Tutor · ${clip(req.text ?? "", 50)}` });
   });
   api.post("/projects/:pid/threads/:id/messages", async (c) => {
     const p = project(c);
     const id = c.req.param("id");
     if (!store.get(p.id, "threads", id)) return fail(c, 404, "thread not found");
     const req = await body<{ text?: string; tell?: boolean }>(c);
-    return startJob(c, "tutor", p, (l) => l.tutorReply(p, id, req.text ?? "", !!req.tell));
+    return startJob(c, "tutor", p, (l) => l.tutorReply(p, id, req.text ?? "", !!req.tell), { label: "Tutor reply", target: id });
   });
 
   crud("walks", "walks");
   api.post("/projects/:pid/walks", async (c) => {
     const p = project(c);
     const req = await body<{ file: string }>(c);
-    return startJob(c, "walk", p, (l) => l.walk(p, req));
+    return startJob(c, "walk", p, (l) => l.walk(p, req), { label: `Walkthrough · ${filesLabel([req.file])}` });
   });
   api.post("/projects/:pid/walks/:id/blocks/:i", async (c) => {
     const p = project(c);
     const id = c.req.param("id");
     if (!store.get(p.id, "walks", id)) return fail(c, 404, "walkthrough not found");
     const { answer } = await body<{ answer?: string }>(c);
-    return startJob(c, "walkcheck", p, (l) => l.walkcheck(p, id, Number(c.req.param("i")), answer ?? ""));
+    return startJob(c, "walkcheck", p, (l) => l.walkcheck(p, id, Number(c.req.param("i")), answer ?? ""), { label: "Checking your answer", target: id });
   });
 
   /** The planted bugs stay hidden until the hunt is graded. */
@@ -360,7 +381,7 @@ export function createApi(store: Store, opts: { pruneEveryMs?: number } = {}) {
   api.post("/projects/:pid/hunts", async (c) => {
     const p = project(c);
     const req = await body<{ file: string; level: number }>(c);
-    return startJob(c, "hunt", p, (l) => l.hunt(p, req));
+    return startJob(c, "hunt", p, (l) => l.hunt(p, req), { label: `Bug hunt · ${filesLabel([req.file])}` });
   });
   api.put("/projects/:pid/hunts/:id/marks", async (c) => {
     const p = project(c);
@@ -371,7 +392,7 @@ export function createApi(store: Store, opts: { pruneEveryMs?: number } = {}) {
     const p = project(c);
     const id = c.req.param("id");
     if (!store.get(p.id, "hunts", id)) return fail(c, 404, "bug hunt not found");
-    return startJob(c, "huntgrade", p, (l) => l.huntgrade(p, id));
+    return startJob(c, "huntgrade", p, (l) => l.huntgrade(p, id), { label: "Grading your bug hunt", target: id });
   });
 
   // ---- orientation ------------------------------------------------------------------
@@ -384,7 +405,7 @@ export function createApi(store: Store, opts: { pruneEveryMs?: number } = {}) {
   api.post("/projects/:pid/paths", async (c) => {
     const p = project(c);
     const { goal } = await body<{ goal?: string }>(c);
-    return startJob(c, "path", p, (l) => l.path(p, { goal, hubs: hubs(p) }));
+    return startJob(c, "path", p, (l) => l.path(p, { goal, hubs: hubs(p) }), { label: `Path · ${clip(goal || "where to start", 50)}` });
   });
   api.patch("/projects/:pid/paths/:id", async (c) => {
     const p = project(c);
