@@ -13,7 +13,7 @@
 </p>
 
 <p align="center">
-  <a href="#try-it-in-a-minute"><b>Try it</b></a> ·
+  <a href="#two-ways-to-run-it"><b>Try it</b></a> ·
   <a href="#what-you-do-in-it"><b>What you do in it</b></a> ·
   <a href="#why-it-works"><b>Why it works</b></a> ·
   <a href="SETUP.md"><b>Setup</b></a> ·
@@ -22,6 +22,12 @@
 
 AI makes code faster to write and easier to not understand.
 **cognitune turns the model around: it does not write code for you. It teaches you the code you have, then checks that you got it.**
+
+<p align="center">
+  <img alt="Asking cognitune whether a retry queue still needs jitter: the lens answers with a table, and a code link opens the cited lines beside the text" src="https://raw.githubusercontent.com/k-pulkit/cognitune/main/assets/demo.gif" width="860">
+  <br>
+  <sub>Ask a question about three files; the lens answers first, then walks the code. Each citation opens the lines it means. Real model output on the bundled demo repo.</sub>
+</p>
 
 ## Two ways to run it
 
