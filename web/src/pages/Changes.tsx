@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import clsx from "clsx";
 import { useQuery } from "@tanstack/react-query";
@@ -100,8 +100,15 @@ export function ChangesPage() {
   });
 
   const files = diff.data ?? [];
+  // A new diff ticks every file. A refresh of the same diff keeps your ticks and ticks only new files.
+  const seen = useRef<{ key: string; paths: Set<string> }>({ key: "", paths: new Set() });
   useEffect(() => {
-    setPicked(new Set(files.map((f) => f.path)));
+    const key = `${spec.repo}|${spec.base}|${spec.head}`;
+    const paths = files.map((f) => f.path);
+    const prev = seen.current;
+    if (prev.key === key) setPicked((p) => new Set(paths.filter((f) => p.has(f) || !prev.paths.has(f))));
+    else setPicked(new Set(paths));
+    seen.current = { key, paths: new Set(paths) };
     setActive((a) => (a && files.some((f) => f.path === a) ? a : files[0]?.path ?? null));
   }, [diff.data]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -170,6 +177,11 @@ export function ChangesPage() {
             key={`${spec.repo}|${spec.base}|${spec.head}`}
             roots={tree}
             openAll
+            onRefresh={() => {
+              void diff.refetch();
+              void refs.refetch();
+            }}
+            refreshing={diff.isFetching}
             selected={[...picked]}
             onToggle={(paths, on) => {
               const n = new Set(picked);
@@ -191,7 +203,12 @@ export function ChangesPage() {
             }}
           />
         )}
-        {!diff.isLoading && !files.length && <div className="px-3 py-8 text-center text-sm text-muted">No changes between these two.</div>}
+        {!diff.isLoading && !files.length && <div className="px-3 py-8 text-center text-sm text-muted">
+          No changes between these two.{" "}
+          <button className="text-accent hover:underline disabled:opacity-60" disabled={diff.isFetching} onClick={() => void diff.refetch()}>
+            {diff.isFetching ? "Checking…" : "Check again"}
+          </button>
+        </div>}
       </div>
     </div>
   );

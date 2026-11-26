@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactNode } from "react";
 import clsx from "clsx";
-import { ChevronRight, ChevronsDownUp, ChevronsUpDown, File, FileCode2, FileText, Folder, FolderOpen, Search } from "lucide-react";
+import { ChevronRight, ChevronsDownUp, ChevronsUpDown, File, RefreshCw, FileCode2, FileText, Folder, FolderOpen, Search } from "lucide-react";
 import type { FileLevel, TreeNode } from "@core/types";
 
 const CODE = /\.(ts|tsx|js|jsx|mjs|py|go|rs|java|kt|rb|php|cs|c|h|cpp|swift|scala|sh|sql|vue|svelte|lua|dart|ex)$/i;
@@ -39,7 +39,7 @@ const LEVEL_DOT: Record<FileLevel, string> = {
  * or only the folders with ticked files when something is ticked.
  */
 export function FileTree({
-  roots, selected, onToggle, openFile, onOpen, levels, meta, openAll = false,
+  roots, selected, onToggle, openFile, onOpen, levels, meta, openAll = false, onRefresh, refreshing = false,
 }: {
   roots: TreeNode[];
   selected: string[];
@@ -51,6 +51,9 @@ export function FileTree({
   meta?: (path: string) => ReactNode;
   /** Start with every folder open (a diff), instead of only the roots (a whole repo). */
   openAll?: boolean;
+  /** Shows a refresh button that reloads the list (new or deleted files on disk). */
+  onRefresh?: () => void;
+  refreshing?: boolean;
 }) {
   const [q, setQ] = useState("");
   // A folder is open when `base` says so, flipped for the folders the user clicked. Expand all
@@ -141,6 +144,11 @@ export function FileTree({
           <Search className="pointer-events-none absolute left-2 top-[6px] h-3.5 w-3.5 text-muted" />
           <input className="input h-[26px] pl-7 text-[13px]" placeholder="Filter files" value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
+        {onRefresh && (
+          <button className="rounded p-1 text-muted hover:bg-raised hover:text-ink disabled:opacity-60" title="Refresh: pick up new and changed files" disabled={refreshing} onClick={onRefresh}>
+            <RefreshCw className={clsx("h-3.5 w-3.5", refreshing && "animate-spin")} />
+          </button>
+        )}
         {hasDirs && (
           <>
             <button className="rounded p-1 text-muted hover:bg-raised hover:text-ink" title={selDirs.length ? "Expand the folders with ticked files" : "Expand all folders"} onClick={() => setAll(true)}>

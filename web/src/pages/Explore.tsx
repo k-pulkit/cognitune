@@ -115,6 +115,12 @@ export function ExplorePage() {
         {tree.data && (
           <FileTree
             roots={tree.data}
+            onRefresh={() => {
+              void tree.refetch();
+              void progress.refetch();
+              if (openFile) void file.refetch();
+            }}
+            refreshing={tree.isFetching}
             selected={selected}
             onToggle={(paths, on) => (on ? setSelected([...selected, ...paths]) : setSelected(selected.filter((s) => !paths.includes(s))))}
             openFile={openFile}
