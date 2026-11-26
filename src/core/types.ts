@@ -48,7 +48,7 @@ export interface DiffSpec {
   /** Repo folder; empty or missing means the project root. */
   repo?: string;
   base: string;
-  /** Empty string means the working tree. */
+  /** Empty string means the working tree; "STAGED" means the index (staged changes only). */
   head: string;
 }
 

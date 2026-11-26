@@ -147,7 +147,7 @@ export function LensPage() {
         <div className="mt-6 flex flex-wrap items-center gap-2">
           <Badge tone="accent">{l.kind} lens</Badge>
           {l.depth && l.depth !== "standard" && <Badge>{l.depth}</Badge>}
-          {l.diff && <Badge tone="warn">change {l.diff.base}..{l.diff.head || "working tree"}</Badge>}
+          {l.diff && <Badge tone="warn">change {l.diff.base}..{l.diff.head === "STAGED" ? "staged" : l.diff.head || "working tree"}</Badge>}
           <span className="text-[13px] text-muted">{relTime(l.createdAt)}</span>
           <button
             className="ml-auto inline-flex items-center gap-1 rounded-md px-2 py-1 text-[13px] text-muted hover:bg-raised hover:text-ink"

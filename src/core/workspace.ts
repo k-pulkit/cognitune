@@ -14,6 +14,8 @@ const SKIP_DIRS = new Set([
 const MAX_FILE_BYTES = 400_000;
 /** git's well-known id of the empty tree. */
 const EMPTY_TREE = "4b825dc642cb6eb9a060e54bf8d69288fbee4904";
+/** DiffSpec.head value for "staged changes only" (the index against base). */
+const STAGED = "STAGED";
 /** How deep to look for nested git repos under a folder that is not one. */
 const REPO_SCAN_DEPTH = 4;
 const MAX_TREE_FILES = 20_000;
@@ -266,13 +268,17 @@ export class Workspace {
   }
 
   /**
-   * Changed files between `base` and `head` (empty head = working tree, untracked files included).
+   * Changed files between `base` and `head` (empty head = working tree, untracked files included;
+   * `STAGED` = the index, so only what `git commit` would take).
    * `--relative` keeps paths relative to the folder, also when it sits inside a bigger repo.
    */
   diff(spec: DiffSpec): DiffFile[] {
     const root = this.repo(spec.repo);
     if (!root) return [];
-    const range = (spec.head ? [spec.base, spec.head] : [spec.base]).map((r) => this.resolveRef(root, r));
+    const staged = spec.head === STAGED;
+    const range = staged
+      ? ["--cached", this.resolveRef(root, spec.base)]
+      : (spec.head ? [spec.base, spec.head] : [spec.base]).map((r) => this.resolveRef(root, r));
     const files: DiffFile[] = [];
     const numstat = git(root, ["diff", "--relative", "--numstat", "-M", ...range, "--"]).split("\n").filter(Boolean);
     const status = new Map<string, string>();

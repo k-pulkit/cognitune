@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactNode } from "react";
 import clsx from "clsx";
-import { ChevronRight, File, FileCode2, FileText, Folder, FolderOpen, Search } from "lucide-react";
+import { ChevronRight, ChevronsDownUp, ChevronsUpDown, File, FileCode2, FileText, Folder, FolderOpen, Search } from "lucide-react";
 import type { FileLevel, TreeNode } from "@core/types";
 
 const CODE = /\.(ts|tsx|js|jsx|mjs|py|go|rs|java|kt|rb|php|cs|c|h|cpp|swift|scala|sh|sql|vue|svelte|lua|dart|ex)$/i;
@@ -35,7 +35,8 @@ const LEVEL_DOT: Record<FileLevel, string> = {
 
 /**
  * File tree with tick boxes. Ticking a folder ticks every file under it. Roots start open;
- * the filter opens every folder that has a match.
+ * the filter opens every folder that has a match. Buttons by the filter expand or collapse all folders,
+ * or only the folders with ticked files when something is ticked.
  */
 export function FileTree({
   roots, selected, onToggle, openFile, onOpen, levels, meta, openAll = false,
@@ -52,13 +53,42 @@ export function FileTree({
   openAll?: boolean;
 }) {
   const [q, setQ] = useState("");
-  // Track the folders the user toggled; their meaning flips with openAll.
+  // A folder is open when `base` says so, flipped for the folders the user clicked. Expand all
+  // and Collapse all just reset both, so folders that load later follow the same rule.
+  const [base, setBase] = useState(openAll);
   const [toggled, setToggled] = useState<Set<string>>(() => (openAll ? new Set() : new Set(roots.map((r) => r.path))));
   const sel = useMemo(() => new Set(selected), [selected]);
+  // Folders holding a ticked file. With a selection, the buttons act on these folders only.
+  const selDirs = useMemo(() => {
+    const out: string[] = [];
+    const walk = (n: TreeNode): boolean => {
+      if (n.kind === "file") return sel.has(n.path);
+      let hit = false;
+      for (const c of n.children ?? []) if (walk(c)) hit = true;
+      if (hit) out.push(n.path);
+      return hit;
+    };
+    roots.forEach(walk);
+    return out;
+  }, [roots, sel]);
+  const setAll = (open: boolean) => {
+    if (!selDirs.length) {
+      setBase(open);
+      setToggled(new Set());
+      return;
+    }
+    // A folder is open when base differs from its toggled flag, so set the flag to match.
+    setToggled((t) => {
+      const next = new Set(t);
+      for (const d of selDirs) if (open !== base) next.add(d); else next.delete(d);
+      return next;
+    });
+  };
+  const hasDirs = roots.some((r) => r.kind === "dir");
   const shown = useMemo(() => filterTree(roots, q.trim()), [roots, q]);
 
   const row = (n: TreeNode, depth: number) => {
-    const isOpen = q ? true : openAll ? !toggled.has(n.path) : toggled.has(n.path);
+    const isOpen = q ? true : base !== toggled.has(n.path);
     const files = n.kind === "dir" ? filesUnder(n) : [n.path];
     const ticked = files.filter((f) => sel.has(f)).length;
     const all = ticked > 0 && ticked === files.length;
@@ -106,11 +136,21 @@ export function FileTree({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="px-2 py-1.5">
-        <div className="relative">
+      <div className="flex items-center gap-1 px-2 py-1.5">
+        <div className="relative min-w-0 flex-1">
           <Search className="pointer-events-none absolute left-2 top-[6px] h-3.5 w-3.5 text-muted" />
           <input className="input h-[26px] pl-7 text-[13px]" placeholder="Filter files" value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
+        {hasDirs && (
+          <>
+            <button className="rounded p-1 text-muted hover:bg-raised hover:text-ink" title={selDirs.length ? "Expand the folders with ticked files" : "Expand all folders"} onClick={() => setAll(true)}>
+              <ChevronsUpDown className="h-3.5 w-3.5" />
+            </button>
+            <button className="rounded p-1 text-muted hover:bg-raised hover:text-ink" title={selDirs.length ? "Collapse the folders with ticked files" : "Collapse all folders"} onClick={() => setAll(false)}>
+              <ChevronsDownUp className="h-3.5 w-3.5" />
+            </button>
+          </>
+        )}
       </div>
       <div className="min-h-0 flex-1 overflow-auto pb-4">{shown.map((r) => row(r, 0))}</div>
     </div>

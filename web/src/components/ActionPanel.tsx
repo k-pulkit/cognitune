@@ -146,7 +146,7 @@ export function ActionPanel({
           <section>
             <div className="label flex items-center gap-1">
               <span>Context · {files.length}</span>
-              {diff && <span className="truncate normal-case tracking-normal">· change {diff.base}..{diff.head || "working tree"}</span>}
+              {diff && <span className="truncate normal-case tracking-normal">· change {diff.base}..{diff.head === "STAGED" ? "staged" : diff.head || "working tree"}</span>}
               <button
                 className="ml-auto inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 normal-case tracking-normal text-accent hover:bg-accent/10"
                 onClick={() => setPicking(true)}

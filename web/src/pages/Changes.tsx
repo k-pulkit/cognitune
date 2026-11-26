@@ -146,7 +146,11 @@ export function ChangesPage() {
           <Combobox
             value={spec.head}
             onChange={(v) => setSpec({ ...spec, head: v })}
-            options={[{ value: "", label: "Working tree (uncommitted)", group: "Current" }, ...refOptions]}
+            options={[
+              { value: "", label: "Working tree (uncommitted)", group: "Current" },
+              { value: "STAGED", label: "Staged only", hint: "what git commit would take", group: "Current" },
+              ...refOptions,
+            ]}
           />
         </div>
       </div>
