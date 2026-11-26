@@ -1,17 +1,18 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import clsx from "clsx";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import {
   AlertTriangle, ArrowLeft, ArrowRight, BookOpen, ChevronLeft, ChevronRight, CornerDownRight, Download, Eye, FileCode2, GitCompareArrows, Layers,
-  Lightbulb, ListChecks, Maximize2, MessageSquarePlus, PenLine, RefreshCw, Sparkles, Trash2, TriangleAlert, Wand2,
+  Lightbulb, ListChecks, Undo2, Maximize2, MessageSquarePlus, PenLine, RefreshCw, Sparkles, Trash2, TriangleAlert, Wand2,
 } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import type { Card, DeepDive, FileContent, Lens } from "@core/types";
-import { del, get, relTime, useJob } from "@/lib/api";
+import { del, get, post, relTime, useJob } from "@/lib/api";
 import { useProject } from "@/lib/project";
 import { shortPath } from "@/lib/path";
 import { CardDialog } from "@/components/CardDialog";
 import { ResumedJob } from "@/components/ResumedJob";
+import { ReviseOnSelect, ReviseToast } from "@/components/Revise";
 import { CodePane } from "@/components/CodePane";
 import { CodeView } from "@/components/CodeView";
 import { type CodeLinks, Inline, Markdown } from "@/components/Markdown";
@@ -44,6 +45,27 @@ function resolveCited(path: string, known: string[], root: string): string | und
   return !hits.length && p.includes("/") && !p.startsWith("/") ? abs : undefined;
 }
 
+/** A lens block as the reader would name it. */
+function blockLabel(block: string): string {
+  const m = /^step:(\d+)$/.exec(block);
+  if (m) return `Step ${Number(m[1]) + 1}`;
+  const names: Record<string, string> = {
+    tldr: "The idea", summary: "The summary", verdict: "The answer", intuition: "The intuition",
+    concepts: "The terms", gotchas: "The gotchas", alsoNoticed: "Also noticed", title: "The title", whyItMatters: "Why it matters",
+  };
+  return names[block] ?? block;
+}
+
+/** Briefly mark a block that was just rewritten, and bring it into view. */
+function flash(block: string) {
+  const el = document.querySelector<HTMLElement>(`[data-block="${block}"]`);
+  if (!el) return;
+  el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  el.classList.remove("flash");
+  void el.offsetWidth;
+  el.classList.add("flash");
+}
+
 /** A section heading, like a blog post's h2. */
 function H2({ icon, children, aside }: { icon?: React.ReactNode; children: React.ReactNode; aside?: React.ReactNode }) {
   return (
@@ -69,6 +91,11 @@ export function LensPage() {
   const job = useJob();
   const refresh = useJob();
   const more = useJob();
+  const revise = useJob();
+  /** The block being rewritten, and what the last rewrite did (for the note at the bottom right). */
+  const [revising, setRevising] = useState<string | undefined>();
+  const [revised, setRevised] = useState<string | undefined>();
+  const article = useRef<HTMLElement>(null);
   const [ask, setAsk] = useState("");
   /** The rework panel: null = closed, else the steer being written. */
   const [rework, setRework] = useState<{ steer: string; depth: "overview" | "standard" | "deep" } | null>(null);
@@ -135,12 +162,28 @@ export function LensPage() {
     else if (d.part) acc.push({ name: d.part, from: i, to: i });
     return acc;
   }, []);
+  const runRevise = (block: string, selection: string, instruction: string) => {
+    setRevising(block);
+    setRevised(undefined);
+    void revise.run(`/projects/${project.id}/lenses/${l.id}/revise`, { block, selection, instruction }, async () => {
+      await lens.refetch();
+      setRevised(`${blockLabel(block)} rewritten.`);
+      setTimeout(() => flash(block), 50);
+    });
+  };
+  const undo = async () => {
+    const last = l.edits?.at(-1);
+    await post(`/projects/${project.id}/lenses/${l.id}/undo`);
+    await lens.refetch();
+    setRevised(undefined);
+    if (last) setTimeout(() => flash(last.block), 50);
+  };
   const shownDives = mode === "all" ? dives.map((d, i) => [d, i] as const) : dives[step] ? [[dives[step], step] as const] : [];
   // Blog layout: text sits in a centred reading column (.lens > *), figures, cards and code
   // break out wider (.wide). See .lens in index.css.
   const doc = (
     <div className="h-full overflow-auto">
-      <article className="lens py-10">
+      <article ref={article} className="lens py-10">
         <Link to={`/p/${project.id}/library`} className="inline-flex items-center gap-1 text-[13px] text-muted hover:text-ink">
           <ArrowLeft className="h-3.5 w-3.5" /> Library
         </Link>
@@ -163,10 +206,22 @@ export function LensPage() {
         <h1 className="mt-4 text-[36px] font-bold leading-[1.1] tracking-[-0.02em]">{l.title}</h1>
         <p className="mt-3 text-[16.5px] leading-relaxed text-muted">{l.question}</p>
         {l.steer && !rework && <p className="mt-1 text-[13.5px] text-muted"><span className="font-medium">Steer:</span> {l.steer}</p>}
+        {l.update && (
+          <p className="mt-3 text-[13.5px] text-muted">
+            <span className="font-medium text-ink">{l.update.kind === "rework" ? "Reworked" : "Refreshed"} {relTime(l.update.at)}:</span> {l.update.note}
+            {l.update.changed.length > 0 && <> Rewritten: {l.update.changed.map((b) => blockLabel(b)).join(", ")}.</>}
+          </p>
+        )}
+        {(l.edits?.length ?? 0) > 0 && (
+          <p className="mt-2 flex flex-wrap items-center gap-x-2 text-[13px] text-muted">
+            <span>{l.edits!.length} part{l.edits!.length === 1 ? "" : "s"} revised. Last: {blockLabel(l.edits!.at(-1)!.block)}, “{l.edits!.at(-1)!.instruction.slice(0, 80)}”</span>
+            <button className="inline-flex items-center gap-1 text-accent hover:underline" disabled={revise.busy} onClick={undo}><Undo2 className="h-3.5 w-3.5" /> Undo</button>
+          </p>
+        )}
         {rework && (
           <div className="mt-5 rounded-md border border-line p-4">
             <div className="flex items-center gap-2 text-[15px] font-semibold"><Wand2 className="h-4 w-4 text-accent" /> Rework this lens</div>
-            <p className="mt-1 text-[13px] text-muted">Same question and files, written again with your steer. The new lens replaces this one; follow-ups are not carried over.</p>
+            <p className="mt-1 text-[13px] text-muted">Same question and files. A planner reads this lens and your steer, and only the parts that need it are rewritten; follow-ups are kept. A new depth writes the whole lens again (follow-ups are then not carried over). To change one part, select its text instead.</p>
             <textarea
               className="input mt-3 min-h-[72px] resize-y text-[14px]"
               placeholder="e.g. Lead with the decision. Fewer steps, and leave out the audit model. Explain merge with one example."
@@ -216,16 +271,18 @@ export function LensPage() {
         {refresh.error && <div className="mt-3"><ErrorNote error={refresh.error} onClose={refresh.clearError} /></div>}
 
         {/* The one idea, as a pull quote */}
-        <div className="mt-10 border-l-[3px] border-accent py-1 pl-5">
-          <div className="text-[11.5px] font-semibold uppercase tracking-[0.08em] text-accent">The idea in one sentence</div>
-          <p className="read-lead mt-2"><Inline code={code}>{l.tldr || l.summary}</Inline></p>
+        <div data-block={l.tldr ? "tldr" : "summary"}>
+          <div className="mt-10 border-l-[3px] border-accent py-1 pl-5">
+            <div className="text-[11.5px] font-semibold uppercase tracking-[0.08em] text-accent">The idea in one sentence</div>
+            <p className="read-lead mt-2"><Inline code={code}>{l.tldr || l.summary}</Inline></p>
+          </div>
+          {l.whyItMatters && (
+            <p className="read mt-6"><strong>Why it matters.</strong> <Inline code={code}>{l.whyItMatters}</Inline></p>
+          )}
         </div>
-        {l.whyItMatters && (
-          <p className="read mt-6"><strong>Why it matters.</strong> <Inline code={code}>{l.whyItMatters}</Inline></p>
-        )}
-        {l.tldr && l.summary && <div className="mt-5"><Markdown code={code}>{l.summary}</Markdown></div>}
+        {l.tldr && l.summary && <div data-block="summary" className="mt-5"><Markdown code={code}>{l.summary}</Markdown></div>}
         {l.verdict && (
-          <div className="mt-6 rounded-md border border-accent/30 bg-accent/5 px-5 py-4">
+          <div data-block="verdict" className="mt-6 rounded-md border border-accent/30 bg-accent/5 px-5 py-4">
             <div className="text-[11.5px] font-semibold uppercase tracking-[0.08em] text-accent">The answer</div>
             <div className="mt-2"><Markdown code={code}>{l.verdict}</Markdown></div>
           </div>
@@ -246,7 +303,7 @@ export function LensPage() {
         {l.concepts.length > 0 && (
           <>
             <H2 icon={<BookOpen className="h-5 w-5" />}>Words you need first</H2>
-            <div className="wide lens-concepts grid gap-5">
+            <div data-block="concepts" className="wide lens-concepts grid gap-5">
               {l.concepts.map((c) => (
                 <ConceptCard
                   key={c.term}
@@ -270,7 +327,7 @@ export function LensPage() {
         {l.intuition && (
           <>
             <H2 icon={<Lightbulb className="h-5 w-5" />}>The intuition</H2>
-            <Markdown code={code}>{l.intuition}</Markdown>
+            <div data-block="intuition"><Markdown code={code}>{l.intuition}</Markdown></div>
           </>
         )}
 
@@ -298,7 +355,7 @@ export function LensPage() {
             )}
             <ol className="space-y-12 [&>li+li]:border-t [&>li+li]:border-line [&>li+li]:pt-10">
               {shownDives.map(([d, i]) => (
-                <Step key={i} d={d} n={i + 1} text={d.file ? fileText.get(d.file) : undefined} rel={rel} onShow={show} code={codeBase}
+                <Step key={i} block={`step:${i}`} d={d} n={i + 1} text={d.file ? fileText.get(d.file) : undefined} rel={rel} onShow={show} code={codeBase}
                   part={d.part && (mode === "step" || i === 0 || dives[i - 1].part !== d.part) ? `${parts.findIndex((p) => p.from <= i && i <= p.to) + 1}. ${d.part}` : undefined} />
               ))}
             </ol>
@@ -317,7 +374,7 @@ export function LensPage() {
         {l.gotchas && l.gotchas.length > 0 && (
           <>
             <H2 icon={<TriangleAlert className="h-5 w-5" />}>Gotchas</H2>
-            <ul className="read space-y-3">
+            <ul data-block="gotchas" className="read space-y-3">
               {l.gotchas.map((g, i) => <li key={i} className="flex gap-3"><span className="mt-[0.55em] h-1.5 w-1.5 shrink-0 rounded-full bg-warn" /><span><Inline code={code}>{g}</Inline></span></li>)}
             </ul>
           </>
@@ -326,7 +383,7 @@ export function LensPage() {
         {l.alsoNoticed && l.alsoNoticed.length > 0 && (
           <details className="mt-12 rounded-md border border-line px-5 py-3">
             <summary className="cursor-pointer text-[15px] font-semibold">Also noticed <span className="font-normal text-muted">· {l.alsoNoticed.length}, not part of the answer</span></summary>
-            <ul className="read mt-3 space-y-2">
+            <ul data-block="alsoNoticed" className="read mt-3 space-y-2">
               {l.alsoNoticed.map((a, i) => <li key={i} className="flex gap-3"><span className="mt-[0.55em] h-1.5 w-1.5 shrink-0 rounded-full bg-muted" /><span><Inline code={code}>{a}</Inline></span></li>)}
             </ul>
           </details>
@@ -435,6 +492,19 @@ export function LensPage() {
           {job.error && <div className="mt-3"><ErrorNote error={job.error} onClose={job.clearError} /></div>}
           {card && <CardDialog initial={card} onClose={() => setCard(null)} />}
         </section>
+        <ReviseOnSelect root={article} label={(b) => blockLabel(b)} busy={revise.busy} onRevise={runRevise} />
+        <ReviseToast
+          busy={revise.busy}
+          elapsed={revise.elapsed}
+          what={revising && blockLabel(revising)}
+          done={revised}
+          error={revise.error}
+          onUndo={l.edits?.length ? undo : undefined}
+          onClose={() => {
+            setRevised(undefined);
+            revise.clearError();
+          }}
+        />
       </article>
     </div>
   );
@@ -545,7 +615,9 @@ function blockStart(lines: string[], start: number, key: number): number {
 }
 
 /** One walkthrough step: the claim, why, its own lines of code, a pitfall, and a question to check yourself. */
-function Step({ d, n, text, rel, onShow, code: base, part }: {
+function Step({ d, n, text, rel, onShow, code: base, part, block }: {
+  /** Set on the lens's own steps (not follow-up steps): the block id a selection inside it revises. */
+  block?: string;
   d: DeepDive;
   n: number;
   text?: FileContent;
@@ -572,7 +644,7 @@ function Step({ d, n, text, rel, onShow, code: base, part }: {
   }, [text, r?.[0], r?.[1], d.line]); // eslint-disable-line react-hooks/exhaustive-deps
   const keyMark = useMemo(() => (d.line ? [{ from: d.line, to: d.line, cls: "hl" }] : []), [d.line]);
   return (
-    <li className="lens-step">
+    <li className="lens-step" data-block={block}>
       {part && <div className="lens-part text-[12px] font-semibold uppercase tracking-[0.08em] text-accent">{part}</div>}
       <div className="min-w-0">
         <div className="flex items-baseline gap-3">

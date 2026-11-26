@@ -1,14 +1,15 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import clsx from "clsx";
 import { useQuery } from "@tanstack/react-query";
 import { Lightbulb } from "lucide-react";
-import { ArrowRight, Check, Footprints, RotateCcw, Trash2 } from "lucide-react";
+import { ArrowRight, Check, Footprints, RotateCcw, Trash2, Undo2 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import type { FileContent, Walk } from "@core/types";
-import { get, relTime, useJob } from "@/lib/api";
+import { get, post, relTime, useJob } from "@/lib/api";
 import { useProject } from "@/lib/project";
 import { BackLink, useArchive } from "@/components/BackLink";
 import { ResumedJob } from "@/components/ResumedJob";
+import { ReviseOnSelect, ReviseToast } from "@/components/Revise";
 import { CodePane } from "@/components/CodePane";
 import { CodeView } from "@/components/CodeView";
 import { Markdown } from "@/components/Markdown";
@@ -21,6 +22,9 @@ export function WalkPage() {
   const { project, rel } = useProject();
   const nav = useNavigate();
   const job = useJob();
+  const revise = useJob();
+  const [revised, setRevised] = useState<string | undefined>();
+  const card = useRef<HTMLDivElement>(null);
   const archive = useArchive(`walks/${id}`);
   const q = useQuery({ queryKey: ["walk", project.id, id], queryFn: () => get<Walk>(`/projects/${project.id}/walks/${id}`) });
   const w = q.data;
@@ -54,6 +58,19 @@ export function WalkPage() {
   const done = w.blocks.filter((x) => x.verdict).length;
   const pts = w.blocks.reduce((s, x) => s + (x.verdict === "right" ? 1 : x.verdict === "partial" ? 0.5 : 0), 0);
 
+  const label = (block: string) => `Block ${Number(block.split(":")[1]) + 1}`;
+  const runRevise = (block: string, selection: string, instruction: string) => {
+    setRevised(undefined);
+    void revise.run(`/projects/${project.id}/walks/${w.id}/revise`, { block: Number(block.split(":")[1]), selection, instruction }, async () => {
+      await q.refetch();
+      setRevised(`${label(block)} rewritten.`);
+    });
+  };
+  const undo = async () => {
+    await post(`/projects/${project.id}/walks/${w.id}/undo`);
+    await q.refetch();
+    setRevised(undefined);
+  };
   const doc = (
     <div className="h-full overflow-auto">
       <div className="page">
@@ -78,11 +95,19 @@ export function WalkPage() {
           ))}
         </div>
 
-        <div className="card mt-6 p-6">
+        {(w.edits?.length ?? 0) > 0 && (
+          <p className="mt-4 flex flex-wrap items-center gap-x-2 text-[13px] text-muted">
+            <span>{w.edits!.length} block{w.edits!.length === 1 ? "" : "s"} revised. Last: block {w.edits!.at(-1)!.block + 1}, “{w.edits!.at(-1)!.instruction.slice(0, 80)}”</span>
+            <button className="inline-flex items-center gap-1 text-accent hover:underline" disabled={revise.busy} onClick={undo}><Undo2 className="h-3.5 w-3.5" /> Undo</button>
+          </p>
+        )}
+        <div ref={card} className="card mt-6 p-6">
           <div className="flex items-center gap-2 text-xs text-muted">
             Block {i + 1} of {w.blocks.length} · lines {b.startLine}-{b.endLine}
             {b.verdict && <span className="ml-auto"><VerdictBadge v={b.verdict} /></span>}
           </div>
+          {/* The teaching text can be revised by selecting it; the question and answer below cannot. */}
+          <div data-block={`block:${i}`}>
           <h2 className="mt-1 text-lg font-semibold">{b.title || `Block ${i + 1}`}</h2>
           <p className="reading mt-1 text-muted">{b.why}</p>
           {block !== null && (
@@ -98,6 +123,7 @@ export function WalkPage() {
               <Markdown>{b.example}</Markdown>
             </div>
           )}
+          </div>
           <div className="mt-5 rounded-lg border border-accent/25 bg-accent/5 p-3 text-[15.5px] font-medium">{b.question}</div>
           {b.verdict && (
             <div className={clsx("mt-4 space-y-2", retry && "opacity-70")}>
@@ -139,6 +165,9 @@ export function WalkPage() {
           </div>
         </div>
 
+        <ReviseOnSelect root={card} label={label} busy={revise.busy} onRevise={runRevise} />
+        <ReviseToast busy={revise.busy} elapsed={revise.elapsed} what={label(`block:${i}`)} done={revised} error={revise.error}
+          onUndo={w.edits?.length ? undo : undefined} onClose={() => { setRevised(undefined); revise.clearError(); }} />
         {done === w.blocks.length && (
           <div className="card mt-6 flex items-center gap-3 border-good/30 p-4">
             <Footprints className="h-5 w-5 text-good" />

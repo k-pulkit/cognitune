@@ -120,6 +120,25 @@ export interface Lens {
   alsoNoticed?: string[];
   /** The reader's extra instruction for how to write it ("focus on X", "shorter"); kept on refresh. */
   steer?: string;
+  /** Blocks the reader revised in place, newest last; each can be undone. */
+  edits?: LensEdit[];
+  /** The last targeted update (a refresh or rework that rewrote only some blocks): what changed. */
+  update?: { at: string; kind: "refresh" | "rework"; note: string; changed: string[] };
+}
+
+/**
+ * A part of a lens that can be rewritten on its own: "tldr" (with why it matters), "summary", "verdict",
+ * "intuition", "concepts", "gotchas", "alsoNoticed", or "step:N" (0-based walkthrough step).
+ */
+export type LensBlockId = string;
+
+export interface LensEdit {
+  at: string;
+  block: LensBlockId;
+  instruction: string;
+  selection?: string;
+  /** The block's fields before the edit, to undo it. */
+  before: Partial<Lens> | { step: number; dive: DeepDive };
 }
 
 export interface LensFollowUp {
@@ -421,6 +440,8 @@ export interface Walk {
   file: string;
   fileHash: string;
   blocks: WalkBlock[];
+  /** Blocks the reader revised in place, newest last; each can be undone. */
+  edits?: { at: string; block: number; instruction: string; before: WalkBlock }[];
 }
 
 export interface PlantedBug {

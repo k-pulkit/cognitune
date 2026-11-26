@@ -149,7 +149,9 @@ const GROUPS: Group[] = [
         notes: [
           "On the lens page: Words you need first (click a term to see where it shows up), the walkthrough (each step has a code card, a pitfall and a check question), then gotchas and next steps.",
           "Click open file on a step to jump the code pane to that range. The same file pane stays on the right.",
-          "Refresh rebuilds a lens when the code changed. A banner tells you when it did.",
+          "Refresh updates a lens when the code changed (a banner tells you). Only the parts that are no longer true are rewritten; follow-ups stay.",
+          "Rework writes the lens again with your steer, changing only the parts the steer is about. A new depth rewrites it all.",
+          "To change one part, select its text: a Revise button appears. Say what to change; only that part is rewritten, and Undo takes it back. Walkthroughs work the same way.",
         ],
       },
       {

@@ -58,6 +58,29 @@ export class FakeAgent implements Agent {
           gotchas: ["Line 4 is easy to miss."],
         };
       }
+      case "walkRevise":
+      case "lensRevise": {
+        // Echo the block with " Revised." on its main text, so tests can see which block changed.
+        const m = /BLOCK TO REWRITE: ([^\n]+)\n([\s\S]*?)\n\n(?:THE READER SELECTED|INSTRUCTION:)/.exec(prompt);
+        const block = m ? (JSON.parse(m[2]) as Record<string, unknown>) : {};
+        const key = ["body", "explain", "summary", "verdict", "intuition", "tldr"].find((k) => typeof block[k] === "string");
+        if (key) block[key] = `${block[key]} Revised.`;
+        for (const k of ["gotchas", "alsoNoticed"]) if (Array.isArray(block[k])) block[k] = [...(block[k] as string[]), "A revised item."];
+        if (Array.isArray(block.concepts)) block.concepts = [...(block.concepts as object[]), { term: "Revised term", explain: "Added by a revise." }];
+        return { block };
+      }
+      case "lensUpdate": {
+        // Keep every step but rewrite the second, and add one at the end.
+        const n = (prompt.match(/^=== BLOCK step:\d+/gm) ?? []).length;
+        return {
+          note: "Step 2 now matches the new code; one step was added.",
+          blocks: [{ id: "summary", change: "Say the function now also logs." }],
+          steps: [
+            ...Array.from({ length: n }, (_, i) => (i === 1 ? { from: 1, change: "The logic moved down a line." } : { keep: i })),
+            { new: true, title: `A new step about ${file}`, file, startLine: 1, endLine: 3, line: 2, covers: ["the new line"], why: "It is new." },
+          ],
+        };
+      }
       case "walkPlan":
         return { blocks: [1, 2].map((i) => ({ startLine: i, endLine: i + 2, title: `Block ${i} does one thing`, covers: ["a fact"], example: "n = 3", question: "what happens for n = 3?" })) };
       case "walkBlocks": {

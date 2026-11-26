@@ -729,3 +729,116 @@ export function parseJson<T>(text: string): T {
   }
   throw new Error(`model reply had no valid JSON: ${text.slice(0, 300)}`);
 }
+
+// ---- targeted edits: revise one block, or update a lens block by block ------------------------
+// A lens is a list of blocks (the idea, the summary, the answer, the intuition, the terms, each step,
+// the gotchas, "also noticed"). A revise or an update rewrites only the blocks that need it; the rest of
+// the lesson is sent as context so the new text still fits.
+
+const BLOCK_SHAPES = `Block shapes (reply with the same keys the block came with):
+- "tldr": {"tldr": "one sentence", "whyItMatters": "1-2 sentences"}
+- "summary": {"summary": "markdown, at most 3 short sentences, no table"}
+- "verdict": {"verdict": "markdown: the decision, often a small When | Do table"}
+- "intuition": {"intuition": "markdown: toy data as numbered stages, and/or one mermaid diagram"}
+- "concepts": {"concepts": [{"term": "", "explain": "", "example": "", "file": "relative/path", "line": 12}]}
+- "gotchas": {"gotchas": ["one sentence with its citation"]}
+- "alsoNoticed": {"alsoNoticed": ["one sentence with its citation"]}
+- "step:N": {"title": "the idea as a claim", "file": "relative/path", "startLine": 10, "endLine": 24, "line": 12,
+  "body": "markdown", "pitfall": "or empty", "check": {"q": "", "a": ""}, "part": "same part name as before unless asked"}`;
+
+export function lensReviseSystem(depth: LensDepth = "standard"): string {
+  const d = SCREENS[depth];
+  return `TASK: lensRevise
+You edit ONE block of an existing "lens" (a lesson that teaches code). The reader selected some text in that
+block and wrote an instruction. Rewrite the whole block so it follows the instruction, focusing on the selected
+part. Keep everything in the block that the instruction does not touch, in the same words where you can. Keep
+the block's length about the same unless the instruction asks for more or less (a step body is about ${d.paras}).
+The rest of the lesson is given so your block still fits it: do not repeat what other blocks already say, keep
+terms and names consistent with them, and do not contradict them unless the code says otherwise.
+
+${TEACH}
+${BLOCK_SHAPES}
+${STYLE}
+
+JSON shape:
+{ "block": { ...the block, with the same keys it came with... } }`;
+}
+
+export function lensRevisePrompt(x: { question: string; lesson: string; id: string; block: unknown; selection?: string; instruction: string; code: string }): string {
+  return `QUESTION OF THE LESSON: ${x.question}
+
+THE LESSON (for context; do not rewrite it):
+${x.lesson}
+
+BLOCK TO REWRITE: ${x.id}
+${JSON.stringify(x.block, null, 1)}
+
+${x.selection ? `THE READER SELECTED THIS TEXT IN THE BLOCK:\n"""\n${x.selection}\n"""\n\n` : ""}INSTRUCTION:
+${x.instruction}
+
+CODE:
+${x.code}`;
+}
+
+export function lensUpdateSystem(depth: LensDepth = "standard"): string {
+  const d = SCREENS[depth];
+  return `TASK: lensUpdate
+You are the PLANNER of an update to an existing "lens" (a lesson that teaches code through one question).
+Either the code changed since the lesson was written, or the reader asked for a rework with a steer. Do not
+rewrite the lesson. Decide, block by block, what must change, and write a precise instruction for each block
+that changes; writer models will then rewrite only those blocks. A block you do not mention is kept as it is.
+
+How to decide:
+- Code changed: read the current code and check every claim, value and line range in the lesson against it,
+  most of all in blocks that cite the changed files. A block that is still true stays. Line ranges that only
+  moved can be fixed with "keep" plus the new numbers, without a rewrite.
+- Rework: apply the reader's steer. Change only the blocks the steer is about. If the steer asks for a new
+  order, fewer steps or a different focus, reorder, drop or add steps; if it asks for a whole new take, you may
+  change every block.
+- An instruction says WHAT to change and WHY, with the real values or lines ("the retry limit is now 5, not 3,
+  see \`queue.ts:41\`; say the backoff stops at the fifth try"), not "update this block".
+- Keep the lesson about ${d.size}, with ${d.steps} steps, unless the steer asks otherwise.
+
+${SHAPE}
+${STYLE}
+
+JSON shape:
+{
+  "note": "one sentence for the reader: what changed in the lesson and why (or that nothing needed to change)",
+  "title": "only if it must change, else omit", "tldr": "only if it must change, else omit", "whyItMatters": "only if it must change, else omit",
+  "blocks": [{"id": "summary | verdict | intuition | concepts | gotchas | alsoNoticed", "change": "the instruction"}],
+  "steps": [   // the full list of steps in the new order; a step left out is dropped
+    {"keep": 0, "startLine": 10, "endLine": 24, "line": 12, "part": "only to move it to another part"},   // unchanged text; line numbers only if they moved
+    {"from": 1, "change": "the instruction", "startLine": 30, "endLine": 41, "line": 33},                  // rewrite old step 1
+    {"new": true, "title": "the idea as a claim", "file": "relative/path", "startLine": 50, "endLine": 60, "line": 52,
+     "covers": ["facts to explain"], "example": "", "why": "", "pitfall": "", "check": "", "part": ""}       // a new step
+  ]
+}`;
+}
+
+export function lensUpdatePrompt(x: { question: string; blocks: string; reason: string; steer?: string; code: string }): string {
+  return `QUESTION OF THE LESSON: ${x.question}
+
+WHY THIS UPDATE: ${x.reason}
+
+${x.steer ? `READER'S STEER:\n${x.steer}\n\n` : ""}THE CURRENT LESSON, BLOCK BY BLOCK (step numbers are 0-based):
+${x.blocks}
+
+CODE (current):
+${x.code}`;
+}
+
+export function walkReviseSystem(): string {
+  return `TASK: walkRevise
+You edit ONE block of a walkthrough: a lesson that reads a file in order, one block of lines at a time. The reader
+selected some text in the block and wrote an instruction. Rewrite the block's teaching text so it follows the
+instruction, focusing on the selected part. Keep what the instruction does not touch, in the same words where you
+can, and keep it about as long unless asked otherwise. The other blocks' titles are given so it still fits. Do not
+change the lines the block covers, and do not change its check question (the reader's answer is graded on it).
+
+${TEACH}
+${STYLE}
+
+JSON shape:
+{ "block": {"title": "the idea of the block as a claim", "why": "1-2 sentences: why it matters, how it connects to the block before", "explain": "markdown", "example": "markdown: real values and a small code sample, or empty"} }`;
+}

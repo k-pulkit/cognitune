@@ -294,3 +294,7 @@ body {
 .lens-step-code .code-view .line { display: block; white-space: pre-wrap; overflow-wrap: anywhere; padding-left: 4.25em; text-indent: -4.25em; }
 .lens-step-code .code-view .line::before { width: 2.75em; margin-right: 1.5em; }
 .lens-step-code .code-view pre { padding: 10px 0; }
+
+/* A lens block that was just rewritten: a short accent glow. */
+@keyframes block-flash { 0% { background-color: rgb(var(--accent) / 0.14); } 100% { background-color: transparent; } }
+.flash { animation: block-flash 1.8s ease-out; border-radius: 6px; }

@@ -171,6 +171,78 @@ describe("learning features", () => {
     expect((await send(`/lenses/${j.resultId}/more`, { question: " " })).status).toBe(400);
   });
 
+  it("revise rewrites one block in place, with undo", async () => {
+    const j = await job("/lenses", { files: [add()], kind: "explain" });
+    const before = await get(`/lenses/${j.resultId}`);
+    const r = await job(`/lenses/${j.resultId}/revise`, { block: "step:1", selection: "Where the work", instruction: "Use a real value." });
+    expect(r.resultId).toBe(j.resultId);
+    const l = await get(`/lenses/${j.resultId}`);
+    expect(l.deepDives[1].body).toBe(`${before.deepDives[1].body} Revised.`);
+    expect(l.deepDives[0]).toEqual(before.deepDives[0]);
+    expect(l.summary).toBe(before.summary);
+    expect(l.edits).toHaveLength(1);
+    expect(l.edits[0]).toMatchObject({ block: "step:1", instruction: "Use a real value." });
+
+    await job(`/lenses/${j.resultId}/revise`, { block: "gotchas", instruction: "Add one." });
+    expect((await get(`/lenses/${j.resultId}`)).gotchas).toContain("A revised item.");
+
+    const u = await (await send(`/lenses/${j.resultId}/undo`, {})).json();
+    expect(u.gotchas).toEqual(before.gotchas);
+    expect(u.deepDives[1].body).toContain("Revised.");
+    const u2 = await (await send(`/lenses/${j.resultId}/undo`, {})).json();
+    expect(u2.deepDives[1].body).toBe(before.deepDives[1].body);
+    expect(u2.edits).toHaveLength(0);
+    expect((await send(`/lenses/${j.resultId}/undo`, {})).status).toBe(400);
+    expect((await send(`/lenses/${j.resultId}/revise`, { block: "step:9", instruction: "x" })).status).toBe(202);
+    expect((await send(`/lenses/${j.resultId}/revise`, { block: "summary", instruction: " " })).status).toBe(400);
+  });
+
+  it("refresh on changed code updates only the blocks the planner names, and keeps follow-ups", async () => {
+    const seen: string[] = [];
+    const fake = new FakeAgent();
+    const learn = new Learn(store, { name: "spy", complete: async (r) => (seen.push(/^TASK: (\w+)/m.exec(r.system)![1]), fake.complete(r)) });
+    const p = store.project(pid)!;
+    const first = await learn.lens(p, { files: [add()], kind: "explain" });
+    await learn.lensMore(p, first.id, { question: "Why two?" });
+    writeFileSync(add(), "import { two } from \"./two.js\";\nexport function add(a: number) {\n  console.log(a);\n  const total = a + two();\n  return total;\n}\n");
+    seen.length = 0;
+    const old = store.get(pid, "lenses", first.id)!;
+    const next = await learn.lens(p, { files: [], kind: "", refreshOf: first.id });
+    expect(seen[0]).toBe("lensUpdate");
+    expect(seen).not.toContain("lensPlan");
+    expect(seen.filter((t) => t === "lensRevise")).toHaveLength(2); // summary + step 1
+    expect(seen.filter((t) => t === "lensSteps")).toHaveLength(1); // the new step
+    expect(next.deepDives).toHaveLength(old.deepDives.length + 1);
+    expect(next.deepDives[0]).toEqual(old.deepDives[0]);
+    expect(next.deepDives[1].body).toContain("Revised.");
+    expect(next.deepDives.at(-1)!.body).toContain("Fake body for step 0");
+    expect(next.deepDives.at(-1)!.title).toContain("A new step");
+    expect(next.summary).toContain("Revised.");
+    expect(next.intuition).toBe(old.intuition);
+    expect(next.followUps).toHaveLength(1);
+    expect(next.update).toMatchObject({ kind: "refresh", note: expect.stringContaining("Step 2") });
+    expect(next.update!.changed).toEqual(expect.arrayContaining(["summary", "step:1", `step:${old.deepDives.length}`]));
+    expect(store.get(pid, "lenses", first.id)).toBeUndefined();
+
+    // A different depth still writes the lens again from scratch.
+    seen.length = 0;
+    await learn.lens(p, { files: [], kind: "", refreshOf: next.id, depth: "deep", rework: true });
+    expect(seen).not.toContain("lensUpdate");
+  });
+
+  it("walkthrough revise rewrites one block's text, keeps its question, and undoes", async () => {
+    const j = await job("/walks", { file: add() });
+    const before = await get(`/walks/${j.resultId}`);
+    await job(`/walks/${j.resultId}/revise`, { block: 1, selection: "Fake", instruction: "Simpler." });
+    const w = await get(`/walks/${j.resultId}`);
+    expect(w.blocks[1].explain).toBe(`${before.blocks[1].explain} Revised.`);
+    expect(w.blocks[1].question).toBe(before.blocks[1].question);
+    expect(w.blocks[0]).toEqual(before.blocks[0]);
+    const u = await (await send(`/walks/${j.resultId}/undo`, {})).json();
+    expect(u.blocks[1].explain).toBe(before.blocks[1].explain);
+    expect((await send(`/walks/${j.resultId}/undo`, {})).status).toBe(400);
+  });
+
   it("history lens reads git log", async () => {
     const j = await job("/lenses", { files: [add()], kind: "history" });
     expect((await get(`/lenses/${j.resultId}`)).kind).toBe("history");

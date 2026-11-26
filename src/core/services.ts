@@ -7,7 +7,7 @@ import { problems, type TaskName } from "./schemas.js";
 import { THREAD_MESSAGE_CAP, ReplyCache } from "./storage.js";
 import { newId, type Store } from "./store.js";
 import type {
-  Answer, Attempt, DiffSpec, FileProgress, Grade, Hole, HoleReview, Hunt, LearningPath, Lens, PlantedBug, Practice, PracticeFile,
+  Answer, Attempt, DeepDive, DiffSpec, FileProgress, LensEdit, Grade, Hole, HoleReview, Hunt, LearningPath, Lens, PlantedBug, Practice, PracticeFile,
   Project, Quiz, StopActivity, Teachback, Thread, Trace, Verdict, Walk,
 } from "./types.js";
 import { hashText, langOf, Workspace } from "./workspace.js";
@@ -141,6 +141,10 @@ export class Learn {
       : req;
     const steer = ((old && req.steer === undefined ? old.steer : req.steer) ?? "").trim().slice(0, 2000) || undefined;
     const depth: P.LensDepth = r.depth === "overview" || r.depth === "deep" ? r.depth : "standard";
+    // Same depth, no sketch or trace: update block by block instead of writing the whole lens again.
+    if (old && depth === (old.depth ?? "standard") && !old.sketch && !old.trace && old.deepDives.length) {
+      return this.lensUpdate(project, old, { steer, rework: !!req.rework });
+    }
     const files = r.files.map((f) => ws.guard(f));
     if (!files.length) throw new Error("pick at least one file");
     const kind = P.LENS_KINDS.find((k) => k.id === r.kind);
@@ -252,6 +256,146 @@ export class Learn {
       ],
     };
     return this.store.put(project.id, "lenses", next);
+  }
+
+
+  /**
+   * Rewrite one block of a lens in place, from a selection and an instruction. The rest of the lesson goes
+   * along as context; the old block is kept so the edit can be undone.
+   */
+  async lensRevise(project: Project, id: string, req: { block: string; selection?: string; instruction: string }): Promise<Lens> {
+    const ws = new Workspace(project);
+    const l = this.store.get(project.id, "lenses", id);
+    if (!l) throw new Error("lens not found");
+    const instruction = (req.instruction ?? "").trim().slice(0, 2000);
+    if (!instruction) throw new Error("say how to change it first");
+    const block = String(req.block ?? "");
+    if (!blockIds(l).includes(block)) throw new Error(`this lens has no block "${block}"`);
+    const raw = await this.ask<{ block: Record<string, unknown> }>(
+      ws, ["lensRevise"], P.lensReviseSystem(l.depth),
+      P.lensRevisePrompt({
+        question: l.question, lesson: lessonText(l, ws, { skip: block, max: 16_000 }), id: block, block: blockForModel(l, block, ws),
+        selection: req.selection?.trim().slice(0, 2000) || undefined, instruction, code: this.bundle(ws, l.files),
+      }),
+    );
+    const edit: LensEdit = { at: now(), block, instruction, selection: req.selection?.trim().slice(0, 400) || undefined, before: snapshot(l, block) };
+    const next = applyBlock(l, block, raw.block ?? {}, ws);
+    return this.store.put(project.id, "lenses", { ...next, edits: [...(l.edits ?? []), edit].slice(-MAX_EDITS) });
+  }
+
+  /** Undo the newest revise. */
+  lensUndo(project: Project, id: string): Lens {
+    const l = this.store.get(project.id, "lenses", id);
+    if (!l) throw new Error("lens not found");
+    const edits = [...(l.edits ?? [])];
+    const last = edits.pop();
+    if (!last) throw new Error("nothing to undo");
+    return this.store.put(project.id, "lenses", { ...restore(l, last.before), edits });
+  }
+
+  /**
+   * Refresh or rework a lens block by block: a planner reads the lesson and the current code and says which
+   * blocks to keep, rewrite (with an instruction each), drop or add; writers then rewrite only those, side by
+   * side. Follow-ups are kept. The result replaces the old lens, like a full refresh does.
+   */
+  private async lensUpdate(project: Project, old: Lens, x: { steer?: string; rework: boolean }): Promise<Lens> {
+    const ws = new Workspace(project);
+    const files = old.files.map((f) => ws.guard(f));
+    const code = this.bundle(ws, files);
+    const depth: P.LensDepth = old.depth ?? "standard";
+    const changedFiles = files.filter((f) => old.fileHashes?.[f] !== undefined && ws.hash(f) !== old.fileHashes[f]);
+    const reason = x.rework
+      ? "The reader asked for a rework with the steer below. The code may also have changed; check it."
+      : `The code changed since the lesson was written${changedFiles.length ? `, in: ${changedFiles.map((f) => ws.rel(f)).join(", ")}` : ""}.`;
+    const plan = await this.ask<Record<string, unknown>>(
+      ws, ["lensUpdate"], P.lensUpdateSystem(depth),
+      P.lensUpdatePrompt({ question: old.question, blocks: lessonText(old, ws, { max: 40_000 }), reason, steer: x.steer, code }),
+      { role: "plan" },
+    );
+    const steerNote = x.steer ? `\nThe reader's steer for the whole lesson: ${x.steer}` : "";
+    const lesson = lessonText(old, ws, { max: 16_000 });
+    const reviseOne = (base: Lens, block: string, change: string) => () => this.ask<{ block: Record<string, unknown> }>(
+      ws, ["lensRevise"], P.lensReviseSystem(depth),
+      P.lensRevisePrompt({ question: old.question, lesson, id: block, block: blockForModel(base, block, ws), instruction: change + steerNote, code }),
+    ).then((r) => ({ block, raw: r.block ?? {} }));
+
+    // The new step list: kept steps as they were (maybe with new lines), rewritten and new ones filled in below.
+    type Slot = { dive: DeepDive; change?: string; fresh?: Record<string, unknown> };
+    const slots: Slot[] = [];
+    for (const st of arr(plan.steps).map((v) => v as Record<string, unknown>)) {
+      const lines = (d: DeepDive): DeepDive => {
+        const startLine = num(st.startLine) ?? d.startLine;
+        const endLine = num(st.endLine) ?? d.endLine;
+        const ok = startLine && endLine && endLine >= startLine;
+        return { ...d, ...(ok ? { startLine, endLine, line: num(st.line) ?? d.line } : {}), part: str(st.part, 120) || d.part };
+      };
+      const from = num(st.keep) ?? num(st.from);
+      if (from !== undefined && old.deepDives[from]) slots.push({ dive: lines(old.deepDives[from]), change: st.keep === undefined ? str(st.change, 2000) || undefined : undefined });
+      else if (st.new || st.title) {
+        const d = cleanDive(st, ws);
+        slots.push({ dive: { ...d, body: strs(st.covers, 400, 12).map((c) => `- ${c}`).join("\n") || str(st.why, 800) }, fresh: st });
+      }
+    }
+    if (!slots.length) old.deepDives.forEach((d) => slots.push({ dive: d }));
+
+    // Rewrites run against a draft that already has the new order and line ranges.
+    let draft: Lens = { ...old, deepDives: slots.map((sl) => sl.dive) };
+    const blockJobs = arr(plan.blocks).map((b) => b as Record<string, unknown>)
+      .filter((b) => (LENS_BLOCKS as readonly string[]).includes(str(b.id)) && str(b.change))
+      .map((b) => reviseOne(draft, str(b.id), str(b.change, 2000)));
+    const stepJobs = slots.flatMap((sl, i) => (sl.change ? [reviseOne(draft, `step:${i}`, sl.change)] : []));
+    const freshAt = slots.flatMap((sl, i) => (sl.fresh ? [i] : []));
+    const freshJob = freshAt.length
+      ? [() => this.ask<{ steps: Record<string, unknown>[] }>(
+          ws, ["lensSteps"], P.lensStepsSystem({ depth }),
+          P.lensWritePrompt(old.question, { title: old.title, tldr: old.tldr, steps: freshAt.map((i) => slots[i].fresh) }, code, {
+            steps: [0, freshAt.length - 1], titles: draft.deepDives.map((d) => d.title), steer: x.steer,
+          }),
+        ).then((r) => ({ fresh: r.steps }))]
+      : [];
+    const results = await inParallel<unknown>([...blockJobs, ...stepJobs, ...freshJob], 3);
+
+    const changed: string[] = [];
+    for (const r of results as ({ block: string; raw: Record<string, unknown> } | { fresh: Record<string, unknown>[] })[]) {
+      if ("block" in r) {
+        draft = applyBlock(draft, r.block, r.raw, ws);
+        changed.push(r.block);
+      } else {
+        arr(r.fresh).forEach((w, k) => {
+          const o = w as Record<string, unknown>;
+          const at = freshAt[num(o.index) ?? k];
+          if (at === undefined) return;
+          const deepDives = [...draft.deepDives];
+          const chk = (o.check ?? {}) as Record<string, unknown>;
+          deepDives[at] = {
+            ...deepDives[at], body: str(o.body, 12_000) || deepDives[at].body, pitfall: str(o.pitfall, 800) || deepDives[at].pitfall,
+            check: str(chk.q) && str(chk.a) ? { q: str(chk.q, 600), a: str(chk.a, 1000) } : deepDives[at].check,
+          };
+          draft = { ...draft, deepDives };
+        });
+        changed.push(...freshAt.map((i) => `step:${i}`));
+      }
+    }
+    for (const k of ["title", "tldr", "whyItMatters"] as const) {
+      const v = str(plan[k], k === "title" ? 120 : 800);
+      if (v && v !== old[k]) {
+        draft = { ...draft, [k]: v };
+        changed.push(k);
+      }
+    }
+    const note = str(plan.note, 600) || (changed.length ? `Rewrote ${changed.length} part${changed.length === 1 ? "" : "s"}.` : "Nothing needed to change.");
+    const lens: Lens = {
+      ...draft,
+      id: newId(),
+      createdAt: now(),
+      fileHashes: this.hashes(ws, files),
+      steer: x.steer,
+      edits: [],
+      update: { at: now(), kind: x.rework ? "rework" : "refresh", note, changed: [...new Set(changed)] },
+    };
+    this.store.put(project.id, "lenses", lens);
+    this.store.archive(project.id, "lenses", old.id);
+    return lens;
   }
 
   /**
@@ -584,6 +728,49 @@ export class Learn {
     return this.store.put(project.id, "walks", { id: newId(), projectId: project.id, createdAt: now(), file, fileHash: content.hash, blocks });
   }
 
+  /** Rewrite one walkthrough block's teaching text from a selection and an instruction; undo takes it back. */
+  async walkRevise(project: Project, id: string, req: { block: number; selection?: string; instruction: string }): Promise<Walk> {
+    const ws = new Workspace(project);
+    const w = this.store.get(project.id, "walks", id);
+    if (!w) throw new Error("walkthrough not found");
+    const b = w.blocks[req.block];
+    if (!b) throw new Error(`no block ${req.block + 1} in this walkthrough`);
+    const instruction = (req.instruction ?? "").trim().slice(0, 2000);
+    if (!instruction) throw new Error("say how to change it first");
+    const lesson = w.blocks.map((x, i) => `${i === req.block ? ">> " : ""}Block ${i + 1}, lines ${x.startLine}-${x.endLine}: ${x.title}. ${x.why}`).join("\n");
+    const raw = await this.ask<{ block: Record<string, unknown> }>(
+      ws, ["walkRevise"], P.walkReviseSystem(),
+      P.lensRevisePrompt({
+        question: `Walk through ${ws.rel(w.file)} block by block`, lesson, id: `block ${req.block + 1} (lines ${b.startLine}-${b.endLine})`,
+        block: { title: b.title, why: b.why, explain: b.explain ?? "", example: b.example ?? "" },
+        selection: req.selection?.trim().slice(0, 2000) || undefined, instruction, code: this.bundle(ws, [w.file]),
+      }),
+    );
+    const o = raw.block ?? {};
+    const next = {
+      ...b,
+      title: str(o.title, 120) || b.title, why: str(o.why, 800) || b.why,
+      explain: str(o.explain, 8000) || b.explain, example: str(o.example, 4000) || b.example,
+    };
+    const blocks = [...w.blocks];
+    blocks[req.block] = next;
+    const edits = [...(w.edits ?? []), { at: now(), block: req.block, instruction, before: b }].slice(-MAX_EDITS);
+    return this.store.put(project.id, "walks", { ...w, blocks, edits });
+  }
+
+  /** Undo the newest walkthrough revise. The answer and grade on the block stay as they are now. */
+  walkUndo(project: Project, id: string): Walk {
+    const w = this.store.get(project.id, "walks", id);
+    if (!w) throw new Error("walkthrough not found");
+    const edits = [...(w.edits ?? [])];
+    const last = edits.pop();
+    if (!last) throw new Error("nothing to undo");
+    const blocks = [...w.blocks];
+    const cur = blocks[last.block];
+    blocks[last.block] = { ...last.before, answer: cur.answer, verdict: cur.verdict, feedback: cur.feedback };
+    return this.store.put(project.id, "walks", { ...w, blocks, edits });
+  }
+
   async walkcheck(project: Project, id: string, index: number, answer: string): Promise<Walk> {
     const ws = new Workspace(project);
     const w = this.store.get(project.id, "walks", id);
@@ -700,6 +887,104 @@ async function inParallel<T>(jobs: (() => Promise<T>)[], limit: number): Promise
   };
   await Promise.all(Array.from({ length: Math.min(limit, jobs.length) }, worker));
   return out;
+}
+
+// ---- lens blocks: the parts of a lens that can be rewritten on their own -----------------------
+
+const LENS_BLOCKS = ["tldr", "summary", "verdict", "intuition", "concepts", "gotchas", "alsoNoticed"] as const;
+const MAX_EDITS = 10;
+
+/** Every block a lens has, in page order (steps after the intuition, as the page shows them). */
+function blockIds(l: Lens): string[] {
+  const has = (id: string) => {
+    const v = (l as unknown as Record<string, unknown>)[id];
+    return Array.isArray(v) ? v.length > 0 : !!v;
+  };
+  const head = LENS_BLOCKS.filter((b) => b === "tldr" || has(b));
+  const at = head.indexOf("intuition") >= 0 ? head.indexOf("intuition") + 1 : head.length;
+  return [...head.slice(0, at), ...l.deepDives.map((_, i) => `step:${i}`), ...head.slice(at)];
+}
+
+function stepIndex(id: string): number | undefined {
+  const m = /^step:(\d+)$/.exec(id);
+  return m ? Number(m[1]) : undefined;
+}
+
+/** A dive as the model sees it: relative paths, no empty fields. */
+function diveForModel(d: DeepDive, ws: Workspace) {
+  return {
+    title: d.title, file: d.file ? ws.rel(d.file) : undefined, startLine: d.startLine, endLine: d.endLine, line: d.line,
+    body: d.body, pitfall: d.pitfall, check: d.check, part: d.part,
+  };
+}
+
+/** One block's content, in the shape the revise prompt asks the model to send back. */
+function blockForModel(l: Lens, id: string, ws: Workspace): Record<string, unknown> {
+  const i = stepIndex(id);
+  if (i !== undefined) {
+    const d = l.deepDives[i];
+    if (!d) throw new Error(`no step ${i + 1} in this lens`);
+    return diveForModel(d, ws);
+  }
+  switch (id) {
+    case "tldr": return { tldr: l.tldr ?? "", whyItMatters: l.whyItMatters ?? "" };
+    case "concepts": return { concepts: l.concepts.map((c) => ({ ...c, file: c.file ? ws.rel(c.file) : undefined })) };
+    case "summary": case "verdict": case "intuition": case "gotchas": case "alsoNoticed":
+      return { [id]: (l as unknown as Record<string, unknown>)[id] ?? "" };
+    default: throw new Error(`unknown block: ${id}`);
+  }
+}
+
+/** The lens's own fields for a block, to undo an edit. */
+function snapshot(l: Lens, id: string): LensEdit["before"] {
+  const i = stepIndex(id);
+  if (i !== undefined) return { step: i, dive: l.deepDives[i] };
+  if (id === "tldr") return { tldr: l.tldr, whyItMatters: l.whyItMatters };
+  return { [id]: (l as unknown as Record<string, unknown>)[id] } as Partial<Lens>;
+}
+
+function restore(l: Lens, before: LensEdit["before"]): Lens {
+  if ("step" in before && "dive" in before) {
+    const deepDives = [...l.deepDives];
+    deepDives[before.step] = before.dive;
+    return { ...l, deepDives };
+  }
+  return { ...l, ...(before as Partial<Lens>) };
+}
+
+/** A lens with one block replaced by the model's rewrite. Empty or missing fields keep the old text. */
+function applyBlock(l: Lens, id: string, raw: Record<string, unknown>, ws: Workspace): Lens {
+  const i = stepIndex(id);
+  if (i !== undefined) {
+    const old = l.deepDives[i];
+    const d = cleanDive({ ...diveForModel(old, ws), ...raw }, ws);
+    const deepDives = [...l.deepDives];
+    deepDives[i] = { ...d, file: d.file ?? old.file, body: d.body || old.body, title: d.title || old.title, part: d.part ?? old.part };
+    return { ...l, deepDives };
+  }
+  switch (id) {
+    case "tldr": return { ...l, tldr: str(raw.tldr, 400) || l.tldr, whyItMatters: str(raw.whyItMatters, 800) || l.whyItMatters };
+    case "summary": return { ...l, summary: str(raw.summary) || l.summary };
+    case "verdict": return { ...l, verdict: str(raw.verdict, 4000) || l.verdict };
+    case "intuition": return { ...l, intuition: str(raw.intuition, 12_000) || l.intuition };
+    case "gotchas": { const g = strs(raw.gotchas, 400, 10); return { ...l, gotchas: g.length ? g : l.gotchas }; }
+    case "alsoNoticed": { const a = strs(raw.alsoNoticed, 600, 8); return { ...l, alsoNoticed: a.length ? a : l.alsoNoticed }; }
+    case "concepts": {
+      const c = arr(raw.concepts).map((x) => {
+        const o = x as Record<string, unknown>;
+        return { term: str(o.term, 120), explain: str(o.explain), example: str(o.example, 1000) || undefined, file: ws.absFromRel(str(o.file, 500)), line: num(o.line) };
+      }).filter((x) => x.term);
+      return { ...l, concepts: c.length ? c : l.concepts };
+    }
+    default: throw new Error(`unknown block: ${id}`);
+  }
+}
+
+/** The whole lesson as blocks, for context (`skip` leaves the block being rewritten out). */
+function lessonText(l: Lens, ws: Workspace, opts: { skip?: string; max?: number } = {}): string {
+  const head = [`=== TITLE\n${l.title}`];
+  const blocks = blockIds(l).filter((b) => b !== opts.skip).map((b) => `=== BLOCK ${b}\n${JSON.stringify(blockForModel(l, b, ws))}`);
+  return [...head, ...blocks].join("\n\n").slice(0, opts.max ?? 30_000);
 }
 
 function cleanDive(o: Record<string, unknown>, ws: Workspace) {

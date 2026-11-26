@@ -192,6 +192,26 @@ export function createApi(store: Store, opts: { pruneEveryMs?: number } = {}) {
       label: `${rework ? "Rework" : "Refresh"} · ${titleOf(p.id, "lenses", id)}`, target: id,
     });
   });
+  /** Rewrite one block of a lens in place (from a selection and an instruction); undo takes it back. */
+  api.post("/projects/:pid/lenses/:id/revise", async (c) => {
+    const p = project(c);
+    const id = c.req.param("id");
+    if (!store.get(p.id, "lenses", id)) return fail(c, 404, "lens not found");
+    const req = await body<{ block?: string; selection?: string; instruction?: string }>(c);
+    if (!req.block) return fail(c, 400, "say which part to change");
+    if (!req.instruction?.trim()) return fail(c, 400, "say how to change it first");
+    return startJob(c, "lens", p, (l) => l.lensRevise(p, id, { block: req.block!, selection: req.selection, instruction: req.instruction! }), {
+      label: `Revise · ${titleOf(p.id, "lenses", id)}`, target: id,
+    });
+  });
+  api.post("/projects/:pid/lenses/:id/undo", (c) => {
+    const p = project(c);
+    const id = c.req.param("id");
+    const l = store.get(p.id, "lenses", id);
+    if (!l) return fail(c, 404, "lens not found");
+    if (!l.edits?.length) return fail(c, 400, "nothing to undo");
+    return c.json(offline().lensUndo(p, id));
+  });
   api.post("/projects/:pid/lenses/:id/more", async (c) => {
     const p = project(c);
     const id = c.req.param("id");
@@ -373,6 +393,26 @@ export function createApi(store: Store, opts: { pruneEveryMs?: number } = {}) {
     if (!store.get(p.id, "walks", id)) return fail(c, 404, "walkthrough not found");
     const { answer } = await body<{ answer?: string }>(c);
     return startJob(c, "walkcheck", p, (l) => l.walkcheck(p, id, Number(c.req.param("i")), answer ?? ""), { label: "Checking your answer", target: id });
+  });
+
+  api.post("/projects/:pid/walks/:id/revise", async (c) => {
+    const p = project(c);
+    const id = c.req.param("id");
+    if (!store.get(p.id, "walks", id)) return fail(c, 404, "walkthrough not found");
+    const req = await body<{ block?: number; selection?: string; instruction?: string }>(c);
+    if (typeof req.block !== "number") return fail(c, 400, "say which block to change");
+    if (!req.instruction?.trim()) return fail(c, 400, "say how to change it first");
+    return startJob(c, "walk", p, (l) => l.walkRevise(p, id, { block: req.block!, selection: req.selection, instruction: req.instruction! }), {
+      label: `Revise · walkthrough block ${req.block + 1}`, target: id,
+    });
+  });
+  api.post("/projects/:pid/walks/:id/undo", (c) => {
+    const p = project(c);
+    const id = c.req.param("id");
+    const w = store.get(p.id, "walks", id);
+    if (!w) return fail(c, 404, "walkthrough not found");
+    if (!w.edits?.length) return fail(c, 400, "nothing to undo");
+    return c.json(offline().walkUndo(p, id));
   });
 
   /** The planted bugs stay hidden until the hunt is graded. */
