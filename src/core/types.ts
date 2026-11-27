@@ -122,8 +122,32 @@ export interface Lens {
   steer?: string;
   /** Blocks the reader revised in place, newest last; each can be undone. */
   edits?: LensEdit[];
+  /** The shelf this lens sits on; missing (or a shelf that is gone) = Unshelved. */
+  shelf?: string;
+  /** Placed by the reader (moved by hand, or re-shelved with a steer): Organize and shelf rework leave it alone. */
+  shelfPinned?: boolean;
   /** The last targeted update (a refresh or rework that rewrote only some blocks): what changed. */
   update?: { at: string; kind: "refresh" | "rework"; note: string; changed: string[] };
+}
+
+/** Something made for a file (a lens, quiz, walk...), for the "Related" list beside an open file. */
+export interface RelatedItem {
+  kind: "lens" | "quiz" | "walk" | "practice" | "hunt" | "teachback" | "tutor" | "card" | "note";
+  id: string;
+  title: string;
+  createdAt: string;
+  /** A short status: "best 75%", "3/5 checked", "not taken". */
+  note?: string;
+}
+
+/** A topic group of lenses in the Library, named by the agent (Organize) or the reader. */
+export interface Shelf {
+  id: string;
+  projectId: string;
+  createdAt: string;
+  name: string;
+  /** One line: what belongs here. Sent to the agent so it places new lenses the same way each time. */
+  about: string;
 }
 
 /**
@@ -259,7 +283,7 @@ export interface Practice {
 
 export type JobKind =
   | "lens" | "quiz" | "grade" | "practice" | "review"
-  | "teachback" | "tutor" | "walk" | "walkcheck" | "hunt" | "huntgrade" | "path";
+  | "teachback" | "tutor" | "walk" | "walkcheck" | "hunt" | "huntgrade" | "path" | "shelve";
 
 export interface Job {
   id: string;

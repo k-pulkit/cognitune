@@ -28,6 +28,8 @@ export const SCHEMAS = {
   lensSteps: z.object({ steps: z.array(z.object({ body: text })).min(1) }),
   lensRevise: z.object({ block: z.record(z.unknown()) }),
   walkRevise: z.object({ block: z.record(z.unknown()) }),
+  shelve: z.object({ place: z.array(z.object({ lens: text, shelf: text })) }),
+  shelveOne: z.object({ shelf: text }),
   lensUpdate: z.object({
     note: text.optional(),
     blocks: z.array(z.object({ id: text, change: text })).optional(),

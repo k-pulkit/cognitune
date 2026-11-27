@@ -14,6 +14,7 @@ import { FileTree } from "@/components/FileTree";
 import { treeFromPaths } from "@/lib/tree";
 import { Split } from "@/components/Split";
 import { embedded, toEditor } from "@/lib/embed";
+import { RelatedButton } from "@/components/Related";
 
 import { Button, Empty, ErrorNote, Segmented, Spinner } from "@/components/ui";
 
@@ -217,6 +218,7 @@ export function ChangesPage() {
     <div className="flex h-full flex-col">
       <div className="flex items-center gap-2 border-b border-line bg-panel px-4 py-2">
         <div className="min-w-0 flex-1 truncate font-mono text-[14px]">{activeFile ? rel(activeFile.path) : ""}</div>
+        {activeFile && activeFile.status !== "deleted" && <RelatedButton file={activeFile.path} />}
         {/* Inside VS Code: open the file in the editor, at its first changed line. */}
         {embedded && activeFile && activeFile.status !== "deleted" && (
           <Button size="sm" variant="ghost" icon={<ExternalLink className="h-3.5 w-3.5" />} title="Open this file in the editor, at the first change"

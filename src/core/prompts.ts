@@ -842,3 +842,56 @@ ${STYLE}
 JSON shape:
 { "block": {"title": "the idea of the block as a claim", "why": "1-2 sentences: why it matters, how it connects to the block before", "explain": "markdown", "example": "markdown: real values and a small code sample, or empty"} }`;
 }
+
+// ---- shelves: topic groups of lenses ---------------------------------------------------------
+
+const SHELF_RULES = `What makes a good shelf:
+- A shelf is a TOPIC a learner would look for ("Retry and backoff", "Auth and sessions", "Build and release"),
+  not a file name, a lens kind ("Data flow") or a vague bucket ("Misc", "Other", "General").
+- Names are 1-4 words, sentence case. "about" is one sentence saying what belongs there and what does not.
+- Prefer an existing shelf when the lens fits it. Make a new shelf only when at least two lenses share a topic no
+  shelf covers, or one lens clearly stands apart from every shelf. Aim for shelves of 2-12 lenses.`;
+
+export function shelveSystem(): string {
+  return `TASK: shelve
+You sort lessons ("lenses", each one explains some code through one question) onto shelves by topic. Some shelves
+already exist: keep them as they are and put lenses on them where they fit. You place only the NEW lenses listed.
+
+${SHELF_RULES}
+Return ONLY one JSON object inside a single \`\`\`json fence. No text outside the fence.
+
+JSON shape:
+{
+  "newShelves": [{"key": "n1", "name": "Short topic", "about": "one sentence"}],   // only shelves you need to add
+  "place": [{"lens": "the lens id", "shelf": "an existing shelf id, or a new shelf's key"}]   // every listed lens, once
+}`;
+}
+
+export function shelvePrompt(shelves: string, lenses: string): string {
+  return `EXISTING SHELVES (id | name | what belongs there | how many lenses):
+${shelves || "(none yet)"}
+
+NEW LENSES TO PLACE:
+${lenses}`;
+}
+
+export function shelveOneSystem(): string {
+  return `TASK: shelveOne
+You choose the shelf for ONE lesson ("lens"). The reader asked for this and may have written a steer. The steer
+carries the most weight: if it says where the lens belongs or what it is really about, follow it even when the
+content alone would point elsewhere. Use the content to pick between shelves the steer leaves open.
+
+${SHELF_RULES}
+Return ONLY one JSON object inside a single \`\`\`json fence. No text outside the fence.
+
+JSON shape:
+{ "shelf": "an existing shelf id, or \"new\"", "name": "only for a new shelf", "about": "only for a new shelf", "why": "one sentence" }`;
+}
+
+export function shelveOnePrompt(shelves: string, lens: string, steer?: string): string {
+  return `${steer ? `READER'S STEER (weighs most):\n${steer}\n\n` : ""}EXISTING SHELVES (id | name | what belongs there | how many lenses):
+${shelves || "(none yet)"}
+
+THE LENS:
+${lens}`;
+}

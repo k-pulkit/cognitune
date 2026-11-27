@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckSquare, ExternalLink, FolderPlus, Layers, Square, X } from "lucide-react";
 import type { FileContent, FileProgress, Note, TreeNode } from "@core/types";
 import { get, patch } from "@/lib/api";
+import { RelatedButton } from "@/components/Related";
 import { embedded, toEditor } from "@/lib/embed";
 import { useProject } from "@/lib/project";
 import { shortPath } from "@/lib/path";
@@ -142,6 +143,7 @@ export function ExplorePage() {
             {levels.get(openFile) && levels.get(openFile) !== "new" && (
               <Badge tone={levels.get(openFile) === "understood" ? "good" : levels.get(openFile) === "stale" ? "warn" : "muted"}>{levels.get(openFile)}</Badge>
             )}
+            <RelatedButton file={openFile} />
             {embedded && (
               <Button size="sm" variant="ghost" icon={<ExternalLink className="h-3.5 w-3.5" />} title="Open this file in the editor, at the clicked line"
                 onClick={() => toEditor({ type: "reveal", path: openFile, line: focusLine ?? undefined })} />

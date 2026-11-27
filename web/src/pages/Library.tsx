@@ -10,6 +10,7 @@ import { del, get, patch, relTime, useJob } from "@/lib/api";
 import { useProject } from "@/lib/project";
 import { shortPath } from "@/lib/path";
 import { CardDialog } from "@/components/CardDialog";
+import { LensShelves } from "@/components/Shelves";
 import { Badge, Button, Empty, ErrorNote, JobProgress, Score, Tabs, untilText } from "@/components/ui";
 
 type Tab = "lenses" | "quizzes" | "practice" | "teachbacks" | "walks" | "hunts" | "threads" | "cards" | "weak" | "glossary" | "notes";
@@ -22,7 +23,9 @@ export function LibraryPage() {
   const qc = useQueryClient();
   const [params, setParams] = useSearchParams();
   const tab = (TABS.includes(params.get("tab") as Tab) ? params.get("tab") : "lenses") as Tab;
-  const setTab = (t: Tab) => setParams({ tab: t }, { replace: true });
+  // ?file=<path>: only what was made for that file (the Library button beside an open file).
+  const forFile = params.get("file");
+  const setTab = (t: Tab) => setParams(forFile ? { tab: t, file: forFile } : { tab: t }, { replace: true });
   const [q, setQ] = useState("");
   const [card, setCard] = useState<Partial<Card> | null>(null);
   const base = `/projects/${project.id}`;
@@ -51,6 +54,21 @@ export function LibraryPage() {
     qc.invalidateQueries({ queryKey: ["today", project.id] });
   };
   const glossary =useQuery({ queryKey: ["glossary", project.id], queryFn: () => get<GlossaryTerm[]>(`${base}/glossary`), enabled: tab === "glossary" });
+
+  const only = <T,>(xs: T[] | undefined, files: (x: T) => (string | undefined)[]) => (forFile ? xs?.filter((x) => files(x).includes(forFile)) : xs);
+  const D = {
+    lenses: only(lenses.data, (l) => l.files),
+    quizzes: only(quizzes.data, (x) => x.files),
+    practice: only(practice.data, (x) => [x.file, ...(x.files ?? []).map((f) => f.path)]),
+    teach: only(teach.data, (t) => t.files),
+    walks: only(walks.data, (w) => [w.file]),
+    hunts: only(hunts.data, (h) => [h.file]),
+    threads: only(threads.data, (t) => t.files),
+    cards: only(cards.data, (c) => [c.file]),
+    notes: only(notes.data, (n) => [n.file]),
+    weak: only(weak.data, (m) => [m.file]),
+    glossary: only(glossary.data, (t) => t.files),
+  };
 
   const match = useMemo(() => {
     const words = q.toLowerCase().split(/\s+/).filter(Boolean);
@@ -88,6 +106,15 @@ export function LibraryPage() {
             <Download className="h-3.5 w-3.5" /> Export all
           </a>
         </div>
+        {forFile && (
+          <div className="mt-3 flex items-center gap-2 text-[13.5px]">
+            <span className="text-muted">Only what was made for</span>
+            <span className="rounded bg-ink/5 px-1.5 py-0.5 font-mono text-[12.5px]">{rel(forFile)}</span>
+            <button className="inline-flex items-center gap-1 text-accent hover:underline" onClick={() => setParams({ tab }, { replace: true })}>
+              <X className="h-3.5 w-3.5" /> Show everything
+            </button>
+          </div>
+        )}
         {/* 11 tabs: no icons so they fit one row at normal widths; a narrow window wraps rather than scrolls. */}
         <Tabs
           className="-mx-2 mt-3 border-b-0"
@@ -95,52 +122,57 @@ export function LibraryPage() {
           value={tab}
           onChange={setTab}
           tabs={[
-            { value: "lenses", label: "Lenses", count: lenses.data?.length },
-            { value: "quizzes", label: "Quizzes", count: quizzes.data?.length },
-            { value: "teachbacks", label: "Teach-backs", count: teach.data?.length },
-            { value: "walks", label: "Walks", count: walks.data?.length },
-            { value: "practice", label: "Practice", count: practice.data?.length },
-            { value: "hunts", label: "Bug hunts", count: hunts.data?.length },
-            { value: "threads", label: "Tutor", count: threads.data?.length },
-            { value: "cards", label: "Cards", count: cards.data?.length },
-            { value: "weak", label: "Weak spots", count: weak.data?.length },
+            { value: "lenses", label: "Lenses", count: D.lenses?.length },
+            { value: "quizzes", label: "Quizzes", count: D.quizzes?.length },
+            { value: "teachbacks", label: "Teach-backs", count: D.teach?.length },
+            { value: "walks", label: "Walks", count: D.walks?.length },
+            { value: "practice", label: "Practice", count: D.practice?.length },
+            { value: "hunts", label: "Bug hunts", count: D.hunts?.length },
+            { value: "threads", label: "Tutor", count: D.threads?.length },
+            { value: "cards", label: "Cards", count: D.cards?.length },
+            { value: "weak", label: "Weak spots", count: D.weak?.length },
             { value: "glossary", label: "Glossary" },
-            { value: "notes", label: "Notes", count: notes.data?.length },
+            { value: "notes", label: "Notes", count: D.notes?.length },
           ]}
         />
         </div>
       </div>
       <div className="min-h-0 flex-1 overflow-auto p-8">
         <div className="mx-auto max-w-[72rem]">
-        {tab === "weak" && !!weak.data?.length && (
+        {tab === "weak" && !!D.weak?.length && (
           <div className="mb-4">
             <div className="flex items-center gap-3">
               <p className="flex-1 text-[14px] text-muted">
                 Wrong beliefs picked up from your answers. Answer a question on one correctly and it goes away; dismiss one the grader got wrong.
               </p>
-              <Button size="sm" variant="primary" icon={<Target className="h-3.5 w-3.5" />} disabled={job.busy} onClick={() => quizWeak(weak.data!.slice(0, 6).map((m) => m.id), "all")}>
-                Quiz me on {weak.data.length > 6 ? "the top 6" : "all of them"}
+              <Button size="sm" variant="primary" icon={<Target className="h-3.5 w-3.5" />} disabled={job.busy} onClick={() => quizWeak(D.weak!.slice(0, 6).map((m) => m.id), "all")}>
+                Quiz me on {D.weak.length > 6 ? "the top 6" : "all of them"}
               </Button>
             </div>
             {job.busy && job.job && quizzing === "all" && <div className="mt-3"><JobProgress kind="quiz" elapsed={job.elapsed} /></div>}
             {job.error && <div className="mt-3"><ErrorNote error={job.error} onClose={job.clearError} /></div>}
           </div>
         )}
+        {tab === "lenses" && !!D.lenses?.length && (
+          <LensShelves
+            lenses={D.lenses.filter((l) => match(l.title, l.summary, l.kind, l.question, ...l.files))}
+            render={(l) => (
+              <Link key={l.id} to={`${p}/lens/${l.id}`} className={tile}>
+                <div className="flex items-center gap-2">
+                  <Badge tone="accent">{l.kind}</Badge>
+                  {l.diff && <Badge tone="warn">change</Badge>}
+                  {l.sketch && <Badge>your take first</Badge>}
+                  {when(l.createdAt)}
+                </div>
+                <div className="mt-2 font-medium leading-snug">{l.title}</div>
+                <p className="mt-1 line-clamp-2 text-[14px] text-muted">{l.summary}</p>
+                {files(l.files)}
+              </Link>
+            )}
+          />
+        )}
         <div className="grid gap-3 md:grid-cols-2">
-          {tab === "lenses" && lenses.data?.filter((l) => match(l.title, l.summary, l.kind, ...l.files)).map((l) => (
-            <Link key={l.id} to={`${p}/lens/${l.id}`} className={tile}>
-              <div className="flex items-center gap-2">
-                <Badge tone="accent">{l.kind}</Badge>
-                {l.diff && <Badge tone="warn">change</Badge>}
-                {l.sketch && <Badge>your take first</Badge>}
-                {when(l.createdAt)}
-              </div>
-              <div className="mt-2 font-medium leading-snug">{l.title}</div>
-              <p className="mt-1 line-clamp-2 text-[14px] text-muted">{l.summary}</p>
-              {files(l.files)}
-            </Link>
-          ))}
-          {tab === "quizzes" && quizzes.data?.filter((x) => match(x.title, ...x.files)).map((x) => {
+          {tab === "quizzes" && D.quizzes?.filter((x) => match(x.title, ...x.files)).map((x) => {
             const best = x.attempts.length ? Math.max(...x.attempts.map((a) => a.score)) : null;
             return (
               <Link key={x.id} to={`${p}/quiz/${x.id}`} className={tile}>
@@ -154,7 +186,7 @@ export function LibraryPage() {
               </Link>
             );
           })}
-          {tab === "teachbacks" && teach.data?.filter((t) => match(t.text, ...t.files)).map((t) => (
+          {tab === "teachbacks" && D.teach?.filter((t) => match(t.text, ...t.files)).map((t) => (
             <Link key={t.id} to={`${p}/teach/${t.id}`} className={tile}>
               <div className="flex items-center gap-2">
                 {t.grade && <Badge tone={t.grade.score >= 4 ? "good" : t.grade.score >= 3 ? "warn" : "bad"}>{t.grade.score}/5</Badge>}
@@ -164,7 +196,7 @@ export function LibraryPage() {
               {files(t.files)}
             </Link>
           ))}
-          {tab === "walks" && walks.data?.filter((w) => match(w.file, ...w.blocks.map((b) => b.title))).map((w) => {
+          {tab === "walks" && D.walks?.filter((w) => match(w.file, ...w.blocks.map((b) => b.title))).map((w) => {
             const done = w.blocks.filter((b) => b.verdict).length;
             return (
               <Link key={w.id} to={`${p}/walk/${w.id}`} className={tile}>
@@ -176,7 +208,7 @@ export function LibraryPage() {
               </Link>
             );
           })}
-          {tab === "practice" && practice.data?.filter((x) => match(x.file)).map((x) => {
+          {tab === "practice" && D.practice?.filter((x) => match(x.file)).map((x) => {
             const right = x.review?.holes.filter((h) => h.verdict === "right").length;
             return (
               <Link key={x.id} to={`${p}/practice/${x.id}`} className={tile}>
@@ -190,7 +222,7 @@ export function LibraryPage() {
               </Link>
             );
           })}
-          {tab === "hunts" && hunts.data?.filter((h) => match(h.file)).map((h) => (
+          {tab === "hunts" && D.hunts?.filter((h) => match(h.file)).map((h) => (
             <Link key={h.id} to={`${p}/hunt/${h.id}`} className={tile}>
               <div className="flex items-center gap-2">
                 <Badge tone="bad">{["", "easy", "medium", "hard"][h.level]}</Badge>
@@ -200,14 +232,14 @@ export function LibraryPage() {
               <div className="mt-2 truncate font-mono text-sm">{rel(h.file)}</div>
             </Link>
           ))}
-          {tab === "threads" && threads.data?.filter((t) => match(t.title, ...t.messages.map((m) => m.text))).map((t) => (
+          {tab === "threads" && D.threads?.filter((t) => match(t.title, ...t.messages.map((m) => m.text))).map((t) => (
             <Link key={t.id} to={`${p}/tutor/${t.id}`} className={tile}>
               <div className="flex items-center gap-2"><Badge>{t.messages.length} messages</Badge>{when(t.createdAt)}</div>
               <div className="mt-2 line-clamp-2 font-medium leading-snug">{t.title}</div>
               {files(t.files)}
             </Link>
           ))}
-          {tab === "cards" && cards.data?.filter((c) => match(c.front, c.back, c.file)).map((c) => (
+          {tab === "cards" && D.cards?.filter((c) => match(c.front, c.back, c.file)).map((c) => (
             <div key={c.id} className="card group p-4">
               <div className="flex items-center gap-2">
                 <Badge tone={c.kind === "miss" ? "bad" : c.kind === "concept" ? "accent" : "muted"}>{c.kind}</Badge>
@@ -228,7 +260,7 @@ export function LibraryPage() {
               {c.file && <div className="mt-2 truncate font-mono text-[12px] text-muted">{rel(c.file)}{c.line ? `:${c.line}` : ""}</div>}
             </div>
           ))}
-          {tab === "weak" && weak.data?.filter((m) => match(m.text, m.file)).map((m) => (
+          {tab === "weak" && D.weak?.filter((m) => match(m.text, m.file)).map((m) => (
             <div key={m.id} className="card flex flex-col p-4">
               <div className="flex items-center gap-2">
                 <Badge tone="bad">{FROM[m.from] ?? m.from}</Badge>
@@ -248,7 +280,7 @@ export function LibraryPage() {
               {job.busy && job.job && quizzing === m.id && <div className="mt-3"><JobProgress kind="quiz" elapsed={job.elapsed} /></div>}
             </div>
           ))}
-          {tab === "notes" && notes.data?.filter((n) => match(n.text, n.file)).map((n) => (
+          {tab === "notes" && D.notes?.filter((n) => match(n.text, n.file)).map((n) => (
             <Link key={n.id} to={`${p}/explore`} onClick={() => n.file && setOpenFile(n.file, n.line)} className={tile}>
               <div className="flex items-center gap-2">
                 {n.file && <span className="truncate font-mono text-[12px] text-accent">{rel(n.file)}{n.line ? `:${n.line}` : ""}</span>}
@@ -261,7 +293,7 @@ export function LibraryPage() {
 
         {tab === "glossary" && (
           <div className="divide-y divide-line">
-            {glossary.data?.filter((t) => match(t.term, ...t.explains.map((e) => e.text))).map((t) => (
+            {D.glossary?.filter((t) => match(t.term, ...t.explains.map((e) => e.text))).map((t) => (
               <div key={t.term} className="group py-3">
                 <div className="flex items-center gap-2">
                   <div className="text-[16px] font-semibold">{t.term}</div>
@@ -278,20 +310,20 @@ export function LibraryPage() {
                 ))}
               </div>
             ))}
-            {glossary.data?.length === 0 && empty(<BookA className="h-6 w-6" />, "No terms yet", "Every lens adds the concepts it explains here.")}
+            {D.glossary?.length === 0 && empty(<BookA className="h-6 w-6" />, "No terms yet", "Every lens adds the concepts it explains here.")}
           </div>
         )}
 
-        {tab === "lenses" && lenses.data?.length === 0 && empty(<Compass className="h-6 w-6" />, "No lenses yet", "Open Explore, pick files, choose a lens.")}
-        {tab === "quizzes" && quizzes.data?.length === 0 && empty(<ListChecks className="h-6 w-6" />, "No quizzes yet", "Quiz yourself from Explore, Changes, or the end of a lens.")}
-        {tab === "teachbacks" && teach.data?.length === 0 && empty(<GraduationCap className="h-6 w-6" />, "No teach-backs yet", "In Explore, pick Teach and explain the code in your own words.")}
-        {tab === "walks" && walks.data?.length === 0 && empty(<Footprints className="h-6 w-6" />, "No walkthroughs yet", "Open a file in Explore and pick Walk.")}
-        {tab === "practice" && practice.data?.length === 0 && empty(<Hammer className="h-6 w-6" />, "No practice yet", "Open a file in Explore and pick Practice.")}
-        {tab === "hunts" && hunts.data?.length === 0 && empty(<Bug className="h-6 w-6" />, "No bug hunts yet", "Open a file in Explore and pick Bug hunt.")}
-        {tab === "threads" && threads.data?.length === 0 && empty(<MessageCircleQuestion className="h-6 w-6" />, "No tutor chats yet", "Ask the tutor from Explore or from a missed quiz question.")}
-        {tab === "cards" && cards.data?.length === 0 && empty(<Layers className="h-6 w-6" />, "No cards yet", "Quiz misses become cards on their own. You can also make one from a lens concept or a code line.")}
-        {tab === "weak" && weak.data?.length === 0 && empty(<Target className="h-6 w-6" />, "No weak spots", "Wrong answers in quizzes, teach-backs and walks show up here as the belief behind them.")}
-        {tab === "notes" && notes.data?.length === 0 && empty(<StickyNote className="h-6 w-6" />, "No notes yet", "In Explore, click a line and add a note from the Notes tab.")}
+        {tab === "lenses" && D.lenses?.length === 0 && empty(<Compass className="h-6 w-6" />, "No lenses yet", "Open Explore, pick files, choose a lens.")}
+        {tab === "quizzes" && D.quizzes?.length === 0 && empty(<ListChecks className="h-6 w-6" />, "No quizzes yet", "Quiz yourself from Explore, Changes, or the end of a lens.")}
+        {tab === "teachbacks" && D.teach?.length === 0 && empty(<GraduationCap className="h-6 w-6" />, "No teach-backs yet", "In Explore, pick Teach and explain the code in your own words.")}
+        {tab === "walks" && D.walks?.length === 0 && empty(<Footprints className="h-6 w-6" />, "No walkthroughs yet", "Open a file in Explore and pick Walk.")}
+        {tab === "practice" && D.practice?.length === 0 && empty(<Hammer className="h-6 w-6" />, "No practice yet", "Open a file in Explore and pick Practice.")}
+        {tab === "hunts" && D.hunts?.length === 0 && empty(<Bug className="h-6 w-6" />, "No bug hunts yet", "Open a file in Explore and pick Bug hunt.")}
+        {tab === "threads" && D.threads?.length === 0 && empty(<MessageCircleQuestion className="h-6 w-6" />, "No tutor chats yet", "Ask the tutor from Explore or from a missed quiz question.")}
+        {tab === "cards" && D.cards?.length === 0 && empty(<Layers className="h-6 w-6" />, "No cards yet", "Quiz misses become cards on their own. You can also make one from a lens concept or a code line.")}
+        {tab === "weak" && D.weak?.length === 0 && empty(<Target className="h-6 w-6" />, "No weak spots", "Wrong answers in quizzes, teach-backs and walks show up here as the belief behind them.")}
+        {tab === "notes" && D.notes?.length === 0 && empty(<StickyNote className="h-6 w-6" />, "No notes yet", "In Explore, click a line and add a note from the Notes tab.")}
         </div>
       </div>
       {card && <CardDialog initial={card} onClose={() => setCard(null)} />}

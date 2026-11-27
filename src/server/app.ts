@@ -11,7 +11,7 @@ import { Learn, normalizePractice } from "../core/services.js";
 import { items, prune, remove, usage } from "../core/storage.js";
 import { newId, type Collection, type Store } from "../core/store.js";
 import type {
-  AgentInfo, Answer, Card, DiffSpec, Graph, Hunt, JobKind, LearningPath, Note, PathStop, Project, Rating, Settings,
+  AgentInfo, Answer, Card, DiffSpec, Graph, Hunt, JobKind, LearningPath, Note, PathStop, Project, Rating, RelatedItem, Settings,
 } from "../core/types.js";
 import { browse, Workspace } from "../core/workspace.js";
 import { lensMarkdown, quizMarkdown } from "./export.js";
@@ -85,7 +85,7 @@ export function createApi(store: Store, opts: { pruneEveryMs?: number } = {}) {
   api.onError((err, c) => {
     if (err instanceof HttpError) return c.json({ error: err.message }, err.status);
     const msg = err instanceof Error ? err.message : String(err);
-    const status = /outside the project|bad ref|not a file|pick at least|already graded|write a few|ask a question|write something|no open weak|needs a file inside a git repo|no commits yet/.test(msg) ? 400 : /ENOENT|not found/.test(msg) ? 404 : 500;
+    const status = /outside the project|bad ref|not a file|pick at least|already graded|write a few|ask a question|write something|no open weak|pick a shelf|needs a file inside a git repo|no commits yet/.test(msg) ? 400 : /ENOENT|not found/.test(msg) ? 404 : 500;
     return c.json({ error: msg }, status);
   });
 
@@ -192,6 +192,79 @@ export function createApi(store: Store, opts: { pruneEveryMs?: number } = {}) {
       label: `${rework ? "Rework" : "Refresh"} · ${titleOf(p.id, "lenses", id)}`, target: id,
     });
   });
+  /** Everything made for one file, newest first: what the "Related" button beside an open file lists. */
+  api.get("/projects/:pid/related", (c) => {
+    const p = project(c);
+    const file = new Workspace(p).guard(c.req.query("file") ?? "");
+    const has = (files: (string | undefined)[] = []) => files.includes(file);
+    const pct = (n: number) => `${Math.round(n * 100)}%`;
+    const out: RelatedItem[] = [
+      ...store.list(p.id, "lenses").filter((l) => has(l.files)).map((l) => ({ kind: "lens" as const, id: l.id, title: l.title, createdAt: l.createdAt, note: l.kind })),
+      ...store.list(p.id, "quizzes").filter((q) => has(q.files)).map((q) => ({
+        kind: "quiz" as const, id: q.id, title: q.title, createdAt: q.createdAt,
+        note: q.attempts.length ? `best ${pct(Math.max(...q.attempts.map((a) => a.score)))}` : "not taken",
+      })),
+      ...store.list(p.id, "walks").filter((w) => w.file === file).map((w) => ({
+        kind: "walk" as const, id: w.id, title: "Walkthrough", createdAt: w.createdAt, note: `${w.blocks.filter((b) => b.verdict).length}/${w.blocks.length} checked`,
+      })),
+      ...store.list(p.id, "practice").filter((x) => x.file === file || has(x.files?.map((f) => f.path))).map((x) => ({
+        kind: "practice" as const, id: x.id, title: `Practice, level ${x.level}`, createdAt: x.createdAt, note: x.review ? "reviewed" : "open",
+      })),
+      ...store.list(p.id, "hunts").filter((h) => h.file === file).map((h) => ({
+        kind: "hunt" as const, id: h.id, title: "Bug hunt", createdAt: h.createdAt, note: h.grade ? pct(h.grade.score) : "open",
+      })),
+      ...store.list(p.id, "teachbacks").filter((t) => has(t.files)).map((t) => ({
+        kind: "teachback" as const, id: t.id, title: t.text.slice(0, 80) || "Teach-back", createdAt: t.createdAt, note: t.grade ? `${t.grade.score}/5` : undefined,
+      })),
+      ...store.list(p.id, "threads").filter((t) => has(t.files)).map((t) => ({ kind: "tutor" as const, id: t.id, title: t.title, createdAt: t.createdAt })),
+      ...store.list(p.id, "cards").filter((x) => x.file === file).map((x) => ({ kind: "card" as const, id: x.id, title: x.front, createdAt: x.createdAt, note: x.kind })),
+      ...store.list(p.id, "notes").filter((n) => n.file === file).map((n) => ({
+        kind: "note" as const, id: n.id, title: n.text.slice(0, 100), createdAt: n.createdAt, note: n.line ? `line ${n.line}` : undefined,
+      })),
+    ];
+    return c.json(out.sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
+  });
+
+  // ---- shelves: topic groups of lenses ---------------------------------------------------------
+
+  api.patch("/projects/:pid/shelves/:id", async (c) => {
+    const p = project(c);
+    const s = store.get(p.id, "shelves", c.req.param("id"));
+    if (!s) return fail(c, 404, "shelf not found");
+    const b = await body<{ name?: string; about?: string }>(c);
+    const name = b.name?.trim().slice(0, 60);
+    if (b.name !== undefined && !name) return fail(c, 400, "a shelf needs a name");
+    return c.json(store.put(p.id, "shelves", { ...s, name: name ?? s.name, about: b.about?.trim().slice(0, 300) ?? s.about }));
+  });
+  /** Put every unshelved lens on a shelf. Shelved lenses are left alone. */
+  api.post("/projects/:pid/shelves/organize", (c) => {
+    const p = project(c);
+    return startJob(c, "shelve", p, (l) => l.organize(p), { label: "Organize lenses" });
+  });
+  api.post("/projects/:pid/shelves/:id/rework", (c) => {
+    const p = project(c);
+    const s = store.get(p.id, "shelves", c.req.param("id"));
+    if (!s) return fail(c, 404, "shelf not found");
+    return startJob(c, "shelve", p, (l) => l.reworkShelf(p, s.id), { label: `Rework shelf · ${clip(s.name, 40)}` });
+  });
+  api.post("/projects/:pid/shelves/:id/merge", async (c) => {
+    const p = project(c);
+    const { from } = await body<{ from?: string[] }>(c);
+    return c.json(offline().mergeShelves(p, c.req.param("id"), from ?? []));
+  });
+  api.put("/projects/:pid/lenses/:id/shelf", async (c) => {
+    const p = project(c);
+    const { shelf } = await body<{ shelf?: string | null }>(c);
+    return c.json(offline().moveLens(p, c.req.param("id"), shelf ?? null));
+  });
+  api.post("/projects/:pid/lenses/:id/reshelve", async (c) => {
+    const p = project(c);
+    const id = c.req.param("id");
+    if (!store.get(p.id, "lenses", id)) return fail(c, 404, "lens not found");
+    const { steer } = await body<{ steer?: string }>(c);
+    return startJob(c, "shelve", p, (l) => l.reshelve(p, id, steer), { label: `Re-shelve · ${titleOf(p.id, "lenses", id)}`, target: id });
+  });
+
   /** Rewrite one block of a lens in place (from a selection and an instruction); undo takes it back. */
   api.post("/projects/:pid/lenses/:id/revise", async (c) => {
     const p = project(c);
@@ -239,9 +312,10 @@ export function createApi(store: Store, opts: { pruneEveryMs?: number } = {}) {
   });
   api.post("/projects/:pid/quizzes", async (c) => {
     const p = project(c);
-    const req = await body<{ files?: string[]; diff?: DiffSpec; lensId?: string; count?: number; weak?: boolean; weakIds?: string[] }>(c);
-    return startJob(c, "quiz", p, (l) => l.quiz(p, { ...req, files: req.files ?? [] }), {
-      label: req.weak ? "Quiz · weak spots" : req.lensId ? `Quiz · ${titleOf(p.id, "lenses", req.lensId)}` : `Quiz · ${filesLabel(req.files)}`,
+    const req = await body<{ files?: string[]; diff?: DiffSpec; lensId?: string; shelfId?: string; count?: number; weak?: boolean; weakIds?: string[] }>(c);
+    if (req.shelfId && !store.get(p.id, "shelves", req.shelfId)) return fail(c, 404, "shelf not found");
+    return startJob(c, "quiz", p, (l) => l.quiz(p, { ...req, files: req.files ?? [], lensSummary: undefined }), {
+      label: req.weak ? "Quiz · weak spots" : req.shelfId ? `Quiz · shelf ${clip(store.get(p.id, "shelves", req.shelfId)!.name, 40)}` : req.lensId ? `Quiz · ${titleOf(p.id, "lenses", req.lensId)}` : `Quiz · ${filesLabel(req.files)}`,
       target: req.lensId,
     });
   });
@@ -315,6 +389,7 @@ export function createApi(store: Store, opts: { pruneEveryMs?: number } = {}) {
   const withPreview = (card: Card) => ({ ...card, next: previewCard(card) });
   api.get("/projects/:pid/cards/due", (c) => c.json(dueCards(store, project(c).id).map(withPreview)));
   crud("cards", "cards");
+  crud("shelves", "shelves");
   api.post("/projects/:pid/cards", async (c) => {
     const p = project(c);
     const b = await body<Partial<Card>>(c);

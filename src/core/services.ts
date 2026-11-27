@@ -8,7 +8,7 @@ import { THREAD_MESSAGE_CAP, ReplyCache } from "./storage.js";
 import { newId, type Store } from "./store.js";
 import type {
   Answer, Attempt, DeepDive, DiffSpec, FileProgress, LensEdit, Grade, Hole, HoleReview, Hunt, LearningPath, Lens, PlantedBug, Practice, PracticeFile,
-  Project, Quiz, StopActivity, Teachback, Thread, Trace, Verdict, Walk,
+  Project, Quiz, Shelf, StopActivity, Teachback, Thread, Trace, Verdict, Walk,
 } from "./types.js";
 import { hashText, langOf, Workspace } from "./workspace.js";
 
@@ -177,6 +177,9 @@ export class Learn {
       question,
       files,
       diff: r.diff,
+      // A rebuilt lens stays on its shelf.
+      shelf: old?.shelf,
+      shelfPinned: old?.shelfPinned,
       title: str(raw.title, 120) || question,
       // The verdict's table shows right under the summary; a summary that repeats it loses the table.
       summary: str(raw.verdict) ? str(raw.summary).split("\n").filter((ln) => !ln.trim().startsWith("|")).join("\n").trim() : str(raw.summary),
@@ -456,12 +459,155 @@ export class Learn {
     };
   }
 
+  // ---- shelves ----------------------------------------------------------
+
+  /** Shelves with how many lenses each holds, and the lenses that sit on no (existing) shelf. */
+  private shelfState(pid: string) {
+    const shelves = this.store.list(pid, "shelves");
+    const ids = new Set(shelves.map((s) => s.id));
+    const lenses = this.store.list(pid, "lenses");
+    const count = new Map<string, number>();
+    for (const l of lenses) if (l.shelf && ids.has(l.shelf)) count.set(l.shelf, (count.get(l.shelf) ?? 0) + 1);
+    const text = shelves.map((s) => `${s.id} | ${s.name} | ${s.about} | ${count.get(s.id) ?? 0}`).join("\n");
+    return { shelves, ids, lenses, text, unshelved: lenses.filter((l) => !l.shelf || !ids.has(l.shelf)) };
+  }
+
+  private newShelf(pid: string, name: string, about: string): Shelf {
+    const shelves = this.store.list(pid, "shelves");
+    const same = shelves.find((s) => s.name.toLowerCase() === name.toLowerCase());
+    if (same) return same;
+    return this.store.put(pid, "shelves", { id: newId(), projectId: pid, createdAt: now(), name: name.slice(0, 60), about: about.slice(0, 300) });
+  }
+
+  /** A lens as the shelving agent sees it: what it is about, not the whole lesson. */
+  private lensCard(ws: Workspace, l: Lens, full = false): string {
+    return [
+      `- id: ${l.id}`,
+      `  title: ${l.title}`,
+      l.tldr && `  idea: ${l.tldr}`,
+      `  question: ${l.question}`,
+      `  files: ${l.files.slice(0, 8).map((f) => ws.rel(f)).join(", ")}`,
+      full && l.summary && `  summary: ${l.summary.slice(0, 600)}`,
+      full && `  steps: ${l.deepDives.map((d) => d.title).join(" / ").slice(0, 1200)}`,
+    ].filter(Boolean).join("\n");
+  }
+
+  /**
+   * Put every unshelved lens on a shelf: existing shelves stay as they are, the agent adds shelves only when
+   * none fits. Lenses that are already shelved are not sent, so a second run does not reshuffle anything.
+   */
+  async organize(project: Project): Promise<{ id: string; placed: number; created: number }> {
+    const ws = new Workspace(project);
+    const pid = project.id;
+    const todo = this.shelfState(pid).unshelved;
+    let placed = 0;
+    let created = 0;
+    // A big backlog goes in batches; each batch sees the shelves the last one made.
+    for (let i = 0; i < todo.length; i += 40) {
+      const batch = todo.slice(i, i + 40);
+      const st = this.shelfState(pid);
+      const raw = await this.ask<{ newShelves?: unknown[]; place: unknown[] }>(
+        ws, ["shelve"], P.shelveSystem(), P.shelvePrompt(st.text, batch.map((l) => this.lensCard(ws, l)).join("\n")),
+      );
+      const keys = new Map<string, string>();
+      for (const n of arr(raw.newShelves).map((x) => x as Record<string, unknown>)) {
+        const name = str(n.name, 60).trim();
+        if (!name) continue;
+        const before = this.store.list(pid, "shelves").length;
+        keys.set(str(n.key, 40), this.newShelf(pid, name, str(n.about, 300)).id);
+        if (this.store.list(pid, "shelves").length > before) created++;
+      }
+      const want = new Set(batch.map((l) => l.id));
+      const ids = new Set(this.store.list(pid, "shelves").map((s) => s.id));
+      for (const pl of arr(raw.place).map((x) => x as Record<string, unknown>)) {
+        const lid = str(pl.lens, 40);
+        const target = keys.get(str(pl.shelf, 40)) ?? str(pl.shelf, 40);
+        const l = want.has(lid) ? this.store.get(pid, "lenses", lid) : undefined;
+        if (!l || !ids.has(target)) continue;
+        want.delete(lid);
+        this.store.put(pid, "lenses", { ...l, shelf: target, shelfPinned: false });
+        placed++;
+      }
+    }
+    // A shelf the agent made but filled with nothing is noise.
+    const st = this.shelfState(pid);
+    for (const s of st.shelves) if (!st.lenses.some((l) => l.shelf === s.id)) this.store.archive(pid, "shelves", s.id);
+    return { id: "", placed, created };
+  }
+
+  /** Take a shelf apart and sort its lenses again; lenses you placed yourself stay where they are. */
+  async reworkShelf(project: Project, shelfId: string): Promise<{ id: string; placed: number; created: number }> {
+    const pid = project.id;
+    if (!this.store.get(pid, "shelves", shelfId)) throw new Error("shelf not found");
+    const on = this.store.list(pid, "lenses").filter((l) => l.shelf === shelfId);
+    for (const l of on) if (!l.shelfPinned) this.store.put(pid, "lenses", { ...l, shelf: undefined, shelfPinned: false });
+    // With nothing pinned left on it, the shelf itself goes too, so the agent can name the topic afresh.
+    if (on.every((l) => !l.shelfPinned)) this.store.archive(pid, "shelves", shelfId);
+    return this.organize(project);
+  }
+
+  /** Move every lens from the other shelves onto `into`, and drop the emptied shelves. */
+  mergeShelves(project: Project, into: string, from: string[]): Shelf {
+    const pid = project.id;
+    const target = this.store.get(pid, "shelves", into);
+    if (!target) throw new Error("shelf not found");
+    const gone = new Set(from.filter((id) => id !== into && this.store.get(pid, "shelves", id)));
+    if (!gone.size) throw new Error("pick a shelf to merge");
+    for (const l of this.store.list(pid, "lenses")) if (l.shelf && gone.has(l.shelf)) this.store.put(pid, "lenses", { ...l, shelf: into });
+    for (const id of gone) this.store.archive(pid, "shelves", id);
+    return target;
+  }
+
+  /** Put a lens on a shelf by hand (pinned), or back on Unshelved (null; unpinned, so Organize may place it). */
+  moveLens(project: Project, lensId: string, shelfId: string | null): Lens {
+    const pid = project.id;
+    const l = this.store.get(pid, "lenses", lensId);
+    if (!l) throw new Error("lens not found");
+    if (shelfId && !this.store.get(pid, "shelves", shelfId)) throw new Error("shelf not found");
+    return this.store.put(pid, "lenses", { ...l, shelf: shelfId ?? undefined, shelfPinned: !!shelfId });
+  }
+
+  /** Ask the agent where one lens belongs, with the reader's steer weighing most. The result is pinned. */
+  async reshelve(project: Project, lensId: string, steer?: string): Promise<Lens> {
+    const ws = new Workspace(project);
+    const pid = project.id;
+    const l = this.store.get(pid, "lenses", lensId);
+    if (!l) throw new Error("lens not found");
+    const st = this.shelfState(pid);
+    const raw = await this.ask<Record<string, unknown>>(
+      ws, ["shelveOne"], P.shelveOneSystem(), P.shelveOnePrompt(st.text, this.lensCard(ws, l, true), steer?.trim().slice(0, 1000) || undefined),
+    );
+    let target = str(raw.shelf, 40);
+    if (target === "new" || !st.ids.has(target)) {
+      const name = str(raw.name, 60).trim();
+      if (!name) throw new Error("the model did not pick a shelf");
+      target = this.newShelf(pid, name, str(raw.about, 300)).id;
+    }
+    const old = l.shelf;
+    const next = this.store.put(pid, "lenses", { ...l, shelf: target, shelfPinned: true });
+    // The lens's old shelf, if now empty, goes.
+    if (old && old !== target && !this.store.list(pid, "lenses").some((x) => x.shelf === old)) this.store.archive(pid, "shelves", old);
+    return next;
+  }
+
   // ---- quiz ------------------------------------------------------------
 
   async quiz(
-    project: Project, req: { files: string[]; diff?: DiffSpec; lensId?: string; count?: number; weak?: boolean; weakIds?: string[] },
+    project: Project, req: { files: string[]; diff?: DiffSpec; lensId?: string; shelfId?: string; count?: number; weak?: boolean; weakIds?: string[];
+      /** What the learner read, when it is not one lens (a shelf quiz). */
+      lensSummary?: string },
   ): Promise<Quiz> {
     const ws = new Workspace(project);
+    if (req.shelfId) {
+      // A shelf quiz mixes the topic's lenses: their files as the code, their ideas as what was read.
+      const shelf = this.store.get(project.id, "shelves", req.shelfId);
+      if (!shelf) throw new Error("shelf not found");
+      const on = this.store.list(project.id, "lenses").filter((l) => l.shelf === shelf.id);
+      if (!on.length) throw new Error("this shelf has no lenses");
+      const read = on.map((l) => `- ${l.title}: ${l.tldr ?? l.summary.slice(0, 300)}`).join("\n");
+      const q = await this.quiz(project, { files: [...new Set(on.flatMap((l) => l.files))].slice(0, 20), count: req.count ?? Math.min(8, on.length + 3), lensSummary: read });
+      return this.store.put(project.id, "quizzes", { ...q, title: `${shelf.name}: ${q.title}` });
+    }
     const lens = req.lensId ? this.store.get(project.id, "lenses", req.lensId) : undefined;
     const pick = req.weakIds?.length ? new Set(req.weakIds) : undefined;
     const weak = req.weak ? openMisconceptions(this.store, project.id).filter((m) => !pick || pick.has(m.id)).slice(0, 6) : [];
@@ -472,7 +618,7 @@ export class Learn {
     const n = Math.min(Math.max(req.count ?? (weak.length || this.settings()["quiz.questions"]), 1), 10);
     const raw = await this.ask<Record<string, unknown>>(
       ws, ["quiz"], P.quizSystem(n),
-      P.quizPrompt(this.bundle(ws, files), this.diffText(ws, req.diff ?? lens?.diff, files), lens?.summary, weak.map((m) => ({ id: m.id, text: m.text }))),
+      P.quizPrompt(this.bundle(ws, files), this.diffText(ws, req.diff ?? lens?.diff, files), req.lensSummary ?? lens?.summary, weak.map((m) => ({ id: m.id, text: m.text }))),
       { plan: true },
     );
     const weakIds = new Set(weak.map((m) => m.id));

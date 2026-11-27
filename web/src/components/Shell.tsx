@@ -50,16 +50,16 @@ const NEXT: Record<ThemePref, ThemePref> = { system: "light", light: "dark", dar
 
 const JOB_NAME: Record<JobKind, string> = {
   lens: "lens", quiz: "quiz", grade: "grading", practice: "practice", review: "review", teachback: "teach-back", tutor: "tutor reply",
-  walk: "walkthrough", walkcheck: "check", hunt: "bug hunt", huntgrade: "grading", path: "path",
+  walk: "walkthrough", walkcheck: "check", hunt: "bug hunt", huntgrade: "grading", path: "path", shelve: "shelving",
 };
 /** Where a finished job's result opens; kinds without a page of their own are left out. */
 const RESULT_PAGE: Partial<Record<JobKind, string>> = {
-  lens: "lens", quiz: "quiz", practice: "practice", teachback: "teach", tutor: "tutor", walk: "walk", hunt: "hunt", path: "paths",
+  lens: "lens", quiz: "quiz", practice: "practice", teachback: "teach", tutor: "tutor", walk: "walk", hunt: "hunt", path: "paths", shelve: "lens",
 };
 
 /** Kinds that work on an existing thing: open that thing (a rework opens its lens, grading opens the quiz). */
 const TARGET_PAGE: Partial<Record<JobKind, string>> = {
-  lens: "lens", grade: "quiz", walkcheck: "walk", huntgrade: "hunt", review: "practice", tutor: "tutor", quiz: "lens",
+  lens: "lens", grade: "quiz", walkcheck: "walk", huntgrade: "hunt", review: "practice", tutor: "tutor", quiz: "lens", shelve: "lens",
 };
 
 /** "42s", "1m 42s". */

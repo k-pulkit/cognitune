@@ -13,6 +13,7 @@ import { shortPath } from "@/lib/path";
 import { CardDialog } from "@/components/CardDialog";
 import { ResumedJob } from "@/components/ResumedJob";
 import { ReviseOnSelect, ReviseToast } from "@/components/Revise";
+import { ShelfControl } from "@/components/Shelves";
 import { CodePane } from "@/components/CodePane";
 import { CodeView } from "@/components/CodeView";
 import { type CodeLinks, Inline, Markdown } from "@/components/Markdown";
@@ -192,8 +193,10 @@ export function LensPage() {
           {l.depth && l.depth !== "standard" && <Badge>{l.depth}</Badge>}
           {l.diff && <Badge tone="warn">change {l.diff.base}..{l.diff.head === "STAGED" ? "staged" : l.diff.head || "working tree"}</Badge>}
           <span className="text-[13px] text-muted">{relTime(l.createdAt)}</span>
+          <span className="ml-auto" />
+          <ShelfControl lens={l} onChanged={() => void lens.refetch()} />
           <button
-            className="ml-auto inline-flex items-center gap-1 rounded-md px-2 py-1 text-[13px] text-muted hover:bg-raised hover:text-ink"
+            className=" inline-flex items-center gap-1 rounded-md px-2 py-1 text-[13px] text-muted hover:bg-raised hover:text-ink"
             title="Write this lens again with an extra instruction"
             onClick={() => setRework(rework ? null : { steer: l.steer ?? "", depth: l.depth ?? "standard" })}
           >

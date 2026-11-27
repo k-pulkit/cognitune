@@ -152,6 +152,9 @@ const GROUPS: Group[] = [
           "Refresh updates a lens when the code changed (a banner tells you). Only the parts that are no longer true are rewritten; follow-ups stay.",
           "Rework writes the lens again with your steer, changing only the parts the steer is about. A new depth rewrites it all.",
           "To change one part, select its text: a Revise button appears. Say what to change; only that part is rewritten, and Undo takes it back. Walkthroughs work the same way.",
+          "Library shelves group lenses by topic. New lenses land on Unshelved; Organize asks the agent to place only those, so shelves you have do not shift. A shelf can be quizzed, reworked (its lenses are sorted again, except ones you placed), merged or renamed. By code area groups them by folder instead, with no model.",
+          "On a lens, the shelf button moves it by hand, or asks the agent with your steer, which weighs more than the content. Either way it is pinned there.",
+          "Beside an open file in Explore or Changes, Related lists what you made for that file; the Library icon opens all of it, filtered to that file.",
         ],
       },
       {

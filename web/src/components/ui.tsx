@@ -96,6 +96,7 @@ const STEPS: Record<string, string[]> = {
   hunt: ["Reading the file", "Choosing where to break it", "Planting the bugs"],
   huntgrade: ["Matching your marks", "Checking your reasons", "Writing feedback"],
   path: ["Reading the repo layout", "Ordering the stops", "Writing the path"],
+  shelve: ["Reading the lenses", "Finding the topics", "Placing them on shelves"],
 };
 
 /** Progress card for a running model job. The steps are a guide to the wait, not real stages. */

@@ -243,6 +243,61 @@ describe("learning features", () => {
     expect((await send(`/walks/${j.resultId}/undo`, {})).status).toBe(400);
   });
 
+  it("shelves: organize places only unshelved lenses; pinned lenses survive a rework; merge and move", async () => {
+    const a = (await job("/lenses", { files: [add()], kind: "explain" })).resultId;
+    const b = (await job("/lenses", { files: [add()], kind: "flow" })).resultId;
+    await job("/shelves/organize", {});
+    let shelves = await get("/shelves");
+    expect(shelves).toHaveLength(1);
+    expect(shelves[0].name).toBe("Fake topic");
+    expect((await get(`/lenses/${a}`)).shelf).toBe(shelves[0].id);
+
+    // A new lens is unshelved until the next organize; that run sends only it.
+    const c = (await job("/lenses", { files: [add()], kind: "state" })).resultId;
+    expect((await get(`/lenses/${c}`)).shelf).toBeUndefined();
+
+    // Re-shelve with a steer: a new shelf, pinned.
+    await job(`/lenses/${b}/reshelve`, { steer: "make a new one for flows" });
+    const lb = await get(`/lenses/${b}`);
+    expect(lb.shelfPinned).toBe(true);
+    shelves = await get("/shelves");
+    expect(shelves.map((s: { name: string }) => s.name).sort()).toEqual(["Fake topic", "Steered topic"]);
+    const steered = shelves.find((s: { name: string }) => s.name === "Steered topic").id;
+    const fake = shelves.find((s: { name: string }) => s.name === "Fake topic").id;
+
+    // Move by hand pins; null unshelves and unpins.
+    expect((await (await send(`/lenses/${c}/shelf`, { shelf: steered }, "PUT")).json()).shelfPinned).toBe(true);
+
+    // Rework the steered shelf: both lenses on it are pinned, so nothing moves and the shelf stays.
+    await job(`/shelves/${steered}/rework`, {});
+    expect((await get(`/lenses/${b}`)).shelf).toBe(steered);
+
+    // Merge fake into steered.
+    const m = await send(`/shelves/${steered}/merge`, { from: [fake] });
+    expect(m.status).toBe(200);
+    expect((await get(`/lenses/${a}`)).shelf).toBe(steered);
+    expect(await get("/shelves")).toHaveLength(1);
+    expect((await send(`/shelves/${steered}/merge`, { from: [] })).status).toBe(400);
+
+    // Unshelve: back to unshelved, not pinned; a rework of a shelf with no pins re-sorts and renames.
+    await send(`/lenses/${c}/shelf`, { shelf: null }, "PUT");
+    expect((await get(`/lenses/${c}`)).shelfPinned).toBe(false);
+    await send(`/lenses/${b}/shelf`, { shelf: null }, "PUT");
+    await job(`/shelves/${steered}/rework`, {});
+    shelves = await get("/shelves");
+    expect(shelves.map((s: { name: string }) => s.name)).toEqual(["Fake topic"]);
+    for (const id of [a, b, c]) expect((await get(`/lenses/${id}`)).shelf).toBe(shelves[0].id);
+
+    // Related: everything made for add.ts, newest first; nothing for README.
+    const rel = await get(`/related?file=${encodeURIComponent(add())}`);
+    expect(rel.filter((r: { kind: string }) => r.kind === "lens")).toHaveLength(3);
+    expect(await get(`/related?file=${encodeURIComponent(join(root, "README.md"))}`)).toEqual([]);
+
+    // A shelf quiz uses the shelf's lens files.
+    const q = await job("/quizzes", { shelfId: shelves[0].id });
+    expect((await get(`/quizzes/${q.resultId}`)).title).toMatch(/^Fake topic: /);
+  });
+
   it("history lens reads git log", async () => {
     const j = await job("/lenses", { files: [add()], kind: "history" });
     expect((await get(`/lenses/${j.resultId}`)).kind).toBe("history");

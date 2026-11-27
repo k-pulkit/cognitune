@@ -58,6 +58,16 @@ export class FakeAgent implements Agent {
           gotchas: ["Line 4 is easy to miss."],
         };
       }
+      case "shelve": {
+        // One new shelf per first folder name seen; existing shelves get nothing.
+        const ids = [...prompt.matchAll(/^- id: (\S+)/gm)].map((m) => m[1]);
+        return { newShelves: [{ key: "n1", name: "Fake topic", about: "Lenses the fake agent grouped." }], place: ids.map((id) => ({ lens: id, shelf: "n1" })) };
+      }
+      case "shelveOne": {
+        const steer = /READER'S STEER \(weighs most\):\n(.*)/.exec(prompt)?.[1] ?? "";
+        const first = /^(\S+) \| /m.exec(prompt.split("THE LENS:")[0].split("EXISTING SHELVES")[1] ?? "")?.[1];
+        return steer.includes("new") || !first ? { shelf: "new", name: "Steered topic", about: "Made from the reader's steer.", why: "The steer asked for it." } : { shelf: first, why: "It fits." };
+      }
       case "walkRevise":
       case "lensRevise": {
         // Echo the block with " Revised." on its main text, so tests can see which block changed.

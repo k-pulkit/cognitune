@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, utimesSyn
 import { homedir } from "node:os";
 import { join, basename, resolve } from "node:path";
 import type {
-  Card, Hunt, LearningPath, Lens, Misconception, Note, Practice, Project, Quiz, Settings, Teachback, Thread, Walk,
+  Card, Hunt, LearningPath, Lens, Misconception, Note, Practice, Project, Quiz, Settings, Shelf, Teachback, Thread, Walk,
 } from "./types.js";
 
 /**
@@ -15,7 +15,7 @@ import type {
  *   projects/<id>/lenses/<lid>.json
  *   projects/<id>/quizzes/<qid>.json
  *   projects/<id>/practice/<pid>.json
- *   projects/<id>/<cards|misconceptions|teachbacks|threads|walks|hunts|paths|notes>/<id>.json
+ *   projects/<id>/<cards|misconceptions|teachbacks|threads|walks|hunts|paths|notes|shelves>/<id>.json
  *   projects/<id>/archive/<collection>/<id>.json   (removed after storage.archiveDays)
  *   cache/<hash>.json                               (model replies, capped at storage.cacheMB)
  *   archive/projects/<id>/                          (forgotten projects, removed after storage.archiveDays)
@@ -58,11 +58,12 @@ interface Collections {
   hunts: Hunt;
   paths: LearningPath;
   notes: Note;
+  shelves: Shelf;
 }
 export type Collection = keyof Collections;
 export type ItemOf<C extends Collection> = Collections[C];
 export const COLLECTIONS: Collection[] = [
-  "lenses", "quizzes", "practice", "cards", "misconceptions", "teachbacks", "threads", "walks", "hunts", "paths", "notes",
+  "lenses", "quizzes", "practice", "cards", "misconceptions", "teachbacks", "threads", "walks", "hunts", "paths", "notes", "shelves",
 ];
 
 export function newId(): string {
