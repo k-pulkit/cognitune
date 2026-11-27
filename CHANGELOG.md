@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.5.0 (2026-11-27)
+
+New:
+
+- **Revise one part of a lens**: select any text and a Revise button appears. Say what to change; only that part
+  (the idea, the summary, the answer, the intuition, the terms, one step, the gotchas) is rewritten, with the rest
+  of the lens as context. Undo takes it back. Walkthrough blocks work the same way; their check question stays.
+- **Refresh and rework change only what needs it**: a planner reads the current lens, the code and your steer,
+  and rewrites only the parts that are no longer true or that the steer is about. Follow-ups are kept, and the
+  lens says what was rewritten. A new depth still writes the whole lens again.
+- **Library shelves**: new lenses land on Unshelved; **Organize** asks the agent to put only those on topic
+  shelves, so shelves you have do not shift. Quiz, rework, merge, rename or remove a shelf. **By code area**
+  groups lenses by folder instead, with no model. On a lens, move it to a shelf by hand, or ask the agent with a
+  steer that weighs more than the content.
+- **Related** beside an open file in Explore and Changes: what you made for that file (lenses, quizzes, walks,
+  cards...), and a Library button that shows all of it, filtered to that file.
+- Changes: a **Staged only** option shows just what `git commit` would take.
+- File trees: expand all and collapse all (only the folders with ticked files, when something is ticked), and a
+  refresh button that picks up new files without leaving the page.
+
 ## 0.4.2 (2026-11-20)
 
 Fixes:
